@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.7.0'
+$AppVersion = '1.7.1'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -65,14 +65,14 @@ $WidgetHtml = @'
 :root{
   --bg:#fbfaf7; --fg:#1b1b1d; --muted:#6b6b70; --line:#ebe8e1; --sel:#f0ede6; --field:#ffffff;
   --dot:#cfcbc2; --dotoff:#e2ded6; --past:#1b1b1d; --sun:#c8463b; --sat:#3a62c9; --accent:#e0592a;
-  --scrim:rgba(27,27,29,.28); --err:#c23b2f; --ok:#178a6b; --bar:#c9c4ba;
+  --scrim:rgba(27,27,29,.28); --err:#c23b2f; --ok:#178a6b; --bar:#9d978c; --barout:#b9b3a8;
   --font:"IBM Plex Sans KR","Malgun Gothic",system-ui,sans-serif;
   color-scheme:light;
 }
 body[data-theme="dark"]{
   --bg:#111113; --fg:#f2f2f0; --muted:#a0a0a7; --line:#26262b; --sel:#1f1f24; --field:#18181c;
   --dot:#3a3a41; --dotoff:#2b2b31; --past:#f2f2f0; --sun:#ff7a6b; --sat:#8fa8ff; --accent:#ff8a4c;
-  --scrim:rgba(0,0,0,.5); --err:#ff7a6b; --ok:#4fd1a5; --bar:#4a4a52;
+  --scrim:rgba(0,0,0,.5); --err:#ff7a6b; --ok:#4fd1a5; --bar:#a3a3ae; --barout:#7c7c88;
   color-scheme:dark;
 }
 *{box-sizing:border-box}
@@ -122,9 +122,10 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cell.sat .n{color:var(--sat)}
 .dots{display:flex;gap:3px;height:8px;align-items:center}
 .tb{display:flex;gap:2px;height:3px}
-.tb i{width:10px;height:3px;border-radius:2px;background:var(--bar)}
-.tb i.me{background:var(--accent);opacity:.75}
-.tb i.out{background:transparent;box-shadow:inset 0 0 0 1px var(--bar)}
+.tb{height:4px}
+.tb i{width:12px;height:4px;border-radius:2px;background:var(--bar)}
+.tb i.me{background:var(--accent);opacity:1}
+.tb i.out{border-radius:0;background:repeating-linear-gradient(90deg,var(--barout) 0 2px,transparent 2px 4px);box-shadow:none}
 /* 넓을 때: 칸 안에 일정 제목 */
 .grid.wide .cell{height:auto;min-height:86px;align-items:stretch;justify-content:flex-start;padding:5px 4px 6px;gap:3px}
 .grid.wide .cell .n{align-self:flex-start;padding-left:3px}
@@ -134,15 +135,18 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .ec.more{background:none;border:0;color:var(--muted);padding-left:5px}
 .grid.wide .tb{align-self:flex-start;padding-left:3px;margin-top:auto}
 .lv{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--muted);min-width:0}
-.lv i{width:16px;height:3px;border-radius:2px;background:var(--bar);flex:none}
-.lv i.me{background:var(--accent);opacity:.75}
-.lv i.out{background:transparent;box-shadow:inset 0 0 0 1px var(--bar)}
+.lv i{width:16px;height:4px;border-radius:2px;background:var(--bar);flex:none}
+.lv i.me{background:var(--accent);opacity:1}
+.lv i.out{border-radius:0;background:repeating-linear-gradient(90deg,var(--barout) 0 2px,transparent 2px 4px);box-shadow:none}
+.lv.out .ti{opacity:.75}
 .lv .tm{flex:0 0 44px;font-size:11.5px}
 .lv .ti{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .leg{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:8px}
 .leg span{display:inline-flex;align-items:center;gap:5px}
 .leg .d{width:8px;height:8px}
-.leg i.bar{display:inline-block;width:10px;height:3px;border-radius:2px;background:var(--bar)}
+.leg i.bar{display:inline-block;width:12px;height:4px;border-radius:2px;background:var(--bar)}
+.leg i.bar.me{background:var(--accent)}
+.leg i.bar.out{border-radius:0;background:repeating-linear-gradient(90deg,var(--barout) 0 2px,transparent 2px 4px);box-shadow:none}
 .d{width:8px;height:8px;border-radius:50%;background:var(--c)}
 .d.h{background:linear-gradient(90deg,var(--c) 50%,transparent 50%);box-shadow:inset 0 0 0 1.2px var(--c)}
 .d.e{width:5px;height:5px;background:var(--dotoff)}
@@ -340,7 +344,7 @@ body.popup .rz{display:none}
   <div id="calWrap" hidden>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="grid" id="grid"></div>
-    <div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span></div>
+    <div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span><span id="legOut" hidden><i class="bar out"></i>팀 밖</span><span id="legMe" hidden><i class="bar me"></i>내 휴가</span></div>
   </div>
 
   <!-- 선택한 날: 내 일정이 먼저, 팀원 휴가는 한 줄 요약 -->
@@ -674,6 +678,8 @@ body.popup .rz{display:none}
     const wide = cellW >= 70, perCell = cellW >= 85 ? 3 : 2;
     grid.classList.toggle("wide", wide); lastWide = wide;
     $("legMy").hidden = !gEvents;
+    $("legOut").hidden = !(showAll && Array.isArray(teamSel));
+    $("legMe").hidden = !(me && leaves.some(l => l.user_id === me.id));
     for (let i = 0; i < weeks * 7; i++) {
       const d = new Date(start); d.setDate(start.getDate() + i); const s = ymd(d);
       const b = document.createElement("button"); b.type = "button"; b.className = "cell";
@@ -1073,7 +1079,7 @@ body.popup .rz{display:none}
           if (ev.leave) {
             const lv = ev.leave, mine = me && lv.uid === me.id;
             const range = lv.start !== lv.end ? ` · ${fmtShort(lv.start)}~${fmtShort(lv.end)}` : "";
-            html += `<div class="lv"><i class="${mine ? "me" : (isMyTeam(lv.uid) ? "" : "out")}" aria-hidden="true"></i><span class="tm">휴가</span><span class="ti" title="${esc(lv.memo)}">${esc(mine ? "나" : lv.who)} ${esc(lv.type)}${range}${isMyTeam(lv.uid) ? "" : " (팀 밖)"}</span></div>`;
+            html += `<div class="lv${mine || isMyTeam(lv.uid) ? "" : " out"}"><i class="${mine ? "me" : (isMyTeam(lv.uid) ? "" : "out")}" aria-hidden="true"></i><span class="tm">휴가</span><span class="ti" title="${esc(lv.memo)}">${esc(mine ? "나" : lv.who)} ${esc(lv.type)}${range}${isMyTeam(lv.uid) ? "" : " (팀 밖)"}</span></div>`;
           } else html += evRow(ev, d);
           shown++;
         }
@@ -2061,6 +2067,34 @@ public static class TLW {
             return @{ Id = [string]$c.client_id; Secret = [string]$c.client_secret }
         } catch { return $null }
     }
+    # 설정 파일이 없으면 TeamCal 사이트에서 자동으로 받아 온다 (올려 둔 경우에만)
+    $GClientUrl = ($UpdateUrl -replace 'version\.json$', 'google_client.json')
+    function Save-GClientText([string]$txt) {
+        try {
+            $j = $txt | ConvertFrom-Json
+            if (-not $j.installed -or -not $j.installed.client_id) { return $false }
+            [IO.File]::WriteAllText($GClientFile, $txt, (New-Object Text.UTF8Encoding $false))
+            return $true
+        } catch { return $false }
+    }
+    function Fetch-GClientNow {
+        try {
+            $t = [TLW]::GetText($GClientUrl + '?t=' + [DateTime]::UtcNow.Ticks)
+            if (-not $t.Wait(7000)) { return $false }
+            $r = $t.Result; $i = $r.IndexOf("`n")
+            if ($r.Substring(0, $i) -ne '200') { return $false }
+            return (Save-GClientText $r.Substring($i + 1))
+        } catch { return $false }
+    }
+    function Fetch-GClientBg {
+        if (Test-Path $GClientFile) { return }
+        Add-Job ([TLW]::GetText($GClientUrl + '?t=' + [DateTime]::UtcNow.Ticks)) {
+            param($t, $ctx)
+            if ($t.IsFaulted -or $t.IsCanceled) { return }
+            $r = $t.Result; $i = $r.IndexOf("`n")
+            if ($r.Substring(0, $i) -eq '200') { [void](Save-GClientText $r.Substring($i + 1)) }
+        }
+    }
     function Import-GClient {
         $dlg = New-Object System.Windows.Forms.OpenFileDialog
         $dlg.Title = '구글 클라우드에서 받은 OAuth 클라이언트 JSON 파일 선택'
@@ -2112,6 +2146,7 @@ public static class TLW {
 
     function Start-GoogleLogin {
         $c = Get-GClient
+        if (-not $c -and (Fetch-GClientNow)) { $c = Get-GClient }
         if (-not $c) {
             $r = [System.Windows.Forms.MessageBox]::Show("구글 로그인을 쓰려면 처음 한 번 구글 클라우드 설정 파일(JSON)이 필요해요.`n`n예: 설정 파일 불러오기`n아니요: 설정 방법 보기", $AppName, 'YesNoCancel', 'Information')
             if ($r -eq 'No') { Start-Process notepad.exe -ArgumentList "`"$GuideFile`""; Set-GMode 'google'; return }
@@ -2458,7 +2493,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     # ---- 9) 화면에서 온 요청 처리 ----
     function On-UIMessage($m) {
         switch ([string]$m.cmd) {
-            'ready'   { Send-Config; if (-not $script:updChecked) { $script:updChecked = $true; Check-Update $false } }
+            'ready'   { Send-Config; if (-not $script:updChecked) { $script:updChecked = $true; Check-Update $false; Fetch-GClientBg } }
             'size'    {
                 if ([double]$script:state.H -gt 0) { return }      # 사용자가 높이를 정했으면 자동 맞춤 안 함
                 if ($form.WindowState -ne 'Normal') { return }
