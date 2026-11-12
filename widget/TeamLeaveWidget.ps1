@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.6'
+$AppVersion = '1.9.7'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -297,6 +297,31 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .msg.err{color:var(--err)} .msg.ok{color:var(--ok)}
 .link{background:none;border:0;padding:0;color:var(--muted);font-size:12px;text-decoration:underline;text-underline-offset:3px;cursor:pointer;align-self:flex-start}
 
+/* settings */
+.sets{gap:0}
+.stabs{display:flex;gap:2px;margin:10px -16px 0;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto}
+.stabs button{flex:none;padding:7px 9px 9px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
+.stabs button[aria-selected="true"]{color:var(--fg);border-color:var(--fg)}
+.sgrp{font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 2px}
+.srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
+.srow:last-child{border-bottom:0}
+.srow .st{flex:1;min-width:0}.srow .st small{display:block;color:var(--muted);font-size:11px;margin-top:1px;line-height:1.4}
+.ssw{width:34px;height:20px;border-radius:10px;border:0;padding:0;background:var(--dot);position:relative;flex:none;cursor:pointer}
+.ssw::after{content:"";position:absolute;top:2px;left:2px;width:16px;height:16px;border-radius:50%;background:#fff;box-shadow:0 1px 2px rgba(0,0,0,.2);transition:left .15s}
+.ssw[aria-checked="true"]{background:var(--accent)}.ssw[aria-checked="true"]::after{left:16px}
+.sseg{display:flex;background:var(--sel);border-radius:9px;padding:2px;flex:none}
+.sseg button{padding:4px 10px;font:inherit;font-size:11.5px;border:0;border-radius:7px;background:none;color:var(--muted);font-weight:600;cursor:pointer}
+.sseg button[aria-checked="true"]{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+.srange{display:flex;align-items:center;gap:8px;flex:none;width:150px}
+.srange input{flex:1;accent-color:var(--accent)}.srange em{font-style:normal;font-size:11.5px;color:var(--muted);width:32px;text-align:right}
+.sbtn{height:28px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font:inherit;font-size:12px;font-weight:600;background:transparent;color:var(--fg);cursor:pointer;flex:none;white-space:nowrap}
+.sbtn:hover{border-color:var(--dot)}.sbtn.pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}.sbtn.dng{color:var(--err)}
+.sacct{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sel);margin:6px 0 2px;font-size:13px}
+.sacct .av{width:30px;height:30px;border-radius:50%;background:var(--accent);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:700;flex:none}
+.sacct .st{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis}.sacct small{display:block;color:var(--muted);font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sbtns{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0 2px}
+.sft{display:flex;justify-content:space-between;margin:12px -16px -16px;padding:10px 16px 12px;border-top:1px solid var(--line);font-size:11px;color:var(--muted)}
+body.popup .sft{margin-bottom:-16px}
 /* sheet */
 .dlg{max-height:100%;overflow-y:auto;display:flex;flex-direction:column;gap:13px;padding:16px;border-radius:20px;background:var(--bg);border:1px solid var(--line);box-shadow:0 24px 48px rgba(0,0,0,.22),0 4px 12px rgba(0,0,0,.08)}
 .grab{display:none}
@@ -371,7 +396,7 @@ body.popup .rz{display:none}
     <span class="sep"></span>
     <button class="ib" id="bOpa" aria-label="투명도" title="투명도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
     <button class="ib" id="bPin" aria-label="항상 위에 표시" title="항상 위에 표시"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z"/></svg></button>
-    <button class="ib" id="bMenu" aria-label="메뉴" title="메뉴"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="1.8"/><circle cx="12" cy="12" r="1.8"/><circle cx="19" cy="12" r="1.8"/></svg></button>
+    <button class="ib" id="bMenu" aria-label="설정" title="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button class="ib" id="bHide" aria-label="작업 표시줄로 내리기" title="작업 표시줄로 내리기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
     <button class="ib" id="bTray" aria-label="트레이 아이콘으로 숨기기" title="트레이 아이콘으로 숨기기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
@@ -477,6 +502,17 @@ body.popup .rz{display:none}
       <label for="gDesc">메모 (선택)<input id="gDesc" maxlength="500" autocomplete="off"></label>
       <span class="calc" id="gCalc" role="status"></span>
       <div class="acts"><button class="btn danger" type="button" id="gDel" hidden>삭제</button><button class="btn" type="button" id="gCancel">취소</button><button class="btn pri" type="submit" id="gOk">추가하기</button></div>
+    </form>
+  </div>
+
+  <!-- 설정 -->
+  <div id="setsheet" class="sheet" hidden>
+    <form class="dlg sets" role="dialog" aria-modal="true" aria-labelledby="setTitle" id="setForm" novalidate>
+      <span class="grab" aria-hidden="true"></span>
+      <div class="dh"><b id="setTitle">설정</b><button class="x" type="button" id="setClose" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="stabs" role="tablist" id="setTabs"></div>
+      <div id="setBody"></div>
+      <div class="sft"><span>바뀐 내용은 바로 적용돼요</span><span id="setVer"></span></div>
     </form>
   </div>
 
@@ -1281,7 +1317,7 @@ body.popup .rz{display:none}
       out.push({ kind: "삭제", ...old });
     }
     selfKeys.clear();
-    if (!out.length) return;
+    if (!out.length || lsGet("tlw.ntOn") === "0") return;
     out.sort((a, b) => a.s - b.s);
     ntItems = out.concat(ntItems.filter(o => !out.some(n => n.c === o.c && n.t === o.t && n.s === o.s))).slice(0, 20);
     renderNotice();
@@ -1289,7 +1325,7 @@ body.popup .rz{display:none}
     const nm = c => (gCals.find(x => x.id === c) || {}).name || "캘린더";
     const title = cals.length === 1 ? `${nm(cals[0])} 캘린더가 바뀌었어요` : `캘린더 ${cals.length}개가 바뀌었어요`;
     const first = out[0];
-    host({ cmd: "notify", title, text: `${first.kind} · ${first.t} ${fmtWhen(first)}${out.length > 1 ? ` 외 ${out.length - 1}건` : ""}` });
+    if (lsGet("tlw.ntWin") !== "0") host({ cmd: "notify", title, text: `${first.kind} · ${first.t} ${fmtWhen(first)}${out.length > 1 ? ` 외 ${out.length - 1}건` : ""}` });
   }
   function renderNotice() {
     const box = $("ntBox"); if (!box) return;
@@ -1669,18 +1705,112 @@ body.popup .rz{display:none}
     } else if (kind === "gevent") {
       gToken = data.token || null; gWritable = Array.isArray(data.cals) ? data.cals : [];
       openGSheet(data.edit || null);
+    } else if (kind === "settings") {
+      showSettings(data.ui || data, data.host || {});
     } else if (kind === "team") {
       me = { id: data.uid };
       showTeam(Array.isArray(data.members) ? data.members : [], Array.isArray(data.sel) ? data.sel : (data.sel ? [data.sel] : []));
     }
   }
+  // ======================= 설정 창 =======================
+  const PRIVACY_URL = "https://none-hongcheol.github.io/TeamCal/privacy.html";
+  const HOME_URL = "https://none-hongcheol.github.io/TeamCal/";
+  function openSettings() {
+    const prim = gCals.find(c => c.primary);
+    const ui = {
+      gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
+      showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
+      ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0"
+    };
+    if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
+    showSettings(ui, {});
+  }
+  let setUi = {}, setHost = {}, setTab = "일반";
+  const SET_TABS = ["일반", "캘린더", "팀 휴가", "알림", "정보"];
+  function showSettings(ui, hs) {
+    setUi = ui || {}; setHost = hs || {};
+    $("setVer").textContent = setHost.version ? "TeamCal " + setHost.version : "";
+    renderSettings(); $("setsheet").hidden = false; report();
+  }
+  function sset(key, value) { host({ cmd: "set", key, value }); }
+  function uiset(key, value) { setUi[key] = value; host({ cmd: "set", key: "ui", value: { key, value } }); }
+  function renderSettings() {
+    const tabs = $("setTabs");
+    tabs.innerHTML = SET_TABS.map(t => `<button type="button" role="tab" aria-selected="${t === setTab}" data-tab="${t}">${t}</button>`).join("");
+    tabs.querySelectorAll("[data-tab]").forEach(b => b.onclick = () => { setTab = b.dataset.tab; renderSettings(); const nb = $("setTabs").querySelector(`[data-tab="${setTab}"]`); if (nb) nb.focus(); });
+    const sw = (id, on, label, sub) => `<div class="srow"><div class="st" id="l_${id}">${label}${sub ? `<small>${sub}</small>` : ""}</div><button type="button" class="ssw" role="switch" aria-labelledby="l_${id}" aria-checked="${!!on}" data-sw="${id}"></button></div>`;
+    const seg = (id, val, opts, label) => `<div class="srow"><div class="st" id="l_${id}">${label}</div><div class="sseg" role="radiogroup" aria-labelledby="l_${id}">${opts.map(([v, t]) => `<button type="button" role="radio" aria-checked="${String(v) === String(val)}" data-seg="${id}" data-v="${v}">${t}</button>`).join("")}</div></div>`;
+    const btn = (label, sub, act, txt, cls) => `<div class="srow"><div class="st">${label}${sub ? `<small>${sub}</small>` : ""}</div><button type="button" class="sbtn ${cls || ""}" data-act="${act}">${txt}</button></div>`;
+    const H = setHost, U = setUi;
+    let h = "";
+    if (setTab === "일반") {
+      const op = Math.round((+H.opacity || 1) * 100);
+      h += `<div class="sgrp">화면</div>` + seg("theme", H.theme === "dark" ? "dark" : "light", [["light", "라이트"], ["dark", "다크"]], "테마")
+        + `<div class="srow"><div class="st" id="l_op">투명도</div><div class="srange"><input type="range" min="50" max="100" step="10" value="${op}" aria-labelledby="l_op" id="setOp"><em id="setOpV">${op}%</em></div></div>`
+        + sw("hover", H.hover, "마우스를 올리면 선명하게", "투명할 때 마우스를 올리면 잠깐 100%로")
+        + sw("top", H.top, "항상 위에 표시")
+        + seg("size", String(H.size || 1), [["0.9", "작게"], ["1", "보통"], ["1.15", "크게"]], "글자 크기")
+        + `<div class="sgrp">시작 · 위치</div>` + sw("autostart", H.autostart, "Windows 시작 시 자동 실행")
+        + btn("위젯 위치와 크기", "화면 밖으로 사라졌을 때", "resetPos", "처음 위치로");
+    } else if (setTab === "캘린더") {
+      h += `<div class="sgrp">구글 계정</div>`;
+      if (H.gmode === "google") h += `<div class="sacct"><div class="av">G</div><div class="st">구글 캘린더 연결됨<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
+      else if (H.gmode === "ical") h += `<div class="sacct"><div class="av">i</div><div class="st">iCal 주소로 연결됨<small>보기 전용</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
+      else h += `<div class="sacct"><div class="av" style="background:var(--dot)">?</div><div class="st">연결 안 됨<small>구글 계정을 연결하면 내 일정이 보여요</small></div><button type="button" class="sbtn pri" data-act="glogin">구글 로그인</button></div>`;
+      h += sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")
+        + `<div class="sgrp">표시</div>` + sw("hint", U.hint, "팀 캘린더 안내 문구", "‘내 일정’ 아래 그룹 가입 안내")
+        + `<div class="sgrp">기타</div><div class="sbtns"><button type="button" class="sbtn" data-act="gweb">구글 캘린더 열기 ↗</button>${H.gmode === "google" ? "" : `<button type="button" class="sbtn" data-act="gical">iCal 주소로 연결…</button>`}<button type="button" class="sbtn" data-act="gguide">설정 방법 보기</button></div>`;
+    } else if (setTab === "팀 휴가") {
+      h += `<div class="sgrp">로그인</div>`;
+      h += U.teamOn ? `<div class="sacct"><div class="av">${esc((U.teamName || "?").slice(0, 1))}</div><div class="st">${esc(U.teamName || "로그인됨")}<small>팀 휴가 사이트와 같은 계정</small></div><button type="button" class="sbtn" data-act="teamLogout">로그아웃</button></div>`
+        : `<div class="sacct"><div class="av" style="background:var(--dot)">?</div><div class="st">로그인 안 됨<small>위젯 화면에서 이름·PIN으로 로그인해요</small></div></div>`;
+      h += `<div class="sgrp">보기</div>` + btn("내 팀원", "같이 일하는 사람만 골라 보기", "teamPick", "고르기…")
+        + (U.hasTeam ? sw("showAll", U.showAll, "팀 밖 사람 휴가도 보기", "내 팀원이 아닌 사람은 점선으로") : "")
+        + btn("팀 휴가 사이트", "", "teamSite", "열기 ↗");
+    } else if (setTab === "알림") {
+      h += `<div class="sgrp">캘린더 변경 알림</div>` + sw("ntOn", U.ntOn, "다른 사람이 캘린더를 바꾸면 알림", "공유 캘린더의 앞으로 2주 일정")
+        + sw("ntWin", U.ntWin, "Windows 알림도 띄우기", "위젯을 숨겨 두거나 다른 창을 쓸 때")
+        + `<div class="sgrp">업데이트</div>` + btn("새 버전 확인", "켤 때 · 30분마다 자동으로 확인해요", "update", "지금 확인");
+    } else {
+      h += `<div class="sgrp">TeamCal</div><div class="srow"><div class="st">버전<small>팀 휴가 + 내 일정 위젯</small></div><span style="font-size:12.5px;font-weight:600">${esc(H.version || "")}</span></div>`
+        + btn("업데이트", "", "update", "확인")
+        + btn("홈페이지", "", "home", "열기 ↗") + btn("개인정보처리방침", "", "privacy", "열기 ↗")
+        + `<div class="sgrp">제거</div>` + btn("TeamCal 제거", "설정·로그인 정보가 지워져요", "uninstall", "제거…", "dng");
+    }
+    const body = $("setBody"); body.innerHTML = h;
+    body.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => {
+      const k = b.dataset.sw, on = b.getAttribute("aria-checked") !== "true";
+      b.setAttribute("aria-checked", on ? "true" : "false");
+      if (["hint", "ntOn", "ntWin", "showAll"].includes(k)) uiset(k, on); else { setHost[k] = on; sset(k, on); }
+    });
+    body.querySelectorAll("[data-seg]").forEach(b => b.onclick = () => {
+      const k = b.dataset.seg, v = b.dataset.v;
+      b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false"));
+      setHost[k] = k === "size" ? +v : v; sset(k, k === "size" ? +v : v);
+    });
+    const op = body.querySelector("#setOp");
+    if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
+    body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
+      const a = b.dataset.act;
+      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL };
+      if (urls[a]) { host({ cmd: "open", url: urls[a] }); return; }
+      if (a === "glogout") { setHost.gmode = ""; renderSettings(); }
+      if (a === "teamLogout") { setUi.teamOn = false; renderSettings(); }
+      host({ cmd: "set", key: "act", value: a });
+    });
+    report();
+  }
+  $("setClose").onclick = () => { if (POPUP) host({ cmd: "close" }); else { $("setsheet").hidden = true; report(); } };
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("setsheet").hidden) $("setClose").click(); });
+
   // ======================= 호스트 메시지 =======================
   function applyTheme(t) { document.body.dataset.theme = t === "dark" ? "dark" : "light"; if (!POPUP) renderAll(); }
   if (inHost) window.chrome.webview.addEventListener("message", ev => {
     const m = ev.data || {};
     if (POPUP) {
       if (m.type === "popup") { applyTheme(m.theme); initPopup(m.kind, m.data); }
-      else if (m.type === "theme") applyTheme(m.theme);
+      else if (m.type === "theme") { applyTheme(m.theme); if (!$("setsheet").hidden) { setHost.theme = m.theme; renderSettings(); } }
+      else if (m.type === "settings" && !$("setsheet").hidden) { setHost = m.host || setHost; if (m.ui) setUi = Object.assign(setUi, m.ui); renderSettings(); }
       else if (m.type === "gtoken" && m.token) { gToken = m.token; if (gPendingSave) { const f = gPendingSave; gPendingSave = null; f(); } }
       return;
     }
@@ -1691,6 +1821,15 @@ body.popup .rz{display:none}
         report(); break;
       case "updating": $("upd").hidden = false; $("updBtn").disabled = true; $("updBtn").textContent = "업데이트 중…"; break;
       case "openTeam": openTeam(); break;
+      case "openSettings": openSettings(); break;
+      case "uipref": {
+        const k = m.key, v = !!m.value;
+        if (k === "hint") { lsSet("tlw.hintOff", v ? null : "1"); renderG(); }
+        else if (k === "ntOn") lsSet("tlw.ntOn", v ? null : "0");
+        else if (k === "ntWin") lsSet("tlw.ntWin", v ? null : "0");
+        else if (k === "showAll") { showAll = v; try { localStorage.setItem("tlw.showAll", v ? "1" : "0"); } catch (e) {} renderAll(); }
+        break;
+      }
       case "teamcal": setTeamCal(m.cfg); break;
       case "tcshow": lsSet("tlw.hintOff", null); renderG(); break;
       case "popupDone":
@@ -1719,7 +1858,7 @@ body.popup .rz{display:none}
   });
   $("bOpa").onclick = () => host({ cmd: "opacity" });
   $("bPin").onclick = () => host({ cmd: "pin" });
-  $("bMenu").onclick = () => host({ cmd: "menu" });
+  $("bMenu").onclick = openSettings;
   $("bHide").onclick = () => host({ cmd: "minimize" });
   $("bTray").onclick = () => host({ cmd: "hide" });
   // app-region 미지원 런타임용: 머리글을 끌면 창 이동
@@ -2618,14 +2757,14 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
         try { $p.F.Dispose() } catch { }
     }
     function Open-Popup([string]$kind, $data) {
-        if (@('leave', 'gevent', 'team') -notcontains $kind) { return }
+        if (@('leave', 'gevent', 'team', 'settings') -notcontains $kind) { return }
         if (-not $script:wvEnv) { return }
         Close-Popup
         $f = New-Object System.Windows.Forms.Form
         $f.FormBorderStyle = 'None'; $f.ShowInTaskbar = $false; $f.StartPosition = 'Manual'
         $f.TopMost = $true; $f.MaximizeBox = $false; $f.MinimizeBox = $false
         $f.Icon = $icon
-        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } default { '일정 추가' } }
+        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } 'settings' { 'TeamCal 설정' } default { '일정 추가' } }
         $f.BackColor = $form.BackColor
         $w = [int][Math]::Round(360 * $scale * [double]$script:state.Size)
         $h = [int](520 * $scale)
@@ -2677,11 +2816,64 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
         $f.Show()
         $f.Activate()
     }
+    # ---- 설정 창 ----
+    function Get-Settings {
+        @{ theme = [string]$script:state.Theme; opacity = [double]$script:state.Opacity; hover = [bool]$script:state.HoverOpaque
+           top = [bool]$form.TopMost; size = [double]$script:state.Size; autostart = (-not (Test-Path $NoAutoFlag))
+           autoLogin = [bool]$script:state.AutoLogin; gmode = [string]$script:state.GMode; version = $AppVersion }
+    }
+    function Reset-Pos {
+        Reset-Size
+        $form.Left = $wa.Right - $form.Width - [int](20 * $scale); $form.Top = $wa.Top + [int](20 * $scale)
+        $form.Show(); Save-State
+    }
+    function Set-AutoStart([bool]$on) {
+        try {
+            if ($on) { Remove-Item -LiteralPath $NoAutoFlag -Force -ErrorAction SilentlyContinue; New-Shortcut $StartupLnk }
+            else { Set-Content -LiteralPath $NoAutoFlag 'off'; Remove-Item -LiteralPath $StartupLnk -Force -ErrorAction SilentlyContinue }
+        } catch { Write-Log "autostart: $($_.Exception.Message)" }
+    }
+    function Set-AutoLogin([bool]$on) {
+        $script:state.AutoLogin = $on; Save-State
+        if (-not $on) { Remove-Item $GTokenFile -ErrorAction SilentlyContinue }
+        elseif ($script:gRT) { Save-RefreshToken $script:gRT }
+    }
+    function Apply-Setting([string]$key, $v) {
+        switch ($key) {
+            'theme'     { Set-Theme ([string]$v) }
+            'opacity'   { $o = [double]$v; if ($o -ge 0.3 -and $o -le 1) { Set-Opacity $o } }
+            'hover'     { $script:state.HoverOpaque = [bool]$v; Apply-Opacity; Save-State }
+            'top'       { if ([bool]$v -ne [bool]$form.TopMost) { Toggle-Pin } }
+            'size'      { $z = [double]$v; if ($z -ge 0.8 -and $z -le 1.3) { Set-Size $z; if ($script:pop) { try { $script:pop.W.ZoomFactor = $z } catch { } } } }
+            'autostart' { Set-AutoStart ([bool]$v) }
+            'autoLogin' { Set-AutoLogin ([bool]$v); Send-Config }
+            'ui'        { Send-Main @{ type = 'uipref'; key = [string]$v.key; value = [bool]$v.value } }
+            'act'       {
+                switch ([string]$v) {
+                    'glogin'     { Close-Popup; Start-GoogleLogin }
+                    'glogout'    { Disconnect-Google }
+                    'gical'      { Close-Popup; Set-ICal }
+                    'gguide'     { Start-Process notepad.exe -ArgumentList "`"$GuideFile`"" }
+                    'teamPick'   { Close-Popup; Show-Main; Send-Main @{ type = 'openTeam' } }
+                    'teamLogout' { Send-Main @{ type = 'logout' } }
+                    'teamSite'   { Start-Process $SiteUrl }
+                    'update'     { Check-Update $true }
+                    'resetPos'   { Reset-Pos }
+                    'uninstall'  { Close-Popup; Uninstall-App }
+                }
+            }
+        }
+    }
     function On-PopMessage($m) {
         $p = $script:pop
         if (-not $p) { return }
         switch ([string]$m.cmd) {
-            'ready'  { Send-Pop @{ type = 'popup'; kind = $p.Kind; data = $p.Data; theme = [string]$script:state.Theme } }
+            'ready'  {
+                $d = $p.Data
+                if ($p.Kind -eq 'settings') { $d = @{ ui = $p.Data; host = (Get-Settings) } }
+                Send-Pop @{ type = 'popup'; kind = $p.Kind; data = $d; theme = [string]$script:state.Theme }
+            }
+            'set'    { Apply-Setting ([string]$m.key) $m.value; if ($script:pop) { Send-Pop @{ type = 'settings'; host = (Get-Settings) } } }
             'size'   {
                 $h = [int]$m.h
                 $maxH = [System.Windows.Forms.Screen]::FromControl($p.F).WorkingArea.Height - [int](20 * $scale)
@@ -2711,6 +2903,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     function Show-Main { $form.Show(); if ($form.WindowState -eq 'Minimized') { $form.WindowState = 'Normal' }; $form.Activate() }
     function Toggle-Main { if ($form.Visible -and $form.WindowState -ne 'Minimized') { $form.Hide() } else { Show-Main } }
     $miShow  = New-Item2 $menu '보이기 / 숨기기' { Toggle-Main }
+    [void](New-Item2 $menu '설정…' { Show-Main; Send-Main @{ type = 'openSettings' } })
     Add-Sep $menu
     $miTheme = New-Item2 $menu '테마' $null
     $miLight = New-Item2 $miTheme '라이트' { Set-Theme 'light' }
@@ -2743,7 +2936,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     $miRef   = New-Item2 $menu '새로고침' { Send-UI @{ type = 'refresh' } }
     $miUpd   = New-Item2 $menu '업데이트 확인' { Check-Update $true }
     Add-Sep $menu
-    $miReset = New-Item2 $menu '위치 초기화' { Reset-Size; $form.Left = $wa.Right - $form.Width - [int](20 * $scale); $form.Top = $wa.Top + [int](20 * $scale); $form.Show(); Save-State }
+    $miReset = New-Item2 $menu '위치 초기화' { Reset-Pos }
     [void]$menu.Items.Add('-'); $script:exitSep = $menu.Items[$menu.Items.Count - 1]
     $miUninst = New-Item2 $menu 'TeamCal 제거…' { Uninstall-App }
     $miExit  = New-Item2 $menu '위젯 종료' { $script:reallyExit = $true; Close-Popup; Save-State; $tray.Visible = $false; $form.Close() }
@@ -2812,11 +3005,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'gguide'  { Start-Process notepad.exe -ArgumentList "`"$GuideFile`"" }
             'popup'   { Open-Popup ([string]$m.kind) $m.data }
             'glogout' { Disconnect-Google }
-            'gauto'   {
-                $script:state.AutoLogin = [bool]$m.on; Save-State
-                if (-not $script:state.AutoLogin) { Remove-Item $GTokenFile -ErrorAction SilentlyContinue }
-                elseif ($script:gRT) { Save-RefreshToken $script:gRT }
-            }
+            'gauto'   { Set-AutoLogin ([bool]$m.on) }
             'update'  { if ($script:upd) { Do-Update } else { Check-Update $true } }
             'copy'    { try { [System.Windows.Forms.Clipboard]::SetText([string]$m.text) } catch { } }
         }

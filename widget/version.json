@@ -1,5 +1,5 @@
 {
-  "version": "1.9.6",
+  "version": "1.9.7",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "다른 사람이 캘린더를 바꾸면 알림"
+  "notes": "설정 창 (톱니바퀴)"
 }
