@@ -1,5 +1,5 @@
 {
-  "version": "1.8.0",
+  "version": "1.9.2",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "팀 캘린더 같이 보기 안내 (그룹 가입 → 캘린더 추가)"
+  "notes": "안내 문구 수정"
 }
