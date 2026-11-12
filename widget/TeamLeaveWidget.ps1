@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.4'
+$AppVersion = '1.9.5'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -93,7 +93,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 #card{position:relative;display:flex;flex-direction:column;gap:18px;padding:14px 18px 18px;background:var(--bg)}
 
 /* header */
-#hd{display:flex;align-items:center;gap:2px;app-region:drag;-webkit-app-region:drag;cursor:grab;user-select:none}
+#hd{position:sticky;top:0;z-index:20;margin:-14px -18px -8px;padding:14px 18px 8px;background:var(--bg);display:flex;align-items:center;gap:2px;app-region:drag;-webkit-app-region:drag;cursor:grab;user-select:none}
 #hd button,#hd .sep{app-region:no-drag;-webkit-app-region:no-drag}
 .mon{display:flex;align-items:baseline;gap:6px;flex:1;min-width:0;margin-right:4px}
 .mon span{overflow:hidden;text-overflow:ellipsis}
@@ -748,9 +748,19 @@ body.popup .rz{display:none}
       b.append(n, dots, tb);
       b.setAttribute("aria-label", `${d.getMonth()+1}월 ${d.getDate()}일${HOLIDAYS[s] ? " " + HOLIDAYS[s] : ""}${mine.length ? ", 내 일정 " + mine.length + "개" : ""}${es.length ? ", 휴가 " + es.length + "명" : ""}`);
       if (s === selected) b.setAttribute("aria-pressed", "true");
-      b.onclick = () => { selected = s; renderGrid(); renderDay(); renderG(); };
+      b.onclick = () => {
+        const now2 = Date.now(), dbl = cellClick.s === s && now2 - cellClick.t < 450;
+        cellClick = dbl ? { s: "", t: 0 } : { s, t: now2 };
+        selected = s; renderGrid(); renderDay(); renderG();
+        if (dbl) addOnDay();      // 같은 날짜를 두 번 빠르게 누르면 일정 추가
+      };
       grid.append(b);
     }
+  }
+  let cellClick = { s: "", t: 0 };
+  function addOnDay() {
+    if (gmode === "google" && gWritable.length) openGSheet(null);
+    else toast(gmode === "google" ? "구글 캘린더를 불러오는 중이에요. 잠시 후 다시 해 주세요." : "구글 캘린더를 연결하면 더블클릭으로 일정을 추가할 수 있어요");
   }
   function renderDay() {
     const d = parse(selected);
