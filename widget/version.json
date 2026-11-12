@@ -1,5 +1,5 @@
 {
-  "version": "1.7.1",
+  "version": "1.7.2",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "휴가 표시 개선 · 구글 설정 자동"
+  "notes": "캘린더 칩 더블클릭으로 초대 링크 · 일정 추가 간소화"
 }
