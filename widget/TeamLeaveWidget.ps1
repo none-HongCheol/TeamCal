@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.7.2'
+$AppVersion = '1.8.0'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -301,6 +301,24 @@ body.popup .rz{display:none}
 .sw button[aria-checked="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--c)}
 .nact{display:flex;gap:6px;justify-content:flex-end}
 .btn.sm{height:32px;padding:0 12px;font-size:12px;border-radius:9px}
+.tc{border:1px solid var(--line);border-radius:14px;padding:12px 13px 8px;margin:2px 0 12px;background:var(--sel)}
+.tc .th{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;min-width:0}
+.tc .th i{width:10px;height:10px;border-radius:50%;flex:none;background:var(--c)}
+.tc .th b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.tc .th span{font-weight:500;font-size:11.5px;color:var(--muted);flex:none}
+.tc p{margin:5px 0 8px;font-size:11.5px;color:var(--muted);line-height:1.5}
+.tc .st{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.tc .n{width:20px;height:20px;border-radius:50%;flex:none;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:1.5px solid var(--dot);color:var(--muted);box-sizing:border-box}
+.tc .ok .n{background:var(--accent);border-color:var(--accent);color:#fff}
+.tc .cur .n{border-color:var(--fg);color:var(--fg)}
+.tc .tx{flex:1;min-width:0;font-size:12.5px;line-height:1.35}.tc .tx small{display:block;color:var(--muted);font-size:11px}
+.tc .ok .tx{color:var(--muted)}
+.tc .bt{height:30px;padding:0 11px;border-radius:8px;border:0;background:var(--fg);color:var(--bg);font-weight:600;font-size:12px;font-family:inherit;cursor:pointer;flex:none}
+.tc .bt.gh{background:transparent;border:1px solid var(--line);color:var(--muted)}
+.tc .ft{display:flex;justify-content:flex-end}.tc .ft button{border:0;background:none;padding:4px 0;font-size:11.5px;color:var(--muted);cursor:pointer;font-family:inherit}
+.tc .ft button:hover{color:var(--fg);text-decoration:underline}
+.cset label.fl{display:flex;flex-direction:column;gap:6px}
+.cset .hint{font-size:11.5px;color:var(--muted);line-height:1.55;background:var(--sel);border-radius:10px;padding:10px 11px;margin:0}
 .ipop{position:absolute;left:10px;right:10px;z-index:40;background:var(--bg);border:1px solid var(--line);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.2);padding:13px 13px 12px;font-size:12.5px;color:var(--fg)}
 .ipop .ih{display:flex;align-items:center;gap:8px;font-weight:700;font-size:13.5px;min-width:0}
 .ipop .ih i{width:10px;height:10px;border-radius:50%;flex:none;background:var(--c)}
@@ -437,6 +455,20 @@ body.popup .rz{display:none}
     </form>
   </div>
 
+  <!-- 팀 캘린더 공유 설정 (설정하는 사람용) -->
+  <div id="csheet" class="sheet" hidden>
+    <form class="dlg cset" role="dialog" aria-modal="true" aria-labelledby="cTitle" id="cForm" novalidate>
+      <span class="grab" aria-hidden="true"></span>
+      <div class="dh"><b id="cTitle">팀 캘린더 공유 설정</b><button class="x" type="button" id="cClose" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="fld"><span class="flbl" id="cCalLbl">공유할 캘린더</span><div class="chips" id="cCals" role="radiogroup" aria-labelledby="cCalLbl"></div></div>
+      <label for="cName">안내에 보일 이름<input id="cName" maxlength="40" placeholder="예: 설계2실 캘린더" autocomplete="off"></label>
+      <label for="cGroup">구글 그룹 가입 링크 (선택)<input id="cGroup" type="url" maxlength="300" placeholder="https://groups.google.com/g/…" autocomplete="off" spellcheck="false"></label>
+      <p class="hint">저장하면 teamcal.json 파일이 만들어져요. 이 파일을 GitHub의 widget 폴더에 올리면 팀원이 구글 로그인할 때 같이 보기 안내가 떠요.<br>캘린더 공유 설정에 그룹 주소를 먼저 추가해 두세요.</p>
+      <span class="calc" id="cCalc" role="status"></span>
+      <div class="acts"><button class="btn danger" type="button" id="cOff" hidden>공유 끄기</button><button class="btn" type="button" id="cCancel">취소</button><button class="btn pri" type="submit" id="cOk">저장</button></div>
+    </form>
+  </div>
+
   <!-- 내 팀원 고르기 -->
   <div id="tsheet" class="sheet" hidden>
     <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="tTitle" id="tForm" novalidate>
@@ -502,7 +534,7 @@ body.popup .rz{display:none}
   let view = new Date(); view.setDate(1);
   let selected = today;
   let gmode = "", gEvents = null, gError = "", gStatus = "", gRetried = false;
-  let gToken = null, gWritable = [], gCals = [], gAutoLogin = true, gLoaded = null, icsText = null;
+  let gToken = null, gWritable = [], gCals = [], gAllCalIds = new Set(), tcCfg = null, gAutoLogin = true, gLoaded = null, icsText = null;
   // 불러올 기간: 보고 있는 달 전체 + 오늘부터 2주
   function gWin() {
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -869,6 +901,8 @@ body.popup .rz{display:none}
     const win = gWin(), t0 = win.from, t1 = win.to;
     const cl = await gfetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=100", token);
     const cals = (cl.items || []).filter(c => !c.hidden);
+    gAllCalIds = new Set((cl.items || []).map(c => c.id));
+    if (tcCfg && gAllCalIds.has(tcCfg.cal) && lsGet("tlw.tcAdd") === tcCfg.cal) { lsSet("tlw.tcAdd", null); toast(`${tcCfg.name || "팀 캘린더"}를 추가했어요`); }
     const isMine = c => c.primary || c.accessRole === "owner";
     gCals = cals.slice().sort((a, b) => (b.primary ? 2 : isMine(b) ? 1 : 0) - (a.primary ? 2 : isMine(a) ? 1 : 0))
       .map(c => ({ id: c.id, color: c.backgroundColor, selected: c.selected,
@@ -1040,6 +1074,7 @@ body.popup .rz{display:none}
       const groups = new Map();
       const showCals = gmode === "google" && gCals.length > 1;
       const offIds = new Set(gCals.filter(c => !calOn(c)).map(c => c.id));
+      html += tcCard();
       if (showCals) {
         html += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + gCals.map(c =>
           `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span></button>`).join("") + `</div>`;
@@ -1095,6 +1130,7 @@ body.popup .rz{display:none}
     const ac = body.querySelector("#gAutoChk");
     if (ac) ac.onchange = () => { gAutoLogin = ac.checked; host({ cmd: "gauto", on: ac.checked }); };
     bindEvRows(body);
+    body.querySelectorAll("[data-tc]").forEach(b => b.onclick = () => tcAction(b.dataset.tc));
     body.querySelectorAll("[data-cal]").forEach(b => {
       const toggle = () => {
         const c = gCals.find(x => x.id === b.dataset.cal); if (!c) return;
@@ -1118,6 +1154,102 @@ body.popup .rz{display:none}
     report();
   }
   const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+
+  // ---------------- 팀 캘린더 같이 보기 (그룹 가입 → 캘린더 추가) ----------------
+  const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+  const lsSet = (k, v) => { try { if (v == null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) {} };
+  const GROUP_RE = /^https:\/\/groups\.google\.com\/\S+$/i;
+  let tcLastCheck = 0;
+  function tcNeeded() {
+    return !!(tcCfg && tcCfg.cal && gmode === "google" && gEvents && !gError && !gAllCalIds.has(tcCfg.cal) && lsGet("tlw.tcLater") !== tcCfg.cal);
+  }
+  function tcCard() {
+    if (!tcNeeded()) return "";
+    const hasGroup = !!(tcCfg.group && GROUP_RE.test(tcCfg.group));
+    const joined = !hasGroup || lsGet("tlw.tcJoin") === tcCfg.cal;
+    const added = lsGet("tlw.tcAdd") === tcCfg.cal;
+    const step = (n, cls, t, sub, btn) => `<div class="st ${cls}"><span class="n">${cls === "ok" ? "✓" : n}</span><span class="tx">${t}<small>${sub}</small></span>${btn}</div>`;
+    const name = esc(tcCfg.name || "팀 캘린더");
+    let h = `<div class="tc" role="region" aria-label="${name} 같이 보기" style="--c:${esc(tcCfg.color || "var(--accent)")}">
+      <div class="th"><i></i><b>${name} 같이 보기</b><span>팀 공유</span></div>
+      <p>팀 일정이 내 달력에 같이 보여요. 처음 한 번만 하면 돼요.</p>`;
+    let n = 1;
+    if (hasGroup) h += step(n++, joined ? "ok" : "cur", "그룹 가입", "가입 요청이 승인되면 다음 단계로",
+      joined ? `<button class="bt gh" type="button" data-tc="join">다시 열기</button>` : `<button class="bt" type="button" data-tc="join">그룹 가입 ↗</button>`);
+    h += step(n, joined ? "cur" : "", "캘린더 추가", added ? "추가했다면 잠시 후 자동으로 확인해요" : "캘린더가 내 일정에 붙어요",
+      `<button class="bt${joined ? "" : " gh"}" type="button" data-tc="add">캘린더 추가${joined ? " ↗" : ""}</button>`);
+    h += `<div class="ft"><button type="button" data-tc="later">나중에</button></div></div>`;
+    return h;
+  }
+  function tcAction(a) {
+    if (!tcCfg) return;
+    if (a === "join") { host({ cmd: "open", url: tcCfg.group }); lsSet("tlw.tcJoin", tcCfg.cal); renderG(); }
+    else if (a === "add") {
+      host({ cmd: "open", url: "https://calendar.google.com/calendar/u/0?cid=" + b64id(tcCfg.cal) });
+      lsSet("tlw.tcAdd", tcCfg.cal); renderG();
+      for (const t of [20000, 60000, 180000]) setTimeout(() => { if (tcNeeded()) gRequest(); }, t);
+    } else if (a === "later") { lsSet("tlw.tcLater", tcCfg.cal); renderG(); toast("트레이 메뉴 → 내 일정 → 팀 캘린더 안내 다시 보기"); }
+  }
+  // 브라우저에서 돌아오면 다시 확인
+  window.addEventListener("focus", () => {
+    if (!tcNeeded() || lsGet("tlw.tcAdd") !== tcCfg.cal) return;
+    if (Date.now() - tcLastCheck < 10000) return; tcLastCheck = Date.now(); gRequest();
+  });
+  function setTeamCal(cfg) {
+    tcCfg = cfg && typeof cfg.cal === "string" && cfg.cal ? { cal: cfg.cal, name: String(cfg.name || ""), group: String(cfg.group || ""), color: String(cfg.color || "") } : null;
+    if (tcCfg && !/^#[0-9a-f]{3,8}$/i.test(tcCfg.color)) tcCfg.color = "";
+    if (!POPUP) renderG();
+  }
+
+  // ---- 설정하는 사람: 팀 캘린더 공유 설정 창
+  let cPick = null, cList = [];
+  function openTcSet(data) {
+    data = data || {};
+    if (inHost && !POPUP) {
+      if (!gWritable.length) { toast("먼저 구글 로그인을 해 주세요"); return; }
+      host({ cmd: "popup", kind: "tcal", data: { cals: gWritable, cfg: tcCfg } }); return;
+    }
+    cList = Array.isArray(data.cals) ? data.cals : gWritable;
+    const cfg = data.cfg || tcCfg;
+    cPick = cfg && cList.some(c => c.id === cfg.cal) ? cfg.cal : (cList.find(c => !/\(기본\)$/.test(c.name)) || cList[0] || {}).id || null;
+    $("cName").value = cfg ? cfg.name : ""; $("cGroup").value = cfg ? cfg.group : "";
+    if (!$("cName").value) { const c = cList.find(x => x.id === cPick); if (c) $("cName").value = c.name.replace(/ \(기본\)$/, ""); }
+    $("cOff").hidden = !cfg; renderCCals(); cCalc("");
+    $("csheet").hidden = false; report();
+    setTimeout(() => { const f = $("cCals").querySelector(".chip.on") || $("cName"); f.focus(); }, 30);
+  }
+  function renderCCals() {
+    const box = $("cCals"); box.replaceChildren();
+    if (!cList.length) { box.innerHTML = `<span class="shd">공유할 수 있는 캘린더가 없어요.</span>`; return; }
+    for (const c of cList) {
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip" + (c.id === cPick ? " on" : "");
+      b.setAttribute("role", "radio"); b.setAttribute("aria-checked", c.id === cPick ? "true" : "false");
+      b.textContent = c.name.replace(/ \(기본\)$/, "");
+      b.onclick = () => {
+        const prev = cList.find(x => x.id === cPick);
+        if (!$("cName").value.trim() || (prev && $("cName").value.trim() === prev.name.replace(/ \(기본\)$/, ""))) $("cName").value = b.textContent;
+        cPick = c.id; renderCCals(); const nb = [...$("cCals").children].find(x => x.classList.contains("on")); if (nb) nb.focus();
+      };
+      box.append(b);
+    }
+  }
+  function cCalc(t, err) { const o = $("cCalc"); o.textContent = t; o.className = "calc" + (err ? " err" : ""); report(); }
+  function closeTcSet() { if (POPUP) { host({ cmd: "close" }); return; } $("csheet").hidden = true; report(); }
+  $("cClose").onclick = closeTcSet; $("cCancel").onclick = closeTcSet;
+  $("csheet").addEventListener("click", e => { if (e.target === $("csheet")) closeTcSet(); });
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("csheet").hidden) closeTcSet(); });
+  $("cOff").onclick = () => { host({ cmd: "tcsave", cfg: null }); if (!POPUP) { setTeamCal(null); closeTcSet(); } };
+  $("cForm").addEventListener("submit", ev => {
+    ev.preventDefault();
+    const c = cList.find(x => x.id === cPick);
+    if (!c) { cCalc("공유할 캘린더를 골라 주세요.", true); return; }
+    const name = $("cName").value.trim(), group = $("cGroup").value.trim();
+    if (!name) { cCalc("안내에 보일 이름을 입력하세요.", true); $("cName").focus(); return; }
+    if (group && !GROUP_RE.test(group)) { cCalc("그룹 링크는 https://groups.google.com/ 으로 시작해야 해요.", true); $("cGroup").focus(); return; }
+    const cfg = { cal: c.id, name, group, color: c.color || "" };
+    cCalc("저장하는 중…"); host({ cmd: "tcsave", cfg });
+    if (!POPUP) { setTeamCal(cfg); closeTcSet(); }
+  });
 
   // ---------------- 캘린더 초대 링크 (칩 더블클릭) ----------------
   let chipTimer = null;
@@ -1422,6 +1554,8 @@ body.popup .rz{display:none}
     } else if (kind === "gevent") {
       gToken = data.token || null; gWritable = Array.isArray(data.cals) ? data.cals : [];
       openGSheet(data.edit || null);
+    } else if (kind === "tcal") {
+      openTcSet(data);
     } else if (kind === "team") {
       me = { id: data.uid };
       showTeam(Array.isArray(data.members) ? data.members : [], Array.isArray(data.sel) ? data.sel : (data.sel ? [data.sel] : []));
@@ -1444,6 +1578,9 @@ body.popup .rz{display:none}
         report(); break;
       case "updating": $("upd").hidden = false; $("updBtn").disabled = true; $("updBtn").textContent = "업데이트 중…"; break;
       case "openTeam": openTeam(); break;
+      case "teamcal": setTeamCal(m.cfg); break;
+      case "tcset": openTcSet(); break;
+      case "tcshow": if (tcCfg) { lsSet("tlw.tcLater", null); renderG(); if (!tcNeeded()) toast(gAllCalIds.has(tcCfg.cal) ? "이미 추가된 캘린더예요" : "구글 로그인 후에 안내가 보여요"); } else toast("설정된 팀 캘린더가 없어요"); break;
       case "popupDone":
         toast(m.msg || "완료했어요");
         if (m.kind === "team") { applyTeam(Array.isArray(m.ids) ? m.ids : (m.ids ? [m.ids] : [])); break; }
@@ -1518,7 +1655,7 @@ body.popup .rz{display:none}
   if (POPUP) { document.body.classList.add("popup"); new ResizeObserver(report).observe($("sForm")); new ResizeObserver(report).observe($("gForm")); new ResizeObserver(report).observe($("tForm")); }
   else { renderHeader(); renderG(); initSupabase(); }
   host({ cmd: "ready" });
-  window.__tlw = { applyTheme, loadIcs, onToken, openGSheet, initPopup, readGForm, openInvite, setG: g => { gmode = g; renderG(); }, state: () => ({ gEvents, leaves, members }) };
+  window.__tlw = { applyTheme, loadIcs, onToken, openGSheet, initPopup, readGForm, openInvite, setTeamCal, openTcSet, tcCard, setG: g => { gmode = g; renderG(); }, state: () => ({ gEvents, leaves, members }) };
 })();
 </script>
 </body>
@@ -2113,6 +2250,41 @@ public static class TLW {
             if ($r.Substring(0, $i) -eq '200') { [void](Save-GClientText $r.Substring($i + 1)) }
         }
     }
+    # ---- 팀 캘린더 같이 보기 설정 (teamcal.json: 설정한 사람 PC → GitHub widget 폴더 → 팀원)
+    $TeamCalFile = Join-Path $AppDir 'teamcal.json'
+    $TeamCalUrl  = ($UpdateUrl -replace 'version\.json$', 'teamcal.json')
+    function ConvertTo-TeamCal($j) {
+        if (-not $j -or -not $j.cal) { return $null }
+        $g = [string]$j.group; if ($g -and $g -notmatch '^https://groups\.google\.com/\S+$') { $g = '' }
+        return @{ cal = [string]$j.cal; name = [string]$j.name; group = $g; color = [string]$j.color }
+    }
+    function Load-TeamCal {
+        if (Test-Path $TeamCalFile) {      # 내가 설정한 것이 있으면 그걸 우선
+            try { $c = ConvertTo-TeamCal (Get-Content $TeamCalFile -Raw -Encoding UTF8 | ConvertFrom-Json); Send-Main @{ type = 'teamcal'; cfg = $c } } catch { }
+            return
+        }
+        Add-Job ([TLW]::GetText($TeamCalUrl + '?t=' + [DateTime]::UtcNow.Ticks)) {
+            param($t, $ctx)
+            if ($t.IsFaulted -or $t.IsCanceled) { return }
+            $r = $t.Result; $i = $r.IndexOf("`n")
+            if ($r.Substring(0, $i) -ne '200') { return }
+            try { $c = ConvertTo-TeamCal ($r.Substring($i + 1) | ConvertFrom-Json); if ($c) { Send-Main @{ type = 'teamcal'; cfg = $c } } } catch { }
+        }
+    }
+    function Save-TeamCal($cfg) {
+        $c = ConvertTo-TeamCal $cfg
+        if (-not $c) {
+            Remove-Item $TeamCalFile -ErrorAction SilentlyContinue
+            Send-Main @{ type = 'teamcal'; cfg = $null }
+            [System.Windows.Forms.MessageBox]::Show("이 PC의 팀 캘린더 설정을 지웠어요.`n팀원에게도 안 보이게 하려면 GitHub의 widget 폴더에서 teamcal.json 을 지워 주세요.", $AppName, 'OK', 'Information') | Out-Null
+            return
+        }
+        $json = ([ordered]@{ cal = $c.cal; name = $c.name; group = $c.group; color = $c.color } | ConvertTo-Json)
+        [IO.File]::WriteAllText($TeamCalFile, $json, (New-Object Text.UTF8Encoding $false))
+        Send-Main @{ type = 'teamcal'; cfg = $c }
+        Start-Process explorer.exe -ArgumentList "/select,`"$TeamCalFile`""
+        [System.Windows.Forms.MessageBox]::Show("저장했어요. 방금 열린 폴더의 teamcal.json 을`nGitHub TeamCal 저장소의 widget 폴더에 올려 주세요.`n`n올리면 팀원이 구글 로그인할 때 '$($c.name) 같이 보기' 안내가 떠요.", $AppName, 'OK', 'Information') | Out-Null
+    }
     function Import-GClient {
         $dlg = New-Object System.Windows.Forms.OpenFileDialog
         $dlg.Title = '구글 클라우드에서 받은 OAuth 클라이언트 JSON 파일 선택'
@@ -2358,14 +2530,14 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
         try { $p.F.Dispose() } catch { }
     }
     function Open-Popup([string]$kind, $data) {
-        if (@('leave', 'gevent', 'team') -notcontains $kind) { return }
+        if (@('leave', 'gevent', 'team', 'tcal') -notcontains $kind) { return }
         if (-not $script:wvEnv) { return }
         Close-Popup
         $f = New-Object System.Windows.Forms.Form
         $f.FormBorderStyle = 'None'; $f.ShowInTaskbar = $false; $f.StartPosition = 'Manual'
         $f.TopMost = $true; $f.MaximizeBox = $false; $f.MinimizeBox = $false
         $f.Icon = $icon
-        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } default { '일정 추가' } }
+        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } 'tcal' { '팀 캘린더 공유 설정' } default { '일정 추가' } }
         $f.BackColor = $form.BackColor
         $w = [int][Math]::Round(360 * $scale * [double]$script:state.Size)
         $h = [int](520 * $scale)
@@ -2435,6 +2607,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'glogin' { Close-Popup; Start-GoogleLogin }
             'copy'   { try { [System.Windows.Forms.Clipboard]::SetText([string]$m.text) } catch { Write-Log "clipboard: $($_.Exception.Message)" } }
             'open'   { $u = [string]$m.url; if ($u -match '^https://') { Start-Process $u } }
+            'tcsave' { Close-Popup; Save-TeamCal $m.cfg }
         }
     }
 
@@ -2472,6 +2645,9 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     $miGIcs  = New-Item2 $miG 'iCal 주소로 연결…' { Set-ICal }
     $miGImp  = New-Item2 $miG '구글 클라우드 설정 파일 불러오기…' { if (Import-GClient) { Start-GoogleLogin } }
     $miGGd   = New-Item2 $miG '설정 방법 보기' { Start-Process notepad.exe -ArgumentList "`"$GuideFile`"" }
+    Add-Sep $miG
+    [void](New-Item2 $miG '팀 캘린더 공유 설정…' { Show-Main; Send-Main @{ type = 'tcset' } })
+    [void](New-Item2 $miG '팀 캘린더 안내 다시 보기' { Show-Main; Send-Main @{ type = 'tcshow' } })
     Add-Sep $miG
     $miGOff  = New-Item2 $miG '연결 해제' { Disconnect-Google }
     $miTeam  = New-Item2 $menu '팀 휴가' $null
@@ -2511,7 +2687,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     # ---- 9) 화면에서 온 요청 처리 ----
     function On-UIMessage($m) {
         switch ([string]$m.cmd) {
-            'ready'   { Send-Config; if (-not $script:updChecked) { $script:updChecked = $true; Check-Update $false; Fetch-GClientBg } }
+            'ready'   { Send-Config; if (-not $script:updChecked) { $script:updChecked = $true; Check-Update $false; Fetch-GClientBg }; Load-TeamCal }
             'size'    {
                 if ([double]$script:state.H -gt 0) { return }      # 사용자가 높이를 정했으면 자동 맞춤 안 함
                 if ($form.WindowState -ne 'Normal') { return }
@@ -2537,6 +2713,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'menu'    { $script:menuFromWidget = $true; $menu.Show([System.Windows.Forms.Cursor]::Position) }
             'open'    { $u = [string]$m.url; if ($u -match '^https://') { Start-Process $u } }
             'gtoken'  { Request-GToken ([bool]$m.force) }
+            'tcsave'  { Save-TeamCal $m.cfg }
             'ics'     { Request-ICS }
             'glogin'  { Start-GoogleLogin }
             'gical'   { Set-ICal }
