@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.5'
+$AppVersion = '1.9.6'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -141,6 +141,19 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .lv.out .ti{opacity:.75}
 .lv .tm{flex:0 0 44px;font-size:11.5px}
 .lv .ti{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#ntBox:empty{display:none}
+.nt{border-radius:12px;background:var(--sel);padding:10px 12px;font-size:12px;line-height:1.5}
+.nt .h{display:flex;align-items:center;gap:6px;font-weight:700;font-size:12px;min-width:0}
+.nt .h i{width:8px;height:8px;border-radius:50%;flex:none;background:var(--c)}
+.nt .h b{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nt .h small{font-weight:400;color:var(--muted);font-size:10.5px;flex:none}
+.nt ul{margin:4px 0 6px;padding-left:15px}.nt li{margin:1px 0}
+.nt li i{display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--c);margin-right:4px;vertical-align:1px}
+.nt li b{font-weight:600}.nt li span{color:var(--muted)}
+.nt .a{display:flex;gap:12px;font-size:11.5px}
+.nt .a button{border:0;background:none;padding:0;font:inherit;font-weight:600;color:var(--accent);cursor:pointer}
+.nt .a button.g{color:var(--muted);font-weight:500}
+.nt .a button:hover{text-decoration:underline}
 .legrow{display:flex;align-items:center;gap:8px;margin-top:8px}
 .leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:var(--muted);flex:1;min-width:0}
 .rf{margin-left:auto;flex:none;height:24px;display:inline-flex;align-items:center;gap:4px;padding:0 6px 0 4px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit}
@@ -363,6 +376,7 @@ body.popup .rz{display:none}
     <button class="ib" id="bTray" aria-label="트레이 아이콘으로 숨기기" title="트레이 아이콘으로 숨기기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </div>
 
+  <div id="ntBox" role="status" aria-live="polite"></div>
   <div class="upd" id="upd" role="status" hidden><i></i><span id="updText"></span><button type="button" id="updBtn">업데이트</button></div>
 
   <!-- 팀 휴가 로그인 -->
@@ -679,6 +693,7 @@ body.popup .rz{display:none}
         if (r.status === 401) { host({ cmd: "gtoken", force: true }); toast("다시 연결했어요. 한 번 더 눌러 주세요."); b.disabled = false; return; }
         if (r.status === 403) { toast("이 일정을 삭제할 권한이 없어요"); b.disabled = false; return; }
         if (!r.ok && r.status !== 410 && r.status !== 404) throw new Error("HTTP " + r.status);
+        selfMark(ev.cal, ev.id);
         gEvents = gEvents.filter(x => x !== ev);
         delete doneMap[doneKey(ev)]; saveDone();
         toast(`'${ev.title}' 일정을 삭제했어요`); renderAll();
@@ -932,7 +947,7 @@ body.popup .rz{display:none}
     gAllCalIds = new Set((cl.items || []).map(c => c.id));
     const isMine = c => c.primary || c.accessRole === "owner";
     gCals = cals.slice().sort((a, b) => (b.primary ? 2 : isMine(b) ? 1 : 0) - (a.primary ? 2 : isMine(a) ? 1 : 0))
-      .map(c => ({ id: c.id, color: c.backgroundColor, selected: c.selected,
+      .map(c => ({ id: c.id, color: c.backgroundColor, selected: c.selected, primary: !!c.primary,
         name: c.primary && /@/.test(c.summaryOverride || c.summary || "@") ? "내 캘린더" : (c.summaryOverride || c.summary || c.id) }));
     // 팀 그룹 캘린더: 내 목록에 없어도 그룹 권한으로 읽을 수 있으면 보여준다
     const tIds = new Set(tcCfg ? tcCfg.cals.map(c => c.id) : []);
@@ -958,7 +973,9 @@ body.popup .rz{display:none}
       out.push({ s, e: en, all, title: e.summary || "(제목 없음)", color, cal, id: e.id,
         loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "" });
     }
-    gEvents = out; gLoaded = win; gError = ""; gRetried = false; renderAll(); rfDone();
+    gEvents = out; gLoaded = win; gError = ""; gRetried = false;
+    try { watchChanges(out, (cl.items || []).find(c => c.primary)); } catch (e) {}
+    renderAll(); rfDone();
   }
   function onToken(m) {
     if (m.token) {
@@ -1214,6 +1231,95 @@ body.popup .rz{display:none}
     if (gmode === "google" && gToken) gRequest(); else renderG();
   }
 
+  // ---------------- 다른 사람이 캘린더를 바꾸면 알림 ----------------
+  // 개인 '내 캘린더'와 공휴일·생일 같은 자동 캘린더를 뺀 캘린더의 앞으로 2주 일정을, 지난번과 비교한다
+  const selfKeys = new Set(), selfAdds = [];
+  function selfMark(cal, id) { selfKeys.add(`${cal}|${id}`); }
+  function selfFrom(ids) {
+    for (const x of ids || []) {
+      const p = String(x).split("|");
+      if (p[0] === "add") selfAdds.push({ cal: p[1], title: p.slice(2).join("|"), at: Date.now() });
+      else if (p.length >= 2) selfMark(p[0], p.slice(1).join("|"));
+    }
+  }
+  let ntItems = [];
+  const WD = "일월화수목금토";
+  const fmtWhen = it => { const d = new Date(it.s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})${it.a ? "" : " " + hhmm(d)}`; };
+  function watchChanges(events, primary) {
+    const acct = primary ? primary.id : "";
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const t1 = new Date(t0); t1.setDate(t1.getDate() + 14);
+    const watched = gCals.filter(c => !c.primary && !c.team && !/@group\.v\.calendar\.google\.com$/.test(c.id) && !/#(contacts|holiday|weeknum)/.test(c.id));
+    const wIds = new Set(watched.map(c => c.id));
+    const items = {};
+    for (const ev of events) {
+      if (!wIds.has(ev.cal) || !ev.id || ev.s < t0 || ev.s >= t1) continue;
+      items[`${ev.cal}|${ev.id}`] = { t: ev.title, s: ev.s.getTime(), e: ev.e.getTime(), a: ev.all ? 1 : 0, c: ev.cal };
+    }
+    const snap = { acct, from: t0.getTime(), to: t1.getTime(), cals: [...wIds], items };
+    let prev = null; try { prev = JSON.parse(localStorage.getItem("tlw.gSnap") || "null"); } catch (e) {}
+    try { localStorage.setItem("tlw.gSnap", JSON.stringify(snap)); } catch (e) {}
+    if (!prev || prev.acct !== acct || !prev.items) return;
+    const from = Math.max(prev.from, snap.from), to = Math.min(prev.to, snap.to);
+    const both = new Set((prev.cals || []).filter(c => wIds.has(c)));
+    const inWin = it => it.s >= from && it.s < to && both.has(it.c);
+    const out = [];
+    for (const [k, it] of Object.entries(items)) {
+      if (!inWin(it) || selfKeys.has(k)) continue;
+      const old = prev.items[k];
+      if (!old) {
+        const ai = selfAdds.findIndex(x => (x.cal === it.c || x.cal === "primary") && x.title === it.t && Date.now() - x.at < 15 * 60000);
+        if (ai >= 0) { selfAdds.splice(ai, 1); continue; }
+        out.push({ kind: "추가", ...it });
+      } else if (old.t !== it.t || old.s !== it.s || old.e !== it.e || old.a !== it.a) {
+        out.push({ kind: "변경", ...it, old });
+      }
+    }
+    for (const [k, old] of Object.entries(prev.items)) {
+      if (!inWin(old) || items[k] || selfKeys.has(k)) continue;
+      if (old.s < snap.from) continue;
+      out.push({ kind: "삭제", ...old });
+    }
+    selfKeys.clear();
+    if (!out.length) return;
+    out.sort((a, b) => a.s - b.s);
+    ntItems = out.concat(ntItems.filter(o => !out.some(n => n.c === o.c && n.t === o.t && n.s === o.s))).slice(0, 20);
+    renderNotice();
+    const cals = [...new Set(out.map(x => x.c))];
+    const nm = c => (gCals.find(x => x.id === c) || {}).name || "캘린더";
+    const title = cals.length === 1 ? `${nm(cals[0])} 캘린더가 바뀌었어요` : `캘린더 ${cals.length}개가 바뀌었어요`;
+    const first = out[0];
+    host({ cmd: "notify", title, text: `${first.kind} · ${first.t} ${fmtWhen(first)}${out.length > 1 ? ` 외 ${out.length - 1}건` : ""}` });
+  }
+  function renderNotice() {
+    const box = $("ntBox"); if (!box) return;
+    if (!ntItems.length) { box.replaceChildren(); report(); return; }
+    const cals = [...new Set(ntItems.map(x => x.c))];
+    const cal = c => gCals.find(x => x.id === c) || { name: "캘린더", color: "" };
+    const one = cals.length === 1;
+    const title = one ? `${cal(cals[0]).name} 캘린더가 바뀌었어요` : `캘린더 ${cals.length}개가 바뀌었어요`;
+    const shown = ntItems.slice(0, 4);
+    const go = ntItems.find(x => x.kind !== "삭제");
+    const li = it => {
+      const d = new Date(it.s);
+      let when = fmtWhen(it);
+      if (it.kind === "변경" && it.old) {
+        const od = new Date(it.old.s);
+        if (it.old.s !== it.s || it.old.e !== it.e) when = (ymd(od) !== ymd(d) ? fmtWhen(it.old) + " → " + fmtWhen(it) : fmtWhen(it.old) + " → " + (it.a ? "종일" : hhmm(d)));
+        else if (it.old.t !== it.t) when += ` · '${it.old.t}'에서 이름 변경`;
+      }
+      return `<li>${one ? "" : `<i style="--c:${esc(cal(it.c).color || "var(--accent)")}"></i>`}<b>${it.kind}</b> ${esc(it.t)} <span>· ${esc(when)}</span></li>`;
+    };
+    box.innerHTML = `<div class="nt" style="--c:${esc(one ? (cal(cals[0]).color || "var(--accent)") : "var(--accent)")}"><div class="h"><i></i><b>${esc(title)}</b><small>${new Date().getHours()}:${pad(new Date().getMinutes())}</small></div>
+      <ul>${shown.map(li).join("")}${ntItems.length > 4 ? `<li style="list-style:none;margin-left:-15px;color:var(--muted)">외 ${ntItems.length - 4}건</li>` : ""}</ul>
+      <div class="a">${go ? `<button type="button" data-nt="go">${new Date(go.s).getMonth() + 1}/${new Date(go.s).getDate()}로 가기</button>` : ""}<button type="button" class="g" data-nt="ok">확인</button></div></div>`;
+    box.querySelectorAll("[data-nt]").forEach(b => b.onclick = () => {
+      if (b.dataset.nt === "go" && go) { const d = new Date(go.s); selected = ymd(d); view = new Date(d.getFullYear(), d.getMonth(), 1); monthChanged(); }
+      ntItems = []; renderNotice();
+    });
+    report();
+  }
+
   // ---------------- 새 캘린더 만들기 (내 일정 칩 줄) ----------------
   async function createCal(name, color) {
     const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
@@ -1457,7 +1563,9 @@ body.popup .rz{display:none}
       }
       if (!r.ok) throw new Error("HTTP " + r.status);
       let doneMsg = gEdit ? `${f.title} 일정을 수정했어요` : `${f.title} 일정을 추가했어요`;
-      if (POPUP) { host({ cmd: "done", msg: doneMsg, date: f.date }); return; }
+      const selfIds = gEdit ? [`${gEdit.cal}|${gEdit.id}`] : [`add|${gSelCal || "primary"}|${f.title}`];
+      if (POPUP) { host({ cmd: "done", msg: doneMsg, date: f.date, ids: selfIds }); return; }
+      selfFrom(selfIds);
       closeGSheet(); toast(doneMsg);
       gRequest();
     } catch (e) {
@@ -1477,7 +1585,8 @@ body.popup .rz{display:none}
       if (r.status === 401) { host({ cmd: "gtoken", force: true }); gCalc("다시 연결했어요. 한 번 더 눌러 주세요.", true); return; }
       if (!r.ok && r.status !== 404 && r.status !== 410) throw new Error("HTTP " + r.status);
       const msgT = `${$("gTitle").value.trim() || "일정"} 일정을 삭제했어요`;
-      if (POPUP) { host({ cmd: "done", msg: msgT }); return; }
+      if (POPUP) { host({ cmd: "done", msg: msgT, ids: [`${gEdit.cal}|${gEdit.id}`] }); return; }
+      selfMark(gEdit.cal, gEdit.id);
       gEvents = (gEvents || []).filter(x => !(x.id === gEdit.id && x.cal === gEdit.cal));
       closeGSheet(); toast(msgT); renderAll();
     } catch (e) { gCalc("일정을 삭제하지 못했어요.", true); }
@@ -1588,7 +1697,7 @@ body.popup .rz{display:none}
         toast(m.msg || "완료했어요");
         if (m.kind === "team") { applyTeam(Array.isArray(m.ids) ? m.ids : (m.ids ? [m.ids] : [])); break; }
         if (m.kind === "leave") { if (m.date) { selected = m.date; const sd = parse(m.date); view = new Date(sd.getFullYear(), sd.getMonth(), 1); } reload(); }
-        else gRequest();
+        else { if (m.kind === "gevent") selfFrom(Array.isArray(m.ids) ? m.ids : (m.ids ? [m.ids] : [])); gRequest(); }
         break;
       case "config":
         applyTheme(m.theme);
@@ -2660,6 +2769,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     $menu.Add_Closed({ $script:menuFromWidget = $false })
     $tray.Icon = $icon; $tray.Text = "$AppName (오른쪽 클릭: 메뉴·종료)"; $tray.ContextMenuStrip = $menu; $tray.Visible = $true
     $tray.Add_MouseClick({ if ($_.Button -eq 'Left') { Toggle-Main } })
+    $tray.Add_BalloonTipClicked({ Show-Main })
 
     # ---- 9) 화면에서 온 요청 처리 ----
     function On-UIMessage($m) {
@@ -2690,6 +2800,11 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'menu'    { $script:menuFromWidget = $true; $menu.Show([System.Windows.Forms.Cursor]::Position) }
             'open'    { $u = [string]$m.url; if ($u -match '^https://') { Start-Process $u } }
             'gtoken'  { Request-GToken ([bool]$m.force) }
+            'notify'  {
+                # 위젯이 안 보이거나 다른 창을 쓰고 있을 때만 Windows 알림
+                $away = (-not $form.Visible) -or ($form.WindowState -eq 'Minimized') -or (-not $form.ContainsFocus)
+                if ($away -and $tray) { try { $tray.ShowBalloonTip(6000, [string]$m.title, [string]$m.text, [System.Windows.Forms.ToolTipIcon]::Info) } catch { Write-Log "notify: $($_.Exception.Message)" } }
+            }
             'ics'     { Request-ICS }
             'glogin'  { Start-GoogleLogin }
             'gical'   { Set-ICal }

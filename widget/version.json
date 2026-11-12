@@ -1,5 +1,5 @@
 {
-  "version": "1.9.5",
+  "version": "1.9.6",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "달력 날짜 더블클릭으로 일정 추가 · 위쪽 머리줄 고정"
+  "notes": "다른 사람이 캘린더를 바꾸면 알림"
 }
