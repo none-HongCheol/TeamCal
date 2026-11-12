@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.2'
+$AppVersion = '1.9.4'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -141,7 +141,13 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .lv.out .ti{opacity:.75}
 .lv .tm{flex:0 0 44px;font-size:11.5px}
 .lv .ti{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.leg{display:flex;gap:14px;font-size:11px;color:var(--muted);margin-top:8px}
+.legrow{display:flex;align-items:center;gap:8px;margin-top:8px}
+.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:11px;color:var(--muted);flex:1;min-width:0}
+.rf{margin-left:auto;flex:none;height:24px;display:inline-flex;align-items:center;gap:4px;padding:0 6px 0 4px;border:0;border-radius:12px;background:transparent;color:var(--muted);font-size:11px;cursor:pointer;font-family:inherit}
+.rf:hover{background:var(--sel);color:var(--fg)}
+.rf svg{width:14px;height:14px}
+.rf.spin svg{animation:rfspin .8s linear infinite;color:var(--accent)}
+@keyframes rfspin{to{transform:rotate(360deg)}}
 .leg span{display:inline-flex;align-items:center;gap:5px}
 .leg .d{width:8px;height:8px}
 .leg i.bar{display:inline-block;width:12px;height:4px;border-radius:2px;background:var(--bar)}
@@ -159,6 +165,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .sh{display:flex;align-items:center;gap:8px;min-height:26px}
 .sh .t{font-size:12px;font-weight:700;letter-spacing:.02em}
 .sh .c{font-size:11px;color:var(--muted);margin-left:auto}
+.gp{margin-left:auto;height:18px;display:inline-flex;align-items:center;gap:3px;padding:0 6px 0 5px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--muted);font-size:9.5px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap}
+.gp svg{width:9px;height:9px;flex:none}
+.gp .ar{font-weight:400;font-size:9px}
+.gp:hover{color:var(--fg);border-color:var(--dot)}
+.gp[hidden]{display:none}
 .pill{height:26px;display:inline-flex;align-items:center;gap:4px;padding:0 10px 0 8px;border-radius:13px;border:1px solid var(--line);background:transparent;font-size:11.5px;font-weight:600;cursor:pointer}
 .pill:hover{border-color:var(--fg)}
 .pill svg{width:12px;height:12px;stroke:var(--accent)}
@@ -237,6 +248,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cchip i{width:8px;height:8px;border-radius:50%;flex:none;box-sizing:border-box;border:1.5px solid var(--c)}
 .cchip[aria-checked="true"]{background:var(--sel);color:var(--fg);font-weight:600}
 .cchip[aria-checked="true"] i{background:var(--c)}
+.cchip.add{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 11px 0 8px}
+.cchip.add svg{width:11px;height:11px;stroke:var(--accent)}
+.cchip.add:hover{color:var(--fg);border-color:var(--fg)}
+.ipop .sw2{display:flex;gap:8px;margin-top:8px}
+.ipop .sw2 button{width:22px;height:22px;border-radius:50%;border:0;background:var(--c);cursor:pointer;box-shadow:0 0 0 2px var(--bg)}
+.ipop .sw2 button[aria-checked="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--c)}
+.ipop .msg2{margin:8px 0 0;font-size:11.5px;color:var(--muted);min-height:0}
+.ipop .msg2.err{color:#d23c3c}
+.ipop .act2{display:flex;justify-content:flex-end;gap:6px;margin-top:10px}
+.ipop .act2 button{height:30px;padding:0 13px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit;border:1px solid var(--line);background:transparent;color:var(--fg)}
+.ipop .act2 .pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}
 .gday{font-size:10.5px;font-weight:700;color:var(--muted);letter-spacing:.03em;margin-top:2px}
 .gday.today{color:var(--accent)}
 .btnrow{display:flex;gap:6px;flex-wrap:wrap}
@@ -358,7 +380,7 @@ body.popup .rz{display:none}
   <div id="calWrap" hidden>
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="grid" id="grid"></div>
-    <div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span><span id="legOut" hidden><i class="bar out"></i>팀 밖</span><span id="legMe" hidden><i class="bar me"></i>내 휴가</span></div>
+    <div class="legrow"><div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span><span id="legOut" hidden><i class="bar out"></i>팀 밖</span><span id="legMe" hidden><i class="bar me"></i>내 휴가</span></div><button class="rf" id="bRefresh" type="button" aria-label="새로고침" title="새로고침 (팀 휴가 + 내 일정)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span id="rfTxt"></span></button></div>
   </div>
 
   <!-- 선택한 날: 내 일정이 먼저, 팀원 휴가는 한 줄 요약 -->
@@ -381,8 +403,7 @@ body.popup .rz{display:none}
 
   <!-- 내 일정 -->
   <section class="sec" id="gSec">
-    <div class="sh"><span class="t" id="gHead">내 일정</span><button class="lo" id="gOut" type="button" hidden>로그아웃</button><span class="c" id="gSrc"></span>
-      <button class="ib" id="gOpen" type="button" aria-label="구글 캘린더 열기" title="구글 캘린더 열기 (브라우저)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M7 17L17 7M9 7h8v8"/></svg></button>
+    <div class="sh"><span class="t" id="gHead">내 일정</span><button class="lo" id="gOut" type="button" hidden>로그아웃</button><button class="gp" id="gOpen" type="button" title="브라우저에서 구글 캘린더 열기" aria-label="구글 캘린더 열기"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.7 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>열기</span><span class="ar" aria-hidden="true">↗</span></button>
       </div>
     <div id="gBody" class="list"></div>
   </section>
@@ -861,7 +882,28 @@ body.popup .rz{display:none}
   });
 
   // ======================= 내 일정 (구글 / iCal) =======================
+  let gLastReq = 0, rfAt = 0, rfBusy = false, rfT = null;
+  function rfLabel() {
+    const el = $("rfTxt"); if (!el) return;
+    if (rfBusy) { el.textContent = ""; return; }
+    if (!rfAt) { el.textContent = ""; return; }
+    const m = Math.floor((Date.now() - rfAt) / 60000);
+    el.textContent = m < 1 ? "방금" : m < 60 ? `${m}분 전` : `${Math.floor(m / 60)}시간 전`;
+  }
+  function rfDone() {
+    rfAt = Date.now();
+    if (rfBusy) { clearTimeout(rfT); rfT = setTimeout(() => { rfBusy = false; $("bRefresh").classList.remove("spin"); rfLabel(); }, 500); }
+    else rfLabel();
+  }
+  function manualRefresh() {
+    if (rfBusy) return;
+    rfBusy = true; $("bRefresh").classList.add("spin"); rfLabel();
+    try { reload(); } catch (e) {}
+    if (gmode) gRequest(); else rfDone();
+    clearTimeout(rfT); rfT = setTimeout(() => { if (rfBusy) { rfBusy = false; $("bRefresh").classList.remove("spin"); rfAt = Date.now(); rfLabel(); } }, 8000);
+  }
   function gRequest() {
+    gLastReq = Date.now();
     gError = "";
     if (gmode === "google") host({ cmd: "gtoken" });
     else if (gmode === "ical") host({ cmd: "ics" });
@@ -906,7 +948,7 @@ body.popup .rz{display:none}
       out.push({ s, e: en, all, title: e.summary || "(제목 없음)", color, cal, id: e.id,
         loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "" });
     }
-    gEvents = out; gLoaded = win; gError = ""; gRetried = false; renderAll();
+    gEvents = out; gLoaded = win; gError = ""; gRetried = false; renderAll(); rfDone();
   }
   function onToken(m) {
     if (m.token) {
@@ -1009,7 +1051,7 @@ body.popup .rz{display:none}
     return out;
   }
   function loadIcs(text) {
-    icsText = text;
+    icsText = text; setTimeout(rfDone, 0);
     const win = gWin(), from = win.from, to = win.to;
     const all = icsParse(text).filter(e => e.start);
     const overridden = new Set(all.filter(e => e.rid && e.uid).map(e => e.uid + "|" + e.rid.d.getTime()));
@@ -1031,7 +1073,7 @@ body.popup .rz{display:none}
 
   function renderG() {
     const body = $("gBody");
-    $("gSrc").textContent = gmode === "google" ? "Google" : (gmode === "ical" ? "iCal" : "");
+    $("gOpen").hidden = gmode !== "google";
     let html = "";
     const loginBlock = (note) => `<div class="gblk">
         <p class="empty" style="margin:0">${note}</p>
@@ -1053,13 +1095,14 @@ body.popup .rz{display:none}
     } else {
       const now = new Date(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const groups = new Map();
-      const showCals = gmode === "google" && (gCals.length > 1 || gCals.some(c => c.team));
+      const showCals = gmode === "google";
       const offIds = new Set(gCals.filter(c => !calOn(c)).map(c => c.id));
       const chip = c =>
           `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span></button>`;
       if (showCals) {
         const own = gCals.filter(c => !c.team), team = gCals.filter(c => c.team);
-        if (own.length) html += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") + `</div>`;
+        if (own.length || gmode === "google") html += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") +
+          (gmode === "google" ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
         if (team.length) html += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + `</div>`;
       }
       if (gmode === "google" && lsGet("tlw.hintOff") !== "1") html += `<div class="thint" role="note"><button class="x2" type="button" data-hint="off" aria-label="안내 닫기" title="닫기 (메뉴 › 내 일정 › 팀 캘린더 안내 다시 보기)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -1116,6 +1159,7 @@ body.popup .rz{display:none}
     const ac = body.querySelector("#gAutoChk");
     if (ac) ac.onchange = () => { gAutoLogin = ac.checked; host({ cmd: "gauto", on: ac.checked }); };
     bindEvRows(body);
+    const nc = body.querySelector("#gNewChip"); if (nc) nc.onclick = () => openNewCalPop(nc);
     body.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => {
       if (b.dataset.hint === "group") host({ cmd: "open", url: TEAM_GROUP });
       else { lsSet("tlw.hintOff", "1"); renderG(); toast("메뉴 › 내 일정 › 팀 캘린더 안내 다시 보기로 다시 볼 수 있어요"); }
@@ -1158,6 +1202,57 @@ body.popup .rz{display:none}
     tcCfg = cals.length ? { name: String((cfg && cfg.name) || ""), cals } : null;
     if (POPUP || JSON.stringify(tcCfg) === before) return;
     if (gmode === "google" && gToken) gRequest(); else renderG();
+  }
+
+  // ---------------- 새 캘린더 만들기 (내 일정 칩 줄) ----------------
+  async function createCal(name, color) {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
+    const r = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
+      method: "POST", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify({ summary: name, timeZone: tz })
+    });
+    if (r.status === 401 || r.status === 403) return { relogin: true };
+    if (!r.ok) throw new Error("HTTP " + r.status);
+    const cal = await r.json();
+    try {
+      await fetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(cal.id)}?colorRgbFormat=true`, {
+        method: "PATCH", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify({ backgroundColor: color, foregroundColor: "#ffffff" })
+      });
+    } catch (e) {}
+    return { cal };
+  }
+  function openNewCalPop(anchor) {
+    closeInvite();
+    let ci = 0;
+    const d = document.createElement("div");
+    d.className = "ipop"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", "새 캘린더 만들기");
+    d.innerHTML = `<div class="ih"><span>새 캘린더 만들기</span><button class="x" type="button" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="il">캘린더 이름</div>
+      <div class="ir"><input class="nm" maxlength="100" placeholder="예: 국립디자인, 현장 일정" autocomplete="off" style="color:var(--fg)"></div>
+      <div class="sw2" role="radiogroup" aria-label="캘린더 색상">${SWATCH.map((c, i) => `<button type="button" role="radio" aria-checked="${i === 0}" aria-label="색 ${i + 1}" style="--c:${c}" data-i="${i}"></button>`).join("")}</div>
+      <p class="msg2" role="status"></p>
+      <div class="act2"><button type="button" class="cn">취소</button><button type="button" class="pri ok">만들기</button></div>`;
+    const r = anchor.getBoundingClientRect();
+    d.style.top = (r.bottom + window.scrollY + 8) + "px";
+    document.body.appendChild(d);
+    const inp = d.querySelector(".nm"), ok = d.querySelector(".ok"), m = d.querySelector(".msg2");
+    const say = (t, err) => { m.textContent = t; m.className = "msg2" + (err ? " err" : ""); report(); };
+    d.querySelectorAll(".sw2 button").forEach(b => b.onclick = () => { ci = +b.dataset.i; d.querySelectorAll(".sw2 button").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false")); });
+    const close = () => { closeInvite(); anchor.focus(); };
+    d.querySelector(".x").onclick = close; d.querySelector(".cn").onclick = close;
+    d.addEventListener("keydown", e => { if (e.key === "Escape") close(); else if (e.key === "Enter" && e.target === inp) ok.click(); });
+    ok.onclick = async () => {
+      const name = inp.value.trim();
+      if (!name) { say("캘린더 이름을 입력하세요.", true); inp.focus(); return; }
+      if (!gToken) { say("구글에 연결하는 중이에요. 잠시 후 다시 눌러 주세요.", true); host({ cmd: "gtoken" }); return; }
+      ok.disabled = true; say("만드는 중…");
+      try {
+        const res = await createCal(name, SWATCH[ci]);
+        if (res.relogin) { say("새 캘린더를 만들 권한이 없어요. 구글에 한 번 더 로그인해 주세요.", true); ok.textContent = "구글 다시 로그인"; ok.disabled = false; ok.onclick = () => host({ cmd: "glogin" }); return; }
+        closeInvite(); toast(`'${name}' 캘린더를 만들었어요`); gRequest();
+      } catch (e) { say("캘린더를 만들지 못했어요. 잠시 후 다시 시도해 주세요.", true); ok.disabled = false; }
+    };
+    setTimeout(() => document.addEventListener("mousedown", inviteOutside, true), 0);
+    inp.focus(); report();
   }
 
   // ---------------- 캘린더 초대 링크 (칩 더블클릭) ----------------
@@ -1228,21 +1323,13 @@ body.popup .rz{display:none}
     if (!gToken) { msg($("gNewMsg"), "구글에 연결하는 중이에요. 잠시 후 다시 눌러 주세요.", "err"); host({ cmd: "gtoken" }); return; }
     $("gNewOk").disabled = true; msg($("gNewMsg"), "만드는 중…");
     try {
-      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
-      const r = await fetch("https://www.googleapis.com/calendar/v3/calendars", {
-        method: "POST", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify({ summary: name, timeZone: tz })
-      });
-      if (r.status === 403 || r.status === 401) {
+      const color = SWATCH[gSwIdx];
+      const res = await createCal(name, color);
+      if (res.relogin) {
         msg($("gNewMsg"), "새 캘린더를 만들 권한이 없어요. 구글에 한 번 더 로그인해서 권한을 허용해 주세요.", "err");
         $("gNewOk").textContent = "구글 다시 로그인"; $("gNewOk").disabled = false; $("gNewOk").onclick = () => host({ cmd: "glogin" }); return;
       }
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      const cal = await r.json(), color = SWATCH[gSwIdx];
-      try {
-        await fetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(cal.id)}?colorRgbFormat=true`, {
-          method: "PATCH", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify({ backgroundColor: color, foregroundColor: "#ffffff" })
-        });
-      } catch (e) {}
+      const cal = res.cal;
       gWritable.push({ id: cal.id, name, color }); gSelCal = cal.id;
       closeNewCal(); gCalc(`'${name}' 캘린더를 만들었어요.`);
     } catch (e) { msg($("gNewMsg"), "캘린더를 만들지 못했어요. 잠시 후 다시 시도해 주세요.", "err"); }
@@ -1554,9 +1641,16 @@ body.popup .rz{display:none}
   new ResizeObserver(report).observe($("card"));
   window.addEventListener("resize", () => { lastH = 0; report(); });
 
-  // 날짜가 바뀌면 갱신, 구글 일정은 10분마다
+  // 날짜가 바뀌면 갱신, 구글 일정은 5분마다 + 위젯을 다시 볼 때(1분에 한 번까지)
   setInterval(() => { const t = ymd(new Date()); if (t !== today) { if (selected === today) selected = t; today = t; renderAll(); } }, 60 * 1000);
-  setInterval(() => { if (gmode) gRequest(); }, 10 * 60 * 1000);
+  if (!POPUP) {
+    $("bRefresh").onclick = manualRefresh;
+    setInterval(rfLabel, 30 * 1000);
+    setInterval(() => { if (gmode && Date.now() - gLastReq > 60 * 1000) gRequest(); }, 5 * 60 * 1000);
+    const refreshSoon = () => { if (gmode && gEvents && Date.now() - gLastReq > 60 * 1000) gRequest(); };
+    window.addEventListener("focus", refreshSoon);
+    document.addEventListener("visibilitychange", () => { if (!document.hidden) refreshSoon(); });
+  }
 
   if (POPUP) { document.body.classList.add("popup"); new ResizeObserver(report).observe($("sForm")); new ResizeObserver(report).observe($("gForm")); new ResizeObserver(report).observe($("tForm")); }
   else { renderHeader(); renderG(); initSupabase(); }

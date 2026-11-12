@@ -1,5 +1,5 @@
 {
-  "version": "1.9.2",
+  "version": "1.9.4",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "안내 문구 수정"
+  "notes": "새로고침 버튼 · 새 캘린더 만들기 · 구글 캘린더 열기 버튼"
 }
