@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.6.0'
+$AppVersion = '1.7.0'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -178,6 +178,11 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .ck svg{width:10px;height:10px;opacity:0}
 .ck[aria-checked="true"]{background:var(--c)}
 .ck[aria-checked="true"] svg{opacity:1}
+.ev.edit{cursor:pointer;border-radius:8px}
+.ev.edit:hover .ti{text-decoration:underline;text-decoration-color:var(--line);text-underline-offset:3px}
+.ev.edit:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.btn.danger{color:var(--err);border-color:var(--line)}
+.btn.danger.arm{background:var(--err);color:#fff;border-color:var(--err)}
 .ev.done .ti{text-decoration:line-through;color:var(--muted)}
 .ev.done .tm{opacity:.6}
 .evx{flex:none;height:20px;min-width:20px;padding:0 4px;margin-top:0;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:13px;line-height:1;cursor:pointer;opacity:0}
@@ -404,7 +409,8 @@ body.popup .rz{display:none}
         <label for="gStart">시작<input type="time" id="gStart" step="300"></label>
         <label for="gEnd">종료<input type="time" id="gEnd" step="300"></label>
       </div>
-      <div class="fld">
+      <p class="calc" id="gCalNote" hidden></p>
+      <div class="fld" id="gCalFld">
         <span class="flbl" id="gCalLbl">캘린더</span>
         <div class="chips" id="gCals" role="radiogroup" aria-labelledby="gCalLbl"></div>
         <div class="newcal" id="gNew" hidden>
@@ -420,10 +426,10 @@ body.popup .rz{display:none}
       <div class="share">
         <div class="shh"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 14a4 4 0 0 0 5.7 0l3-3a4 4 0 0 0-5.7-5.7l-1 1"/><path d="M14 10a4 4 0 0 0-5.7 0l-3 3a4 4 0 0 0 5.7 5.7l1-1"/></svg><b>공유 링크</b><button type="button" class="pill2" id="gLink">링크 복사</button></div>
         <span class="shd">링크를 받은 사람이 열면 이 일정이 채워진 화면이 나오고, [저장]을 누르면 그 사람 캘린더에 들어가요.</span>
-        <label class="check" for="gAuto"><input type="checkbox" id="gAuto">추가하면서 링크도 복사</label>
+        <label class="check" for="gAuto" id="gAutoLbl"><input type="checkbox" id="gAuto">추가하면서 링크도 복사</label>
       </div>
       <span class="calc" id="gCalc" role="status"></span>
-      <div class="acts"><button class="btn" type="button" id="gCancel">취소</button><button class="btn pri" type="submit" id="gOk">추가하기</button></div>
+      <div class="acts"><button class="btn danger" type="button" id="gDel" hidden>삭제</button><button class="btn" type="button" id="gCancel">취소</button><button class="btn pri" type="submit" id="gOk">추가하기</button></div>
     </form>
   </div>
 
@@ -611,9 +617,14 @@ body.popup .rz{display:none}
     const past = !ev.all && ev.e < now ? " past" : "";
     const key = doneKey(ev), isDone = !!doneMap[key], idx = gEvents.indexOf(ev);
     const canDel = gmode === "google" && ev.id && gWritable.some(c => c.id === ev.cal);
-    return `<div class="ev${past}${isDone ? " done" : ""}"><button type="button" class="ck" role="checkbox" aria-checked="${isDone}" aria-label="${esc(ev.title)} 완료" data-done="${idx}" style="--c:${esc(ev.color || "var(--accent)")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tm">${tm}</span><span class="ti" title="${esc(ev.title)}">${esc(ev.title)}</span>${canDel ? `<button type="button" class="evx" data-del="${idx}" aria-label="${esc(ev.title)} 삭제" title="삭제">×</button>` : ""}</div>`;
+    const canEdit = canDel;
+    return `<div class="ev${past}${isDone ? " done" : ""}${canEdit ? " edit" : ""}"${canEdit ? ` data-ev="${idx}" tabindex="0" title="더블클릭해서 수정"` : ""}><button type="button" class="ck" role="checkbox" aria-checked="${isDone}" aria-label="${esc(ev.title)} 완료" data-done="${idx}" style="--c:${esc(ev.color || "var(--accent)")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tm">${tm}</span><span class="ti" title="${esc(ev.title)}">${esc(ev.title)}</span>${canDel ? `<button type="button" class="evx" data-del="${idx}" aria-label="${esc(ev.title)} 삭제" title="삭제">×</button>` : ""}</div>`;
   }
   function bindEvRows(box) {
+    box.querySelectorAll(".ev[data-ev]").forEach(r => {
+      r.ondblclick = e => { if (e.target.closest("button")) return; const ev = gEvents[+r.dataset.ev]; if (ev) openEdit(ev); };
+      r.onkeydown = e => { if (e.key === "Enter" && e.target === r) { const ev = gEvents[+r.dataset.ev]; if (ev) openEdit(ev); } };
+    });
     box.querySelectorAll("[data-done]").forEach(b => b.onclick = () => {
       const ev = gEvents[+b.dataset.done]; if (!ev) return;
       const k = doneKey(ev);
@@ -682,6 +693,7 @@ body.popup .rz{display:none}
           const c = document.createElement("span"); c.className = "ec" + (doneMap[doneKey(ev)] ? " dn" : "");
           c.style.setProperty("--c", ev.color || "var(--accent)");
           c.textContent = (ev.all || (ev.s < d) ? "" : hhmm(ev.s) + " ") + ev.title; c.title = ev.title;
+          if (gmode === "google" && ev.id && gWritable.some(w => w.id === ev.cal)) { c.title = ev.title + " (더블클릭해서 수정)"; c.ondblclick = e2 => { e2.stopPropagation(); openEdit(ev); }; }
           dots.append(c);
         }
         if (mine.length > show) { const mo = document.createElement("span"); mo.className = "ec more"; mo.textContent = `+${mine.length - show}개`; dots.append(mo); }
@@ -870,7 +882,8 @@ body.popup .rz{display:none}
       const all = !e.start.dateTime;
       const s = all ? parse(e.start.date) : new Date(e.start.dateTime);
       const en = all ? parse(e.end.date) : new Date(e.end.dateTime || e.start.dateTime);
-      out.push({ s, e: en, all, title: e.summary || "(제목 없음)", color, cal, id: e.id });
+      out.push({ s, e: en, all, title: e.summary || "(제목 없음)", color, cal, id: e.id,
+        loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "" });
     }
     gEvents = out; gLoaded = win; gError = ""; gRetried = false; renderAll();
   }
@@ -1150,22 +1163,53 @@ body.popup .rz{display:none}
     finally { if ($("gNewOk").textContent === "만들기" || $("gNewOk").textContent === "") $("gNewOk").disabled = false; }
   };
 
-  function openGSheet() {
+  // 일정 수정: 더블클릭한 일정의 내용을 담아 같은 창을 '수정' 모드로 연다
+  let gEdit = null;
+  function openEdit(ev) {
+    if (!ev || !ev.id || !gWritable.some(c => c.id === ev.cal)) return;
+    const d0 = new Date(ev.s.getFullYear(), ev.s.getMonth(), ev.s.getDate());
+    const eDay = ev.all ? new Date(ev.e.getTime() - 864e5) : ev.e;
+    const d1 = new Date(eDay.getFullYear(), eDay.getMonth(), eDay.getDate());
+    let memo = ev.desc || "", url = ev.url || "";
+    if (url && memo.split("\n")[0].trim() === url) memo = memo.split("\n").slice(1).join("\n");
+    else if (!url) { const first = memo.split("\n")[0].trim(); if (/^https?:\/\/\S+$/i.test(first)) { url = first; memo = memo.split("\n").slice(1).join("\n"); } }
+    const edit = { id: ev.id, cal: ev.cal, title: ev.title === "(제목 없음)" ? "" : ev.title, date: ymd(d0), all: ev.all,
+      s: hhmm(ev.s), e: hhmm(ev.e), span: Math.max(0, Math.round((d1 - d0) / 864e5)), loc: ev.loc || "", url, memo: memo.trim() };
+    openGSheet(edit);
+  }
+  function openGSheet(edit) {
     if (!gWritable.length) return;
-    if (inHost && !POPUP) { host({ cmd: "popup", kind: "gevent", data: { date: selected >= today ? selected : today, token: gToken, cals: gWritable } }); return; }
-    gSelCal = (gWritable.find(c => c.id === gSelCal) || gWritable[0]).id;
+    edit = edit && edit.id ? edit : null;
+    if (inHost && !POPUP) { host({ cmd: "popup", kind: "gevent", data: { date: selected >= today ? selected : today, token: gToken, cals: gWritable, edit } }); return; }
+    gEdit = edit;
+    gSelCal = edit ? edit.cal : (gWritable.find(c => c.id === gSelCal) || gWritable[0]).id;
     const now = new Date();
-    $("gDate").value = selected >= today ? selected : today;
-    let h0 = now.getHours() + 1; if (h0 > 22) h0 = 9;
-    $("gStart").value = pad(h0) + ":00"; $("gEnd").value = pad(h0 + 1) + ":00";
-    $("gAll").checked = false; $("gTimes").hidden = false;
-    for (const id of ["gTitle", "gLoc", "gUrl", "gDesc"]) $(id).value = "";
-    $("gNew").hidden = true; gCalc(""); renderGCals();
+    $("gTitleH").textContent = edit ? "일정 수정" : "일정 추가";
+    $("gOk").textContent = edit ? "저장" : "추가하기";
+    $("gDel").hidden = !edit; $("gDel").classList.remove("arm"); $("gDel").textContent = "삭제";
+    $("gCalFld").hidden = !!edit; $("gAutoLbl").hidden = !!edit;
+    const calName = edit ? ((gWritable.find(c => c.id === edit.cal) || {}).name || "") : "";
+    $("gCalNote").hidden = !edit; $("gCalNote").textContent = edit ? `캘린더: ${calName}` : "";
+    if (edit) {
+      $("gDate").value = edit.date; $("gAll").checked = !!edit.all; $("gTimes").hidden = !!edit.all;
+      $("gStart").value = edit.all ? "09:00" : edit.s; $("gEnd").value = edit.all ? "10:00" : edit.e;
+      $("gTitle").value = edit.title; $("gLoc").value = edit.loc; $("gUrl").value = edit.url; $("gDesc").value = edit.memo;
+      if (edit.span > 0) gCalc(`${edit.span + 1}일에 걸친 일정이에요. 날짜를 바꾸면 기간은 그대로 옮겨져요.`);
+      else gCalc("");
+    } else {
+      $("gDate").value = selected >= today ? selected : today;
+      let h0 = now.getHours() + 1; if (h0 > 22) h0 = 9;
+      $("gStart").value = pad(h0) + ":00"; $("gEnd").value = pad(h0 + 1) + ":00";
+      $("gAll").checked = false; $("gTimes").hidden = false;
+      for (const id of ["gTitle", "gLoc", "gUrl", "gDesc"]) $(id).value = "";
+      gCalc("");
+    }
+    $("gNew").hidden = true; renderGCals();
     $("gsheet").hidden = false; report();
     setTimeout(() => $("gTitle").focus(), 30);
   }
   function closeGSheet() { if (POPUP) { host({ cmd: "close" }); return; } $("gsheet").hidden = true; report(); $("gAddBtn").focus(); }
-  $("gAddBtn").onclick = openGSheet;
+  $("gAddBtn").onclick = () => openGSheet();
   $("gOut").onclick = () => { gEvents = null; gToken = null; host({ cmd: "glogout" }); };
   $("updBtn").onclick = () => { $("updBtn").disabled = true; $("updBtn").textContent = "업데이트 중…"; host({ cmd: "update" }); };
   $("gOpen").onclick = () => host({ cmd: "open", url: "https://calendar.google.com/calendar/r" });
@@ -1190,7 +1234,7 @@ body.popup .rz{display:none}
     if (!all) {
       s = $("gStart").value; e = $("gEnd").value;
       if (!s || !e) return { err: "시작·종료 시간을 선택하세요.", focus: "gStart" };
-      if (e <= s) return { err: "종료 시간이 시작 시간보다 늦어야 해요.", focus: "gEnd" };
+      if (e <= s && !(gEdit && gEdit.span > 0)) return { err: "종료 시간이 시작 시간보다 늦어야 해요.", focus: "gEnd" };
     }
     const details = [url, memo].filter(Boolean).join("\n");
     return { title, date, all, s, e, loc, url, details };
@@ -1221,17 +1265,23 @@ body.popup .rz{display:none}
     const f = readGForm();
     if (f.err) { gCalc(f.err, true); $(f.focus).focus(); return; }
     const ev = { summary: f.title };
-    if (f.loc) ev.location = f.loc;
-    if (f.details) ev.description = f.details;
-    if (f.url) ev.source = { title: "링크", url: f.url };
-    if (f.all) { const n = parse(f.date); n.setDate(n.getDate() + 1); ev.start = { date: f.date }; ev.end = { date: ymd(n) }; }
-    else { const off = tzOff(parse(f.date)); ev.start = { dateTime: `${f.date}T${f.s}:00${off}` }; ev.end = { dateTime: `${f.date}T${f.e}:00${off}` }; }
+    const span = gEdit ? gEdit.span : 0;
+    if (gEdit) { ev.location = f.loc; ev.description = f.details; ev.source = f.url ? { title: "링크", url: f.url } : null; }
+    else { if (f.loc) ev.location = f.loc; if (f.details) ev.description = f.details; if (f.url) ev.source = { title: "링크", url: f.url }; }
+    if (f.all) { const n = parse(f.date); n.setDate(n.getDate() + 1 + span); ev.start = { date: f.date, dateTime: null }; ev.end = { date: ymd(n), dateTime: null }; }
+    else {
+      const ed = parse(f.date); ed.setDate(ed.getDate() + span);
+      ev.start = { dateTime: `${f.date}T${f.s}:00${tzOff(parse(f.date))}`, date: null };
+      ev.end = { dateTime: `${ymd(ed)}T${f.e}:00${tzOff(ed)}`, date: null };
+    }
+    if (!gEdit) { if (ev.start.dateTime === null) delete ev.start.dateTime; if (ev.end.dateTime === null) delete ev.end.dateTime; if (ev.start.date === null) delete ev.start.date; if (ev.end.date === null) delete ev.end.date; }
     if (!gToken) { gPendingSave = saveGEvent; host({ cmd: "gtoken" }); gCalc("구글에 연결하는 중…"); return; }
-    $("gOk").disabled = true; $("gOk").textContent = "추가 중…"; gCalc("");
+    $("gOk").disabled = true; $("gOk").textContent = gEdit ? "저장 중…" : "추가 중…"; gCalc("");
     try {
-      const cal = gSelCal || "primary";
-      const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events`, {
-        method: "POST", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify(ev)
+      const cal = gEdit ? gEdit.cal : (gSelCal || "primary");
+      const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events` + (gEdit ? "/" + encodeURIComponent(gEdit.id) : "");
+      const r = await fetch(url, {
+        method: gEdit ? "PATCH" : "POST", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" }, body: JSON.stringify(ev)
       });
       if (r.status === 401) { gToken = null; gPendingSave = saveGEvent; host({ cmd: "gtoken", force: true }); gCalc("다시 연결하는 중…"); return; }
       if (r.status === 403) {
@@ -1240,20 +1290,37 @@ body.popup .rz{display:none}
           gCalc("일정 추가 권한이 없어요. 구글에 한 번 더 로그인해서 권한을 허용해 주세요.", true);
           $("gOk").textContent = "구글 다시 로그인"; $("gOk").disabled = false; $("gOk").dataset.relogin = "1"; return;
         }
-        gCalc("이 캘린더에는 일정을 추가할 수 없어요.", true); return;
+        gCalc(gEdit ? "이 일정을 수정할 권한이 없어요." : "이 캘린더에는 일정을 추가할 수 없어요.", true); return;
       }
       if (!r.ok) throw new Error("HTTP " + r.status);
-      let doneMsg = `${f.title} 일정을 추가했어요`;
-      if ($("gAuto").checked) { await copyText(shareLink(f)); doneMsg += " · 공유 링크 복사됨"; }
+      let doneMsg = gEdit ? `${f.title} 일정을 수정했어요` : `${f.title} 일정을 추가했어요`;
+      if (!gEdit && $("gAuto").checked) { await copyText(shareLink(f)); doneMsg += " · 공유 링크 복사됨"; }
       if (POPUP) { host({ cmd: "done", msg: doneMsg, date: f.date }); return; }
       closeGSheet(); toast(doneMsg);
       gRequest();
     } catch (e) {
-      gCalc("일정을 추가하지 못했어요. 잠시 후 다시 시도해 주세요.", true);
+      gCalc(gEdit ? "일정을 저장하지 못했어요. 잠시 후 다시 시도해 주세요." : "일정을 추가하지 못했어요. 잠시 후 다시 시도해 주세요.", true);
     } finally {
-      if (!$("gOk").dataset.relogin) { $("gOk").disabled = false; $("gOk").textContent = "추가하기"; }
+      if (!$("gOk").dataset.relogin) { $("gOk").disabled = false; $("gOk").textContent = gEdit ? "저장" : "추가하기"; }
     }
   }
+  $("gDel").onclick = async () => {
+    if (!gEdit) return;
+    const b = $("gDel");
+    if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 삭제"; setTimeout(() => { if (b.isConnected && b.classList.contains("arm")) { b.classList.remove("arm"); b.textContent = "삭제"; } }, 3000); return; }
+    if (!gToken) { host({ cmd: "gtoken" }); gCalc("구글에 연결하는 중이에요. 다시 눌러 주세요.", true); return; }
+    b.disabled = true;
+    try {
+      const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gEdit.cal)}/events/${encodeURIComponent(gEdit.id)}`, { method: "DELETE", headers: { Authorization: "Bearer " + gToken } });
+      if (r.status === 401) { host({ cmd: "gtoken", force: true }); gCalc("다시 연결했어요. 한 번 더 눌러 주세요.", true); return; }
+      if (!r.ok && r.status !== 404 && r.status !== 410) throw new Error("HTTP " + r.status);
+      const msgT = `${$("gTitle").value.trim() || "일정"} 일정을 삭제했어요`;
+      if (POPUP) { host({ cmd: "done", msg: msgT }); return; }
+      gEvents = (gEvents || []).filter(x => !(x.id === gEdit.id && x.cal === gEdit.cal));
+      closeGSheet(); toast(msgT); renderAll();
+    } catch (e) { gCalc("일정을 삭제하지 못했어요.", true); }
+    finally { b.disabled = false; }
+  };
   $("gForm").addEventListener("submit", ev => {
     ev.preventDefault();
     if ($("gOk").dataset.relogin) { delete $("gOk").dataset.relogin; $("gOk").textContent = "추가하기"; host({ cmd: "glogin" }); if (!POPUP) closeGSheet(); return; }
@@ -1330,7 +1397,7 @@ body.popup .rz{display:none}
       if (!sb) { const o = $("sCalc"); o.textContent = "팀 휴가 서버에 연결하지 못했어요."; o.className = "calc err"; $("sOk").disabled = true; }
     } else if (kind === "gevent") {
       gToken = data.token || null; gWritable = Array.isArray(data.cals) ? data.cals : [];
-      openGSheet();
+      openGSheet(data.edit || null);
     } else if (kind === "team") {
       me = { id: data.uid };
       showTeam(Array.isArray(data.members) ? data.members : [], Array.isArray(data.sel) ? data.sel : (data.sel ? [data.sel] : []));
@@ -1740,6 +1807,9 @@ sh.Run "powershell.exe -NoProfile -ExecutionPolicy Bypass -WindowStyle Hidden -S
     # 관리자 우회용 임시 폴더 정리
     $pub = Join-Path $env:PUBLIC 'TeamCal_setup'
     if ($PSCommandPath -like "$pub*") { Start-Process "$env:SystemRoot\System32\cmd.exe" -ArgumentList "/c timeout /t 3 /nobreak >nul & rmdir /s /q `"$pub`"" -WindowStyle Hidden }
+    # exe 가 임시 폴더에 푼 설치 파일 정리
+    $here = Split-Path -Parent $PSCommandPath
+    if ((Split-Path -Leaf $here) -like 'TeamCal_setup_*') { Start-Process "$env:SystemRoot\System32\cmd.exe" -ArgumentList "/c timeout /t 3 /nobreak >nul & rmdir /s /q `"$here`"" -WindowStyle Hidden }
 }
 
 if ($Uninstall) { Invoke-Uninstall; exit 0 }

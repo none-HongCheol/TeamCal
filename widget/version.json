@@ -1,5 +1,5 @@
 {
-  "version": "1.6.0",
+  "version": "1.7.0",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "넓게 하면 달력에 일정 제목, 제어판에서 제거"
+  "notes": "내 일정 더블클릭으로 수정"
 }
