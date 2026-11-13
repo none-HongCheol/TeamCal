@@ -1,5 +1,5 @@
 {
-  "version": "1.9.8",
+  "version": "2.0.0",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "작업 표시줄에 TeamCal 아이콘 표시"
+  "notes": "화면 정리: 캘린더 칩은 달력 아래로, 아래 구역은 다가오는 일정 · 휴가"
 }

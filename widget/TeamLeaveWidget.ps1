@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.8'
+$AppVersion = '2.0.0'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -78,8 +78,7 @@ body[data-theme="dark"]{
 *{box-sizing:border-box}
 html,body{margin:0;background:var(--bg);color:var(--fg);font-family:var(--font);-webkit-font-smoothing:antialiased;overflow:hidden}
 [hidden]{display:none!important}
-body.fixed{height:100vh;overflow-y:auto}
-body.fixed #card{min-height:100vh}
+body.fixed{overflow:hidden}
 body.fixed::-webkit-scrollbar{width:6px} body.fixed::-webkit-scrollbar-thumb{background:var(--dot);border-radius:3px}
 .rz{position:fixed;z-index:20;app-region:no-drag;-webkit-app-region:no-drag}
 .rz.r{top:0;right:0;bottom:14px;width:5px;cursor:ew-resize}
@@ -178,6 +177,20 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .sh{display:flex;align-items:center;gap:8px;min-height:26px}
 .sh .t{font-size:12px;font-weight:700;letter-spacing:.02em}
 .sh .c{font-size:11px;color:var(--muted);margin-left:auto}
+.ch{width:22px;height:22px;flex:none;border:0;border-radius:11px;background:none;color:var(--muted);display:inline-flex;align-items:center;justify-content:center;cursor:pointer;padding:0}
+.ch:hover{background:var(--sel);color:var(--fg)}
+.ch svg{width:13px;height:13px;transition:transform .15s}
+.ch[aria-expanded="false"] svg{transform:rotate(-90deg)}
+.colsum{font-size:11px;color:var(--muted);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.colsum:empty{display:none}
+#calHd{margin-bottom:6px}#calHd .t{flex:1}
+#calWrap.col #calBody{display:none}#calWrap.col #calHd{margin-bottom:0}
+#daySec.col>:not(.sh),#gSec.col>:not(.sh){display:none!important}
+#gSec.col .lo{display:none}
+.calchips:empty{display:none}.calchips{margin-top:12px;display:flex;flex-direction:column;gap:8px}.calchips .gsub{margin:2px 0 -2px}
+.gup{overflow-y:auto;overscroll-behavior:contain;margin-right:-10px;padding-right:6px;display:flex;flex-direction:column;gap:inherit}
+.gup.fade{-webkit-mask-image:linear-gradient(#000 calc(100% - 28px),transparent);mask-image:linear-gradient(#000 calc(100% - 28px),transparent)}
+.gup{scrollbar-width:none}.gup::-webkit-scrollbar{width:0}.gup::-webkit-scrollbar-thumb{background:var(--dot);border-radius:3px}.gup::-webkit-scrollbar-track{background:transparent}
 .gp{margin-left:auto;height:18px;display:inline-flex;align-items:center;gap:3px;padding:0 6px 0 5px;border:1px solid var(--line);border-radius:9px;background:transparent;color:var(--muted);font-size:9.5px;font-weight:600;font-family:inherit;cursor:pointer;white-space:nowrap}
 .gp svg{width:9px;height:9px;flex:none}
 .gp .ar{font-weight:400;font-size:9px}
@@ -417,9 +430,13 @@ body.popup .rz{display:none}
 
   <!-- 달력 -->
   <div id="calWrap" hidden>
+    <div class="sh" id="calHd"><span class="t">달력</span><span class="colsum" id="calSum"></span><button class="ch" type="button" id="calCh" aria-expanded="true" aria-label="달력 접기" title="접기 / 펼치기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button></div>
+    <div id="calBody">
     <div class="dow"><div>일</div><div>월</div><div>화</div><div>수</div><div>목</div><div>금</div><div>토</div></div>
     <div class="grid" id="grid"></div>
     <div class="legrow"><div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span><span id="legOut" hidden><i class="bar out"></i>팀 밖</span><span id="legMe" hidden><i class="bar me"></i>내 휴가</span></div><button class="rf" id="bRefresh" type="button" aria-label="새로고침" title="새로고침 (팀 휴가 + 내 일정)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span id="rfTxt"></span></button></div>
+    <div id="calChips" class="calchips"></div>
+    </div>
   </div>
 
   <!-- 선택한 날: 내 일정이 먼저, 팀원 휴가는 한 줄 요약 -->
@@ -427,7 +444,8 @@ body.popup .rz{display:none}
     <div class="sh">
       <span class="t" id="dayLabel"></span>
       <span style="flex:1"></span>
-      <button class="pill" id="gAddBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>일정</button>
+      <span class="colsum" id="daySum"></span>
+      <button class="pill" id="gAddBtn" type="button" hidden><svg viewBox="0 0 24 24" fill="none" stroke-width="2.5" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>일정</button><button class="ch" type="button" id="dayCh" aria-expanded="true" aria-label="오늘 접기" title="접기 / 펼치기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
     </div>
     <div class="dayev" id="dayEvents"></div>
     <div class="abs">
@@ -442,7 +460,7 @@ body.popup .rz{display:none}
 
   <!-- 내 일정 -->
   <section class="sec" id="gSec">
-    <div class="sh"><span class="t" id="gHead">내 일정</span><button class="lo" id="gOut" type="button" hidden>로그아웃</button><button class="gp" id="gOpen" type="button" title="브라우저에서 구글 캘린더 열기" aria-label="구글 캘린더 열기"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.7 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>열기</span><span class="ar" aria-hidden="true">↗</span></button>
+    <div class="sh"><span class="t" id="gHead">내 일정</span><button class="lo" id="gOut" type="button" hidden>로그아웃</button><button class="gp" id="gOpen" type="button" title="브라우저에서 구글 캘린더 열기" aria-label="구글 캘린더 열기"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.7 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.5 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.7c-.6 3-2.3 5.5-4.8 7.2l7.7 6c4.5-4.2 6.9-10.3 6.9-17.7z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.9-5.8l-7.7-6c-2.1 1.4-4.9 2.3-8.2 2.3-6.2 0-11.5-4.2-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg><span>열기</span><span class="ar" aria-hidden="true">↗</span></button><span class="colsum" id="gSum"></span><button class="ch" type="button" id="gCh" aria-expanded="true" aria-label="내 일정 접기" title="접기 / 펼치기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 9l6 6 6-6"/></svg></button>
       </div>
     <div id="gBody" class="list"></div>
   </section>
@@ -872,7 +890,36 @@ body.popup .rz{display:none}
   function msg(el, t, kind) { el.textContent = t || ""; el.className = "msg" + (kind ? " " + kind : ""); }
   let toastT;
   function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
-  function renderAll() { renderHeader(); if (me) { renderGrid(); renderDay(); } renderG(); report(); }
+  // ---- 구역 접기 (달력 · 오늘 · 내 일정) ----
+  let upCount = 0;
+  let colSt = {}; try { colSt = JSON.parse(localStorage.getItem("tlw.col") || "{}") || {}; } catch (e) {}
+  const COLS = { cal: ["calWrap", "calCh"], day: ["daySec", "dayCh"], g: ["gSec", "gCh"] };
+  function applyCol() {
+    for (const [k, [sec, btn]] of Object.entries(COLS)) {
+      const on = !!colSt[k];
+      $(sec).classList.toggle("col", on); $(btn).setAttribute("aria-expanded", on ? "false" : "true");
+    }
+    colSums();
+  }
+  function colSums() {
+    const vs = new Date(view.getFullYear(), view.getMonth(), 1), ve = new Date(view.getFullYear(), view.getMonth() + 1, 1);
+    const evM = visibleEvents().filter(ev => ev.s < ve && ev.e > vs).length;
+    const vsS = ymd(vs), veS = ymd(new Date(ve.getTime() - 864e5));
+    const lvM = me ? entries().filter(l => l.start <= veS && l.end >= vsS).length : 0;
+    $("calSum").textContent = colSt.cal ? `${view.getMonth() + 1}월 일정 ${evM}${me ? ` · 휴가 ${lvM}` : ""}` : "";
+    const evD = visibleEvents().length ? eventsOn(selected).length : 0;
+    const lvD = me ? entries().filter(l => l.start <= selected && l.end >= selected).length : 0;
+    $("daySum").textContent = colSt.day ? `일정 ${evD}${me ? ` · 휴가 ${lvD}` : ""}` : "";
+    $("gSum").textContent = colSt.g && gEvents ? `다가오는 ${upCount}개` : "";
+  }
+  for (const [k, [sec, btn]] of Object.entries(COLS)) {
+    $(btn).onclick = () => {
+      colSt[k] = !colSt[k];
+      try { localStorage.setItem("tlw.col", JSON.stringify(colSt)); } catch (e) {}
+      applyCol(); lastH = 0; report();
+    };
+  }
+  function renderAll() { renderHeader(); if (me) { renderGrid(); renderDay(); } renderG(); applyCol(); report(); }
   function monthChanged() {
     renderAll();
     if (gmode === "google" && gLoaded) { const w = gWin(); if (w.from < gLoaded.from || w.to > gLoaded.to) gRequest(); }
@@ -1137,7 +1184,7 @@ body.popup .rz{display:none}
   function renderG() {
     const body = $("gBody");
     $("gOpen").hidden = gmode !== "google";
-    let html = "";
+    let html = "", chHtml = "";
     const loginBlock = (note) => `<div class="gblk">
         <p class="empty" style="margin:0">${note}</p>
         <button class="gbtn" type="button" data-g="glogin"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.4 2.2-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Google 계정으로 로그인</button>
@@ -1164,15 +1211,12 @@ body.popup .rz{display:none}
           `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span></button>`;
       if (showCals) {
         const own = gCals.filter(c => !c.team), team = gCals.filter(c => c.team);
-        if (own.length || gmode === "google") html += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") +
+        if (own.length || gmode === "google") chHtml += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") +
           (gmode === "google" ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
-        if (team.length) html += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + `</div>`;
+        if (team.length) chHtml += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + `</div>`;
       }
-      if (gmode === "google" && lsGet("tlw.hintOff") !== "1") html += `<div class="thint" role="note"><button class="x2" type="button" data-hint="off" aria-label="안내 닫기" title="닫기 (메뉴 › 내 일정 › 팀 캘린더 안내 다시 보기)"><svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
-        <b>팀 캘린더가 안 보이나요?</b><ol><li>팀 그룹에 가입하세요 · <button class="lk" type="button" data-hint="group">그룹 열기 ↗</button></li><li>팀 그룹에 가입 후 프로젝트 캘린더 공유 링크를 PM에게 요청하세요.</li></ol>
-        링크를 열고 [추가]를 누르면 여기에 자동으로 보여요.</div>`;
       const tEnd = new Date(t0); tEnd.setDate(tEnd.getDate() + 14);
-      html += `<div class="gday">다가오는 일정 · 휴가</div>`;
+      html += `<div class="gup" id="gUp">`;
       for (const ev of gEvents) {
         if (ev.cal && offIds.has(ev.cal)) continue;
         if (ev.e <= t0 && !(ev.e - ev.s === 0 && ev.s >= t0)) continue;
@@ -1195,14 +1239,12 @@ body.popup .rz{display:none}
         }
       }
       const keys = [...groups.keys()].sort((a, b) => a - b);
-      let shown = 0, hidden = 0;
+      let shown = 0;
       for (const k of keys) {
         const list = groups.get(k).sort((a, b) => (!!a.leave - !!b.leave) || (a.leave ? 0 : ((b.all - a.all) || (a.s - b.s))));
         const d = new Date(k), diff = Math.round((k - t0) / 864e5);
-        if (shown >= 7) { hidden += list.length; continue; }
         html += `<div class="gday${diff === 0 ? " today" : ""}">${diff === 0 ? "오늘" : diff === 1 ? "내일" : `${d.getMonth()+1}.${d.getDate()} ${DOW[d.getDay()]}`}</div>`;
         for (const ev of list) {
-          if (shown >= 7) { hidden++; continue; }
           if (ev.leave) {
             const lv = ev.leave, mine = me && lv.uid === me.id;
             const range = lv.start !== lv.end ? ` · ${fmtShort(lv.start)}~${fmtShort(lv.end)}` : "";
@@ -1212,28 +1254,33 @@ body.popup .rz{display:none}
         }
       }
       if (!keys.length) html += `<p class="empty" style="margin:0">${offIds.size ? "표시할 일정이 없어요." : "앞으로 2주 동안 다른 일정·휴가가 없어요."}</p>`;
-      if (hidden) html += `<p class="empty" style="margin:0">+${hidden}개 더</p>`;
+      html += `</div>`;
+      upCount = shown;
     }
     $("gAddBtn").hidden = !(gmode === "google" && gEvents && !gError && gWritable.length);
     const connected = gmode === "ical" || (gmode === "google" && gStatus !== "login" && gStatus !== "client");
-    $("gOut").hidden = !connected;
+    $("gOut").hidden = true;      // 로그아웃·연결 해제는 설정 창(캘린더 탭)에서
+    $("gHead").textContent = connected ? "다가오는 일정 · 휴가" : "내 일정";
+    $("gCh").setAttribute("aria-label", connected ? "다가오는 일정 접기" : "내 일정 접기");
     $("gOut").textContent = gmode === "ical" ? "연결 해제" : "로그아웃";
     body.innerHTML = html;
     const ac = body.querySelector("#gAutoChk");
     if (ac) ac.onchange = () => { gAutoLogin = ac.checked; host({ cmd: "gauto", on: ac.checked }); };
     bindEvRows(body);
-    const nc = body.querySelector("#gNewChip"); if (nc) nc.onclick = () => openNewCalPop(nc);
+    const gu = body.querySelector("#gUp"); if (gu) gu.addEventListener("scroll", upFade, { passive: true });
+    const cc = $("calChips"); cc.innerHTML = chHtml;
+    const nc = cc.querySelector("#gNewChip"); if (nc) nc.onclick = () => openNewCalPop(nc);
     body.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => {
       if (b.dataset.hint === "group") host({ cmd: "open", url: TEAM_GROUP });
       else { lsSet("tlw.hintOff", "1"); renderG(); toast("메뉴 › 내 일정 › 팀 캘린더 안내 다시 보기로 다시 볼 수 있어요"); }
     });
-    body.querySelectorAll("[data-cal]").forEach(b => {
+    cc.querySelectorAll("[data-cal]").forEach(b => {
       const toggle = () => {
         const c = gCals.find(x => x.id === b.dataset.cal); if (!c) return;
         calPref[c.id] = !calOn(c);
         try { localStorage.setItem("tlw.calPref", JSON.stringify(calPref)); } catch (e) {}
         renderAll();
-        const nb = $("gBody").querySelector(`[data-cal="${CSS.escape(c.id)}"]`); if (nb) nb.focus();
+        const nb = $("calChips").querySelector(`[data-cal="${CSS.escape(c.id)}"]`); if (nb) nb.focus();
       };
       // 한 번 클릭 = 보이기/숨기기, 더블클릭 = 초대 링크 (더블클릭일 땐 토글하지 않음)
       b.onclick = e => {
@@ -1414,7 +1461,7 @@ body.popup .rz{display:none}
   function inviteOutside(e) { if (!e.target.closest(".ipop") && !e.target.closest(".cchip")) closeInvite(); }
   function openInvite(id) {
     closeInvite();
-    const c = gCals.find(x => x.id === id), chip = $("gBody").querySelector(`[data-cal="${CSS.escape(id)}"]`);
+    const c = gCals.find(x => x.id === id), chip = $("calChips").querySelector(`[data-cal="${CSS.escape(id)}"]`);
     if (!c || !chip) return;
     const link = "https://calendar.google.com/calendar/u/0?cid=" + b64id(c.id);
     const settings = "https://calendar.google.com/calendar/u/0/r/settings/calendar/" + b64id(c.id);
@@ -1758,7 +1805,7 @@ body.popup .rz{display:none}
       else if (H.gmode === "ical") h += `<div class="sacct"><div class="av">i</div><div class="st">iCal 주소로 연결됨<small>보기 전용</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
       else h += `<div class="sacct"><div class="av" style="background:var(--dot)">?</div><div class="st">연결 안 됨<small>구글 계정을 연결하면 내 일정이 보여요</small></div><button type="button" class="sbtn pri" data-act="glogin">구글 로그인</button></div>`;
       h += sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")
-        + `<div class="sgrp">표시</div>` + sw("hint", U.hint, "팀 캘린더 안내 문구", "‘내 일정’ 아래 그룹 가입 안내")
+        + `<div class="sgrp">팀 캘린더 보는 법</div><div class="srow"><div class="st">1. 팀 그룹에 가입하세요<small>2. 가입 후 프로젝트 캘린더 공유 링크를 PM에게 요청하세요. 링크를 열고 [추가]를 누르면 위젯에 자동으로 보여요.</small></div><button type="button" class="sbtn" data-act="group">그룹 열기 ↗</button></div>`
         + `<div class="sgrp">기타</div><div class="sbtns"><button type="button" class="sbtn" data-act="gweb">구글 캘린더 열기 ↗</button>${H.gmode === "google" ? "" : `<button type="button" class="sbtn" data-act="gical">iCal 주소로 연결…</button>`}<button type="button" class="sbtn" data-act="gguide">설정 방법 보기</button></div>`;
     } else if (setTab === "팀 휴가") {
       h += `<div class="sgrp">로그인</div>`;
@@ -1792,7 +1839,7 @@ body.popup .rz{display:none}
     if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
     body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const a = b.dataset.act;
-      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL };
+      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP };
       if (urls[a]) { host({ cmd: "open", url: urls[a] }); return; }
       if (a === "glogout") { setHost.gmode = ""; renderSettings(); }
       if (a === "teamLogout") { setUi.teamOn = false; renderSettings(); }
@@ -1840,13 +1887,13 @@ body.popup .rz{display:none}
         break;
       case "config":
         applyTheme(m.theme);
-        document.body.classList.toggle("fixed", !!m.fixed); lastH = 0; report();
+        document.body.classList.toggle("fixed", !!m.fixed); if (m.maxH) maxPhys = +m.maxH; lastH = 0; report();
         $("bPin").classList.toggle("on", !!m.pinned);
         if (typeof m.autoLogin === "boolean") gAutoLogin = m.autoLogin;
         if (m.gmode !== gmode) { gmode = m.gmode || ""; gEvents = null; gStatus = ""; gRequest(); }
         break;
       case "theme": applyTheme(m.theme); break;
-      case "fixed": document.body.classList.toggle("fixed", !!m.on); lastH = 0; report(); break;
+      case "fixed": document.body.classList.toggle("fixed", !!m.on); if (m.maxH) maxPhys = +m.maxH; lastH = 0; report(); break;
       case "pinned": $("bPin").classList.toggle("on", !!m.on); break;
       case "gmode": gmode = m.gmode || ""; gEvents = null; gStatus = ""; gRequest(); break;
       case "gstatus": gStatus = m.status || ""; if (m.status === "waiting") { gEvents = null; gError = ""; } renderG(); break;
@@ -1884,18 +1931,36 @@ body.popup .rz{display:none}
   });
   function report() {
     if (POPUP) {
-      const f = !$("sheet").hidden ? $("sForm") : (!$("gsheet").hidden ? $("gForm") : (!$("tsheet").hidden ? $("tForm") : null));
+      const f = !$("sheet").hidden ? $("sForm") : (!$("gsheet").hidden ? $("gForm") : (!$("tsheet").hidden ? $("tForm") : (!$("setsheet").hidden ? $("setForm") : null)));
       if (!f) return;
       const h = Math.ceil(f.getBoundingClientRect().height * window.devicePixelRatio);
       if (h !== lastH) { lastH = h; host({ cmd: "size", h }); }
       return;
     }
     const card = $("card");
+    fitUp();
     const open = !$("sheet").hidden ? $("sForm") : (!$("gsheet").hidden ? $("gForm") : (!$("tsheet").hidden ? $("tForm") : null));
     card.style.minHeight = open ? Math.ceil(open.getBoundingClientRect().height + 120) + "px" : "";
     const h = Math.ceil(card.getBoundingClientRect().height * window.devicePixelRatio);
     if (h !== lastH) { lastH = h; host({ cmd: "size", h }); }
   }
+  // 위젯이 화면(또는 정해 둔 높이)을 넘으면, 다가오는 일정 목록만 스크롤되게 높이를 줄인다
+  let maxPhys = 0;
+  function fitUp() {
+    const up = $("gUp"); if (!up || POPUP) return;
+    if (!$("sheet").hidden || !$("gsheet").hidden || !$("tsheet").hidden) { if (up.style.maxHeight) up.style.maxHeight = ""; return; }
+    // 정해 둔 높이(없으면 화면 높이)까지만 늘어나고, 넘치면 다가오는 일정 목록 안에서만 스크롤
+    const avail = maxPhys ? maxPhys / window.devicePixelRatio : (screen.availHeight - 24);
+    const yr = document.querySelector(".yr");
+    const bottom = yr.getBoundingClientRect().bottom + (document.scrollingElement.scrollTop || 0) + 18;   // 내용 끝 (카드 아래 여백 포함)
+    const over = bottom - avail;
+    const cur = up.clientHeight, full = up.scrollHeight;
+    let want = Math.round(cur - over);
+    if (want >= full) { if (up.style.maxHeight) up.style.maxHeight = ""; }
+    else { want = want < 40 ? 0 : want; if (Math.abs(want - cur) > 1) up.style.maxHeight = want + "px"; }
+    upFade();
+  }
+  function upFade() { const up = $("gUp"); if (up) up.classList.toggle("fade", up.scrollHeight - up.scrollTop - up.clientHeight > 4); }
   new ResizeObserver(report).observe($("card"));
   window.addEventListener("resize", () => { lastH = 0; report(); });
 
@@ -2421,8 +2486,14 @@ public static class TLW {
     function Send-Main($obj) { Send-To $wv $obj }
     function Send-Pop($obj)  { if ($script:pop) { Send-To $script:pop.W $obj } }
     function Send-UI($obj)   { Send-Main $obj; Send-Pop $obj }      # 위젯 + 떠 있는 팝업 창 모두에게
+    # 위젯 최대 높이 (사용자가 높이를 정했으면 그 높이, 아니면 화면 높이) — 내용이 적으면 그만큼 줄어든다
+    function Get-MaxH {
+        $scr = [System.Windows.Forms.Screen]::FromControl($form).WorkingArea.Height - [int](20 * $scale)
+        if ([double]$script:state.H -gt 0) { return [int][Math]::Min($scr, [Math]::Round([double]$script:state.H * $scale)) }
+        return [int]$scr
+    }
     function Send-Config {
-        Send-UI @{ type = 'config'; theme = [string]$script:state.Theme; pinned = [bool]$form.TopMost; gmode = [string]$script:state.GMode; fixed = ([double]$script:state.H -gt 0); autoLogin = [bool]$script:state.AutoLogin; version = $AppVersion }
+        Send-UI @{ type = 'config'; theme = [string]$script:state.Theme; pinned = [bool]$form.TopMost; gmode = [string]$script:state.GMode; fixed = ([double]$script:state.H -gt 0); autoLogin = [bool]$script:state.AutoLogin; version = $AppVersion; maxH = (Get-MaxH) }
     }
 
     # 비동기 작업: .NET Task 를 UI 타이머로 확인 (PowerShell 스크립트는 항상 UI 스레드에서 실행)
@@ -2471,7 +2542,7 @@ public static class TLW {
     function Reset-Size {
         $script:state.W = 0; $script:state.H = 0
         $form.Width = Get-W
-        Send-UI @{ type = 'fixed'; on = $false }; Save-State
+        Send-UI @{ type = 'fixed'; on = $false; maxH = (Get-MaxH) }; Save-State
     }
 
     # ---------------- 구글 로그인 (OAuth, 브라우저 + 로컬 리디렉션) ----------------
@@ -2930,8 +3001,6 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     $miGImp  = New-Item2 $miG '구글 클라우드 설정 파일 불러오기…' { if (Import-GClient) { Start-GoogleLogin } }
     $miGGd   = New-Item2 $miG '설정 방법 보기' { Start-Process notepad.exe -ArgumentList "`"$GuideFile`"" }
     Add-Sep $miG
-    [void](New-Item2 $miG '팀 캘린더 안내 다시 보기' { Show-Main; Send-Main @{ type = 'tcshow' } })
-    Add-Sep $miG
     $miGOff  = New-Item2 $miG '연결 해제' { Disconnect-Google }
     $miTeam  = New-Item2 $menu '팀 휴가' $null
     [void](New-Item2 $miTeam '내 팀원 설정…' { Show-Main; Send-Main @{ type = 'openTeam' } })
@@ -2973,11 +3042,10 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
         switch ([string]$m.cmd) {
             'ready'   { Send-Config; if (-not $script:updChecked) { $script:updChecked = $true; Check-Update $false; Fetch-GClientBg } }
             'size'    {
-                if ([double]$script:state.H -gt 0) { return }      # 사용자가 높이를 정했으면 자동 맞춤 안 함
                 if ($form.WindowState -ne 'Normal') { return }
+                if ($script:resizing) { return }                   # 마우스로 크기를 바꾸는 중에는 그대로
                 $h = [int]$m.h
-                $maxH = [System.Windows.Forms.Screen]::FromControl($form).WorkingArea.Height - [int](20 * $scale)
-                $h = [Math]::Max([int](200 * $scale), [Math]::Min($h, $maxH))
+                $h = [Math]::Max([int](120 * $scale), [Math]::Min($h, (Get-MaxH)))      # 정해 둔 높이(또는 화면)까지만, 내용이 적으면 줄어듦
                 if ($form.ClientSize.Height -ne $h) { $form.ClientSize = New-Object System.Drawing.Size($form.ClientSize.Width, $h) }
             }
             'drag'    { [TLW]::ReleaseCapture() | Out-Null; [TLW]::SendMessage($form.Handle, 0xA1, 2, 0) | Out-Null; Save-State }
@@ -2985,9 +3053,12 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
                 $hit = [int]$m.hit
                 if (@(10, 11, 15, 16, 17) -notcontains $hit) { return }
                 [TLW]::ReleaseCapture() | Out-Null
+                $script:resizing = $true
                 [TLW]::SendMessage($form.Handle, 0xA1, $hit, 0) | Out-Null     # 마우스를 놓을 때까지 창 크기 조절
+                $script:resizing = $false
                 $script:state.W = [Math]::Round($form.Width / $scale)
-                if ($hit -ne 10 -and $hit -ne 11) { $script:state.H = [Math]::Round($form.ClientSize.Height / $scale); Send-UI @{ type = 'fixed'; on = $true } }
+                if ($hit -ne 10 -and $hit -ne 11) { $script:state.H = [Math]::Round($form.ClientSize.Height / $scale) }
+                Send-UI @{ type = 'fixed'; on = ([double]$script:state.H -gt 0); maxH = (Get-MaxH) }
                 Save-State
             }
             'hide'    { $form.Hide() }                              # ✕ : 트레이 아이콘으로
