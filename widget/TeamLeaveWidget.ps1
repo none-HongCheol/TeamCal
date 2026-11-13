@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.9.7'
+$AppVersion = '1.9.8'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -2308,6 +2308,7 @@ public static class TLW {
   [DllImport("user32.dll")] public static extern IntPtr SendMessage(IntPtr h, int msg, int w, int l);
   [DllImport("user32.dll")] public static extern bool SetProcessDPIAware();
   [DllImport("dwmapi.dll")] public static extern int DwmSetWindowAttribute(IntPtr h, int attr, ref int val, int size);
+  [DllImport("shell32.dll", CharSet = CharSet.Unicode)] public static extern int SetCurrentProcessExplicitAppUserModelID(string id);
   public static readonly HttpClient Http = new HttpClient() { Timeout = TimeSpan.FromSeconds(30) };
   public static async Task<string> PostForm(string url, Dictionary<string,string> f) {
     var r = await Http.PostAsync(url, new FormUrlEncodedContent(f)).ConfigureAwait(false);
@@ -2356,6 +2357,8 @@ public static class TLW {
 }
 "@
     [TLW]::SetProcessDPIAware() | Out-Null
+    # 작업 표시줄에 PowerShell 아이콘 대신 TeamCal 아이콘이 보이도록 (별도 앱으로 묶기)
+    try { [TLW]::SetCurrentProcessExplicitAppUserModelID('TeamCal.Widget') | Out-Null } catch { Write-Log "aumid: $($_.Exception.Message)" }
     [System.Windows.Forms.Application]::EnableVisualStyles()
 
     # ---- 4) 저장된 설정 ----
@@ -2381,8 +2384,9 @@ public static class TLW {
     if (-not $onScreen) { $state.X = $wa.Right - (Get-W) - [int](20 * $scale); $state.Y = $wa.Top + [int](20 * $scale) }
 
     # ---- 5) 아이콘 (점 달력 모양) ----
-    $bmp = New-AppBitmap 32
+    $bmp = New-AppBitmap ([int][Math]::Max(32, [Math]::Round(48 * $scale)))     # 작업 표시줄용 (크게 그려서 선명하게)
     $icon = [System.Drawing.Icon]::FromHandle($bmp.GetHicon())
+    $trayIcon = [System.Drawing.Icon]::FromHandle((New-AppBitmap ([int][Math]::Max(16, [Math]::Round(16 * $scale)))).GetHicon())
 
     # ---- 6) 창 ----
     $form = New-Object System.Windows.Forms.Form
@@ -2960,7 +2964,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
     $tray = New-Object System.Windows.Forms.NotifyIcon
     $script:menuFromWidget = $false
     $menu.Add_Closed({ $script:menuFromWidget = $false })
-    $tray.Icon = $icon; $tray.Text = "$AppName (오른쪽 클릭: 메뉴·종료)"; $tray.ContextMenuStrip = $menu; $tray.Visible = $true
+    $tray.Icon = $trayIcon; $tray.Text = "$AppName (오른쪽 클릭: 메뉴·종료)"; $tray.ContextMenuStrip = $menu; $tray.Visible = $true
     $tray.Add_MouseClick({ if ($_.Button -eq 'Left') { Toggle-Main } })
     $tray.Add_BalloonTipClicked({ Show-Main })
 

@@ -1,5 +1,5 @@
 {
-  "version": "1.9.7",
+  "version": "1.9.8",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "설정 창 (톱니바퀴)"
+  "notes": "작업 표시줄에 TeamCal 아이콘 표시"
 }
