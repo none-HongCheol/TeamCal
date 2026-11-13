@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.0'
+$AppVersion = '2.0.2'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -295,6 +295,17 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 /* year */
 .yr{display:flex;flex-direction:column;gap:6px}
 .yb{display:flex;gap:3px}
+#yrYear{display:flex;flex-direction:column;gap:6px}
+.dlbox{display:flex;flex-direction:column;gap:12px}.dlbox:empty{display:none}
+.dli{display:flex;flex-direction:column;gap:6px;cursor:pointer;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;width:100%}
+.dlh{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;min-width:0}
+.dlh i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
+.dlh .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlh b{margin-left:auto;font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums;flex:none}
+.dlh b.past{color:var(--muted)}
+.dlh .off{flex:none;width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;color:var(--muted)}
+.dli:hover .dlh .off,.dli:focus-within .dlh .off{display:inline-flex}.dlh .off:hover{background:var(--sel);color:var(--fg)}
+.dli .yb span.now{background:var(--c)}
 .yb span{flex:1;height:4px;border-radius:2px;background:var(--dot)}
 .yb span.done{background:var(--fg);opacity:.85}
 .yb span.now{background:var(--accent)}
@@ -465,9 +476,9 @@ body.popup .rz{display:none}
     <div id="gBody" class="list"></div>
   </section>
 
-  <div class="yr" aria-hidden="true">
-    <div class="yb" id="yb"></div>
-    <div class="yl"><span id="yl1"></span><span id="yl2"></span></div>
+  <div class="yr">
+    <div id="dlBox" class="dlbox"></div>
+    <div id="yrYear" aria-hidden="true"><div class="yb" id="yb"></div><div class="yl"><span id="yl1"></span><span id="yl2"></span></div></div>
   </div>
 
   <div id="toast" role="status" hidden></div>
@@ -765,6 +776,7 @@ body.popup .rz{display:none}
     for (let m = 0; m < 12; m++) { const s = document.createElement("span"); if (m < now.getMonth()) s.className = "done"; if (m === now.getMonth()) s.className = "now"; yb.append(s); }
     $("yl1").textContent = `${y} · ${dayNo}일째`;
     $("yl2").textContent = `남은 ${total - dayNo}일`;
+    renderDeadlines();
   }
   function renderGrid() {
     const list = entries(), evs = visibleEvents();
@@ -1007,7 +1019,7 @@ body.popup .rz{display:none}
     if (rfBusy) return;
     rfBusy = true; $("bRefresh").classList.add("spin"); rfLabel();
     try { reload(); } catch (e) {}
-    if (gmode) gRequest(); else rfDone();
+    dlAt = 0; if (gmode) gRequest(); else rfDone();
     clearTimeout(rfT); rfT = setTimeout(() => { if (rfBusy) { rfBusy = false; $("bRefresh").classList.remove("spin"); rfAt = Date.now(); rfLabel(); } }, 8000);
   }
   function gRequest() {
@@ -1058,6 +1070,7 @@ body.popup .rz{display:none}
     }
     gEvents = out; gLoaded = win; gError = ""; gRetried = false;
     try { watchChanges(out, (cl.items || []).find(c => c.primary)); } catch (e) {}
+    loadDeadlines(false);
     renderAll(); rfDone();
   }
   function onToken(m) {
@@ -1401,6 +1414,75 @@ body.popup .rz{display:none}
       ntItems = []; renderNotice();
     });
     report();
+  }
+
+  // ---------------- 캘린더별 데드라인 (각 캘린더의 마지막 일정까지 D-day) ----------------
+  // 반복 일정은 빼고, 오늘 이후 2년 안의 마지막 일정 = 마감, 2년 전부터의 첫 일정 = 시작
+  let dlData = {}, dlAt = 0, dlKey = "";
+  function dlPref() { try { return JSON.parse(localStorage.getItem("tlw.dl") || "{}") || {}; } catch (e) { return {}; } }
+  function dlEligible() { return gCals.filter(c => !/@group\.v\.calendar\.google\.com$/.test(c.id) && !/#(contacts|holiday|weeknum)/.test(c.id)); }
+  function dlOn(c) { const p = dlPref(); return c.id in p ? !!p[c.id] : !c.primary; }   // 기본: 개인 '내 캘린더'만 끔
+  function setDlOn(id, on) { const p = dlPref(); p[id] = !!on; try { localStorage.setItem("tlw.dl", JSON.stringify(p)); } catch (e) {} renderDeadlines(); report(); }
+  async function loadDeadlines(force) {
+    if (gmode !== "google" || !gToken) { dlData = {}; renderDeadlines(); return; }
+    const cals = dlEligible();
+    const key = cals.map(c => c.id).sort().join("|");
+    if (!force && key === dlKey && Date.now() - dlAt < 30 * 60000) { renderDeadlines(); return; }
+    dlKey = key; dlAt = Date.now();
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const far = new Date(t0); far.setFullYear(far.getFullYear() + 2);
+    const back = new Date(t0); back.setFullYear(back.getFullYear() - 2);
+    const when = st => st && st.dateTime ? new Date(st.dateTime) : (st && st.date ? parse(st.date) : null);
+    const q = (id, params) => gfetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(id)}/events?singleEvents=true&orderBy=startTime&${params}`, gToken);
+    const next = {};
+    await Promise.all(cals.map(async c => {
+      try {
+        let items = [], page = "", n = 0;
+        do {
+          const r = await q(c.id, `timeMin=${encodeURIComponent(t0.toISOString())}&timeMax=${encodeURIComponent(far.toISOString())}&maxResults=2500&fields=items(summary,start,recurringEventId,status),nextPageToken${page ? "&pageToken=" + encodeURIComponent(page) : ""}`);
+          items = items.concat(r.items || []); page = r.nextPageToken || ""; n++;
+        } while (page && n < 4);
+        const once = items.filter(e => !e.recurringEventId && e.status !== "cancelled" && when(e.start));
+        if (!once.length) return;
+        const last = once[once.length - 1];
+        const r2 = await q(c.id, `timeMin=${encodeURIComponent(back.toISOString())}&maxResults=100&fields=items(start,recurringEventId,status)`);
+        const first = (r2.items || []).find(e => !e.recurringEventId && e.status !== "cancelled" && when(e.start)) || once[0];
+        next[c.id] = { first: when(first.start), last: when(last.start), title: last.summary || "(제목 없음)" };
+      } catch (e) { if (e.auth) throw e; }
+    })).catch(() => {});
+    dlData = next; renderDeadlines(); report();
+  }
+  function renderDeadlines() {
+    const box = $("dlBox"); if (!box) return;
+    const t0 = new Date(); t0.setHours(0, 0, 0, 0);
+    const list = gmode === "google" ? dlEligible().filter(c => dlData[c.id] && dlOn(c)).map(c => ({ c, ...dlData[c.id] })) : [];
+    list.sort((a, b) => a.last - b.last);
+    const shown = list.slice(0, 4);
+    $("yrYear").hidden = shown.length > 0;
+    if (!shown.length) { box.replaceChildren(); return; }
+    const md = d => `${d.getMonth() + 1}.${pad(d.getDate())}`;
+    box.innerHTML = shown.map(({ c, first, last, title }) => {
+      const L = new Date(last); L.setHours(0, 0, 0, 0);
+      const F = new Date(first); F.setHours(0, 0, 0, 0);
+      const left = Math.round((L - t0) / 864e5);
+      const total = Math.max(1, Math.round((L - F) / 864e5));
+      const done = Math.min(total, Math.max(0, Math.round((t0 - F) / 864e5)));
+      const k = Math.min(11, Math.floor(done / total * 12));
+      const segs = Array.from({ length: 12 }, (_, i) => `<span class="${i < k ? "done" : (i === k ? "now" : "")}"></span>`).join("");
+      const dd = left > 0 ? `D-${left}` : (left === 0 ? "D-day" : `D+${-left}`);
+      return `<div class="dli" role="button" tabindex="0" data-dl="${esc(c.id)}" style="--c:${esc(c.color || "var(--accent)")}" title="마지막 일정: ${esc(title)} (${md(L)}) · 누르면 그 날짜로">
+        <div class="dlh"><i></i><span class="nm">${esc(c.name.replace(/ \(기본\)$/, ""))}</span><b class="${left < 0 ? "past" : ""}">${dd}</b><span class="off" role="button" tabindex="0" data-dloff="${esc(c.id)}" aria-label="${esc(c.name)} 데드라인 끄기" title="이 캘린더 데드라인 끄기"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+        <div class="yb" aria-hidden="true">${segs}</div>
+        <div class="yl"><span>${md(F)} 시작 · ${done + 1}일째</span><span>${md(L)}(${"일월화수목금토"[L.getDay()]})${left >= 0 ? `까지 ${left}일` : " 지남"}</span></div></div>`;
+    }).join("");
+    box.querySelectorAll("[data-dloff]").forEach(x => x.onclick = e => {
+      e.stopPropagation(); setDlOn(x.dataset.dloff, false);
+      toast("설정 › 캘린더 › 데드라인에서 다시 켤 수 있어요");
+    });
+    box.querySelectorAll("[data-dl]").forEach(x => {
+      const go = () => { const d = dlData[x.dataset.dl]; if (!d) return; const L = new Date(d.last); selected = ymd(L); view = new Date(L.getFullYear(), L.getMonth(), 1); monthChanged(); };
+      x.onclick = go; x.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } };
+    });
   }
 
   // ---------------- 새 캘린더 만들기 (내 일정 칩 줄) ----------------
@@ -1767,7 +1849,8 @@ body.popup .rz{display:none}
     const ui = {
       gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
       showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
-      ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0"
+      ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
+      dlCals: gmode === "google" ? dlEligible().map(c => ({ id: c.id, name: c.name.replace(/ \(기본\)$/, ""), color: c.color || "", on: dlOn(c), has: !!dlData[c.id] })) : []
     };
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
     showSettings(ui, {});
@@ -1805,6 +1888,8 @@ body.popup .rz{display:none}
       else if (H.gmode === "ical") h += `<div class="sacct"><div class="av">i</div><div class="st">iCal 주소로 연결됨<small>보기 전용</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
       else h += `<div class="sacct"><div class="av" style="background:var(--dot)">?</div><div class="st">연결 안 됨<small>구글 계정을 연결하면 내 일정이 보여요</small></div><button type="button" class="sbtn pri" data-act="glogin">구글 로그인</button></div>`;
       h += sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")
+        + (Array.isArray(U.dlCals) && U.dlCals.length ? `<div class="sgrp">데드라인 (캘린더의 마지막 일정까지 D-day)</div>` + U.dlCals.map((c, i) =>
+            `<div class="srow"><div class="st" id="l_dl${i}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>${esc(c.name)}${c.has ? "" : "<small>앞으로의 일정이 없어요</small>"}</div><button type="button" class="ssw" role="switch" aria-labelledby="l_dl${i}" aria-checked="${!!c.on}" data-dlsw="${esc(c.id)}"></button></div>`).join("") : "")
         + `<div class="sgrp">팀 캘린더 보는 법</div><div class="srow"><div class="st">1. 팀 그룹에 가입하세요<small>2. 가입 후 프로젝트 캘린더 공유 링크를 PM에게 요청하세요. 링크를 열고 [추가]를 누르면 위젯에 자동으로 보여요.</small></div><button type="button" class="sbtn" data-act="group">그룹 열기 ↗</button></div>`
         + `<div class="sgrp">기타</div><div class="sbtns"><button type="button" class="sbtn" data-act="gweb">구글 캘린더 열기 ↗</button>${H.gmode === "google" ? "" : `<button type="button" class="sbtn" data-act="gical">iCal 주소로 연결…</button>`}<button type="button" class="sbtn" data-act="gguide">설정 방법 보기</button></div>`;
     } else if (setTab === "팀 휴가") {
@@ -1829,6 +1914,11 @@ body.popup .rz{display:none}
       const k = b.dataset.sw, on = b.getAttribute("aria-checked") !== "true";
       b.setAttribute("aria-checked", on ? "true" : "false");
       if (["hint", "ntOn", "ntWin", "showAll"].includes(k)) uiset(k, on); else { setHost[k] = on; sset(k, on); }
+    });
+    body.querySelectorAll("[data-dlsw]").forEach(b => b.onclick = () => {
+      const on = b.getAttribute("aria-checked") !== "true"; b.setAttribute("aria-checked", on ? "true" : "false");
+      const c = (setUi.dlCals || []).find(x => x.id === b.dataset.dlsw); if (c) c.on = on;
+      host({ cmd: "set", key: "ui", value: { key: "dl:" + b.dataset.dlsw, value: on } });
     });
     body.querySelectorAll("[data-seg]").forEach(b => b.onclick = () => {
       const k = b.dataset.seg, v = b.dataset.v;
@@ -1871,7 +1961,8 @@ body.popup .rz{display:none}
       case "openSettings": openSettings(); break;
       case "uipref": {
         const k = m.key, v = !!m.value;
-        if (k === "hint") { lsSet("tlw.hintOff", v ? null : "1"); renderG(); }
+        if (String(k).startsWith("dl:")) setDlOn(String(k).slice(3), v);
+        else if (k === "hint") { lsSet("tlw.hintOff", v ? null : "1"); renderG(); }
         else if (k === "ntOn") lsSet("tlw.ntOn", v ? null : "0");
         else if (k === "ntWin") lsSet("tlw.ntWin", v ? null : "0");
         else if (k === "showAll") { showAll = v; try { localStorage.setItem("tlw.showAll", v ? "1" : "0"); } catch (e) {} renderAll(); }
