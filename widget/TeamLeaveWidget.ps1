@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.4'
+$AppVersion = '2.0.5'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -341,6 +341,10 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .sseg button{padding:4px 10px;font:inherit;font-size:11.5px;border:0;border-radius:7px;background:none;color:var(--muted);font-weight:600;cursor:pointer}
 .sseg button[aria-checked="true"]{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .srange{display:flex;align-items:center;gap:8px;flex:none;width:150px}
+.srange input[type=range]{flex:1 1 auto;width:auto;min-width:0;margin:0;padding:0 2px;height:20px;-webkit-appearance:none;appearance:none;background:transparent;border:0;border-radius:0;box-shadow:none;cursor:pointer;--f:1}
+.srange input[type=range]::-webkit-slider-runnable-track{height:8px;border-radius:4px;box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--muted) 55%,transparent);background:linear-gradient(to right,var(--accent) calc(8px + var(--f) * (100% - 16px)),color-mix(in srgb,var(--line) 60%,var(--bg,#fff)) calc(8px + var(--f) * (100% - 16px)))}
+.srange input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;appearance:none;width:16px;height:16px;margin-top:-4px;border-radius:50%;background:var(--accent);border:0;position:relative;z-index:1}
+.srange input[type=range]:focus-visible{outline:none}.srange input[type=range]:focus-visible::-webkit-slider-thumb{box-shadow:0 0 0 2px var(--bg,#fff),0 0 0 4px var(--accent)}
 .srange input{flex:1;accent-color:var(--accent)}.srange em{font-style:normal;font-size:11.5px;color:var(--muted);width:32px;text-align:right}
 .ssel,.sinp{height:28px;max-width:150px;min-width:0;padding:0 8px;border-radius:8px;border:1px solid var(--line);font:inherit;font-size:12px;background:var(--bg,transparent);color:var(--fg);flex:0 1 150px}
 .snote{margin:-2px 0 6px;font-size:11.5px;color:#c0392b;line-height:1.5}
@@ -1984,7 +1988,7 @@ body.popup .rz{display:none}
     if (setTab === "일반") {
       const op = Math.round((+H.opacity || 1) * 100);
       h += `<div class="sgrp">화면</div>` + seg("theme", H.theme === "dark" ? "dark" : "light", [["light", "라이트"], ["dark", "다크"]], "테마")
-        + `<div class="srow"><div class="st" id="l_op">투명도</div><div class="srange"><input type="range" min="50" max="100" step="10" value="${op}" aria-labelledby="l_op" id="setOp"><em id="setOpV">${op}%</em></div></div>`
+        + `<div class="srow"><div class="st" id="l_op">투명도</div><div class="srange"><input type="range" min="50" max="100" step="10" value="${op}" style="--f:${(op - 50) / 50}" aria-labelledby="l_op" id="setOp"><em id="setOpV">${op}%</em></div></div>`
         + sw("hover", H.hover, "마우스를 올리면 선명하게", "투명할 때 마우스를 올리면 잠깐 100%로")
         + sw("top", H.top, "항상 위에 표시")
         + seg("size", String(H.size || 1), [["0.9", "작게"], ["1", "보통"], ["1.15", "크게"]], "글자 크기")
@@ -2053,7 +2057,7 @@ body.popup .rz{display:none}
     const ex = body.querySelector("#setEx");
     if (ex) ex.onchange = () => uiset("extraNames", ex.value.split(/[,，]/).map(x => x.trim().replace(/\s+/g, "")).filter(Boolean).join(","));
     const op = body.querySelector("#setOp");
-    if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
+    if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; op.style.setProperty("--f", (op.value - 50) / 50); }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
     body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const a = b.dataset.act;
       const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP };
@@ -2643,7 +2647,50 @@ public static class TLW {
 "@
     [TLW]::SetProcessDPIAware() | Out-Null
     # 작업 표시줄에 PowerShell 아이콘 대신 TeamCal 아이콘이 보이도록 (별도 앱으로 묶기)
-    try { [TLW]::SetCurrentProcessExplicitAppUserModelID('TeamCal.Widget') | Out-Null } catch { Write-Log "aumid: $($_.Exception.Message)" }
+    # 작업 표시줄 고정용 창 속성 (실패해도 위젯은 그대로 동작)
+    $script:PinOk = $false
+    try {
+        Add-Type -TypeDefinition @"
+using System; using System.Runtime.InteropServices;
+[ComImport, Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99"), InterfaceType(ComInterfaceType.InterfaceIsIUnknown)]
+public interface ITLWPropStore {
+  [PreserveSig] int GetCount(out uint c);
+  [PreserveSig] int GetAt(uint i, IntPtr key);
+  [PreserveSig] int GetValue(ref TLWPropKey key, IntPtr pv);
+  [PreserveSig] int SetValue(ref TLWPropKey key, ref TLWPropVar pv);
+  [PreserveSig] int Commit();
+}
+[StructLayout(LayoutKind.Sequential, Pack = 4)] public struct TLWPropKey { public Guid fmtid; public uint pid; }
+[StructLayout(LayoutKind.Explicit, Size = 24)] public struct TLWPropVar { [FieldOffset(0)] public ushort vt; [FieldOffset(8)] public IntPtr p; }
+public static class TLWPin {
+  [DllImport("shell32.dll")] static extern int SHGetPropertyStoreForWindow(IntPtr hwnd, ref Guid riid, [MarshalAs(UnmanagedType.Interface)] out ITLWPropStore ps);
+  // 작업 표시줄에 고정할 때 PowerShell 대신 이 앱(아이콘·이름·실행 명령)으로 고정되도록 창 속성을 넣는다
+  public static string SetRelaunch(IntPtr hwnd, string id, string cmd, string icon, string name) {
+    ITLWPropStore ps = null;
+    try {
+      Guid iid = new Guid("886D8EEB-8CF2-4446-8D02-CDBA1DBDCF99");
+      int hr = SHGetPropertyStoreForWindow(hwnd, ref iid, out ps);
+      if (hr != 0 || ps == null) return "hr " + hr;
+      Guid fmt = new Guid("9F4C2855-9F79-4B39-A8D0-E1D42DE1D5F3");
+      // 5 = ID, 2 = RelaunchCommand, 3 = RelaunchIconResource, 4 = RelaunchDisplayNameResource
+      uint[] pids = { 5, 2, 3, 4 }; string[] vals = { id, cmd, icon, name };
+      for (int i = 0; i < pids.Length; i++) {
+        if (String.IsNullOrEmpty(vals[i])) continue;
+        var k = new TLWPropKey { fmtid = fmt, pid = pids[i] };
+        var v = new TLWPropVar { vt = 31, p = Marshal.StringToCoTaskMemUni(vals[i]) };
+        try { ps.SetValue(ref k, ref v); } finally { Marshal.FreeCoTaskMem(v.p); }
+      }
+      ps.Commit();
+      return "ok";
+    } catch (Exception e) { return e.Message; }
+    finally { if (ps != null) Marshal.ReleaseComObject(ps); }
+  }
+}
+"@
+        $script:PinOk = $true
+    } catch { Write-Log "pin-type: $($_.Exception.Message)" }
+    $AppId = 'TeamCal.Widget'
+    try { [TLW]::SetCurrentProcessExplicitAppUserModelID($AppId) | Out-Null } catch { Write-Log "aumid: $($_.Exception.Message)" }
     [System.Windows.Forms.Application]::EnableVisualStyles()
 
     # ---- 4) 저장된 설정 ----
@@ -2679,6 +2726,15 @@ public static class TLW {
     $form.Icon = $icon
     $form.FormBorderStyle = 'None'
     $form.ShowInTaskbar = $true       # — 를 누르면 작업 표시줄로 내려감
+    # 작업 표시줄 고정 시 아이콘이 PowerShell 로 바뀌지 않도록 (창 핸들이 새로 만들어질 때마다)
+    $form.add_HandleCreated({
+        try {
+            if (-not $script:PinOk) { return }
+            if (-not (Test-Path $IconFile)) { Save-AppIcon }
+            $r = [TLWPin]::SetRelaunch($form.Handle, $AppId, "`"$env:SystemRoot\System32\wscript.exe`" `"$Launcher`"", "$IconFile,0", $AppName)
+            if ($r -ne 'ok') { Write-Log "relaunch: $r" }
+        } catch { Write-Log "relaunch: $($_.Exception.Message)" }
+    })
     $form.MaximizeBox = $false        # 머리글 더블클릭으로 최대화되지 않게
     $form.MinimizeBox = $true         # 작업 표시줄 버튼으로 내리기/올리기
     $form.StartPosition = 'Manual'

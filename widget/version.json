@@ -1,5 +1,5 @@
 {
-  "version": "2.0.4",
+  "version": "2.0.5",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "캘린더 칩: 켜진 것만 보이게 접기"
+  "notes": "작업 표시줄 고정 시 로고 유지 · 투명도 바 수정"
 }
