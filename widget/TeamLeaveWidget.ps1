@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.3'
+$AppVersion = '2.0.4'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -274,6 +274,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cchip i{width:8px;height:8px;border-radius:50%;flex:none;box-sizing:border-box;border:1.5px solid var(--c)}
 .cchip[aria-checked="true"]{background:var(--sel);color:var(--fg);font-weight:600}
 .cchip[aria-checked="true"] i{background:var(--c)}
+.cchip.more{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 9px 0 11px;gap:3px}.cchip.more svg{width:12px;height:12px}.cchip.more:hover{color:var(--fg);border-color:var(--fg)}
 .cchip.add{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 11px 0 8px}
 .cchip.add svg{width:11px;height:11px;stroke:var(--accent)}
 .cchip.add:hover{color:var(--fg);border-color:var(--fg)}
@@ -325,6 +326,7 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 
 /* settings */
 .sets{gap:0}
+.swhere{display:flex;flex-direction:column;gap:1px;padding:7px 10px;border-radius:8px;background:var(--soft,rgba(0,0,0,.04));font-size:12px;color:var(--muted)}.swhere b{color:var(--fg);font-size:12.5px}
 .stabs{display:flex;gap:2px;margin:10px -16px 0;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto}
 .stabs button{flex:none;padding:7px 9px 9px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .stabs button[aria-selected="true"]{color:var(--fg);border-color:var(--fg)}
@@ -340,6 +342,8 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .sseg button[aria-checked="true"]{background:var(--bg);color:var(--fg);box-shadow:0 1px 2px rgba(0,0,0,.08)}
 .srange{display:flex;align-items:center;gap:8px;flex:none;width:150px}
 .srange input{flex:1;accent-color:var(--accent)}.srange em{font-style:normal;font-size:11.5px;color:var(--muted);width:32px;text-align:right}
+.ssel,.sinp{height:28px;max-width:150px;min-width:0;padding:0 8px;border-radius:8px;border:1px solid var(--line);font:inherit;font-size:12px;background:var(--bg,transparent);color:var(--fg);flex:0 1 150px}
+.snote{margin:-2px 0 6px;font-size:11.5px;color:#c0392b;line-height:1.5}
 .sbtn{height:28px;padding:0 11px;border-radius:8px;border:1px solid var(--line);font:inherit;font-size:12px;font-weight:600;background:transparent;color:var(--fg);cursor:pointer;flex:none;white-space:nowrap}
 .sbtn:hover{border-color:var(--dot)}.sbtn.pri{background:var(--fg);color:var(--bg);border-color:var(--fg)}.sbtn.dng{color:var(--err)}
 .sacct{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:12px;background:var(--sel);margin:6px 0 2px;font-size:13px}
@@ -499,6 +503,7 @@ body.popup .rz{display:none}
         <label for="sEnd">종료일<input type="date" id="sEnd"></label>
       </div>
       <label for="sMemo">메모 (선택)<input id="sMemo" maxlength="60" placeholder="예: 가족여행 · 급한 건은 카톡" autocomplete="off"></label>
+      <div class="swhere" id="sWhere" hidden><b></b><span></span></div>
       <span class="calc" id="sCalc"></span>
       <div class="acts"><button class="btn" type="button" id="sCancel">취소</button><button class="btn pri" type="submit" id="sOk">등록하기</button></div>
     </form>
@@ -563,6 +568,8 @@ body.popup .rz{display:none}
 <script>
 (() => {
   // ---------------- 설정 (팀 휴가 사이트와 동일) ----------------
+  const EDITION = "internal", EXT = EDITION === "external";   // external: 팀 휴가를 구글 '휴가 캘린더'로
+  if (EXT) document.documentElement.classList.add("ext");
   const CFG = {
     URL: "https://otfggkzxspsvxljogwgj.supabase.co",
     KEY: "sb_publishable_hfmN0pqZmUOiwUYEX61NTw_cgnyS78Z",
@@ -612,7 +619,7 @@ body.popup .rz{display:none}
   let view = new Date(); view.setDate(1);
   let selected = today;
   let gmode = "", gEvents = null, gError = "", gStatus = "", gRetried = false;
-  let gToken = null, gWritable = [], gCals = [], gAllCalIds = new Set(), tcCfg = null, gAutoLogin = true, gLoaded = null, icsText = null;
+  let gToken = null, gWritable = [], gCals = [], gAllCals = [], gAllCalIds = new Set(), tcCfg = null, gAutoLogin = true, gLoaded = null, icsText = null;
   // 불러올 기간: 보고 있는 달 전체 + 오늘부터 2주
   function gWin() {
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -631,6 +638,7 @@ body.popup .rz{display:none}
   }
   // 위젯에서 숨긴 캘린더 (구글 설정은 바꾸지 않음)
   let calPref = {}; try { calPref = JSON.parse(localStorage.getItem("tlw.calPref") || "{}") || {}; } catch (e) {}
+  let chipAll = false; try { chipAll = localStorage.getItem("tlw.chipAll") === "1"; } catch (e) {}   // 꺼 둔 캘린더 칩도 펼쳐 보기
   const calOn = c => (c.id in calPref) ? !!calPref[c.id] : c.selected !== false;
 
   // ======================= 팀 휴가 (Supabase) =======================
@@ -668,6 +676,7 @@ body.popup .rz{display:none}
     }
   }
   async function reload() {
+    if (EXT) return loadLeaveCal();
     if (!sb || !me) return;
     try {
       const since = `${new Date().getFullYear()-1}-01-01`;
@@ -684,6 +693,84 @@ body.popup .rz{display:none}
       if (code === 401 || code === "PGRST301") { await sb.auth.signOut(); return; }
       showDayMsg("일정을 불러오지 못했어요. 잠시 후 자동으로 다시 시도해요.", "err");
     }
+  }
+
+  // ======================= 외부용: 구글 '휴가 캘린더' =======================
+  // 휴가 = 휴가 캘린더의 종일 일정, 제목 "이름 구분" (예: 김설계 연차). 팀원 = 그 캘린더에 나온 이름 + 직접 추가
+  let extPop = { cal: "", name: "" };
+  const extCal = () => lsGet("tlw.leaveCal") || "";
+  const extName = () => (lsGet("tlw.myName") || "").trim();
+  const extExtra = () => (lsGet("tlw.extraNames") || "").split(",").map(x => x.trim()).filter(Boolean);
+  const nextDay = d => { const x = parse(d); x.setDate(x.getDate() + 1); return ymd(x); };
+  const prevDay = d => { const x = parse(d); x.setDate(x.getDate() - 1); return ymd(x); };
+  function extParse(title) {
+    const t = String(title || "").trim().replace(/\s+/g, " ");
+    const m = t.match(/^(\S+)\s+(.+)$/); if (!m) return null;
+    const rest = m[2].replace(/\s/g, "");
+    const type = TYPES.find(x => x === rest) || TYPES.find(x => x !== "기타" && rest.includes(x.replace("·", ""))) ||
+      (/반차/.test(rest) ? (/오후|PM/i.test(rest) ? "오후반차" : "오전반차") : /출장|교육/.test(rest) ? "교육·출장" : /경조/.test(rest) ? "경조휴가" : /병/.test(rest) ? "병가" : /연차|휴가|월차/.test(rest) ? "연차" : "기타");
+    return { name: m[1], type };
+  }
+  function extMembers(list) {
+    members = {};
+    for (const l of list) members[l.user_id] = l.user_id;
+    for (const n of extExtra()) members[n] = n;
+    const my = extName(); if (my) members[my] = my;
+  }
+  function initExt() {
+    me = { id: extName() || "나" };
+    extMembers([]);
+    $("login").hidden = true; $("calWrap").hidden = false; $("daySec").hidden = false;
+    loaded = true; renderAll();
+    setInterval(() => { if (gToken) loadLeaveCal(); }, 5 * 60 * 1000);
+  }
+  let extBusy = false;
+  async function loadLeaveCal() {
+    me = { id: extName() || "나" };
+    const cal = extCal();
+    if (!cal || !gToken || gmode !== "google") { leaves = []; extMembers([]); loaded = true; renderAll(); return; }
+    if (extBusy) return; extBusy = true;
+    try {
+      const y = new Date().getFullYear();
+      const t0 = new Date(y - 1, 0, 1), t1 = new Date(y + 1, 11, 31);
+      const out = []; let page = "";
+      for (let i = 0; i < 10; i++) {
+        const r = await gfetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events?singleEvents=true&orderBy=startTime&maxResults=2500&timeMin=${encodeURIComponent(t0.toISOString())}&timeMax=${encodeURIComponent(t1.toISOString())}&fields=items(id,summary,description,start,end,status),nextPageToken${page ? "&pageToken=" + encodeURIComponent(page) : ""}`, gToken);
+        for (const e of r.items || []) {
+          if (e.status === "cancelled" || !e.start || !e.start.date) continue;   // 종일 일정만
+          const p = extParse(e.summary); if (!p) continue;
+          const end = e.end && e.end.date ? prevDay(e.end.date) : e.start.date;
+          out.push({ id: e.id, user_id: p.name, type: p.type, start_date: e.start.date, end_date: end < e.start.date ? e.start.date : end, memo: e.description || "" });
+        }
+        if (!r.nextPageToken) break; page = r.nextPageToken;
+      }
+      leaves = out; extMembers(out); loaded = true;
+      renderAll();
+    } catch (e) {
+      showDayMsg(e && e.auth ? "구글 연결이 끊겼어요. 다시 로그인해 주세요." : "휴가 캘린더를 불러오지 못했어요. 캘린더 권한을 확인해 주세요.", "err");
+    } finally { extBusy = false; }
+  }
+  async function extAddLeave(start, end, memo) {
+    const cal = extPop.cal || extCal(), name = extPop.name || extName();
+    if (!cal || !name) throw new Error("설정 › 팀 휴가에서 휴가 캘린더와 내 이름을 먼저 정해 주세요.");
+    if (!gToken) throw new Error("구글에 로그인한 뒤 다시 시도해 주세요.");
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events`, {
+      method: "POST", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ summary: `${name} ${sType}`, description: memo || undefined, start: { date: start }, end: { date: nextDay(end) }, transparency: "transparent" })
+    });
+    if (r.status === 401) throw new Error("구글 연결이 만료됐어요. 위젯에서 새로고침 후 다시 시도해 주세요.");
+    if (r.status === 403) throw new Error("이 휴가 캘린더에 일정을 추가할 권한이 없어요. 캘린더 주인에게 '일정 변경' 권한을 요청하세요.");
+    if (!r.ok) throw new Error("저장하지 못했어요 (" + r.status + ")");
+  }
+  async function extDelLeave(id) {
+    const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(extCal())}/events/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: "Bearer " + gToken } });
+    if (!r.ok && r.status !== 410) throw new Error("HTTP " + r.status);
+    await loadLeaveCal();
+  }
+  const extInvite = id => "https://calendar.google.com/calendar/u/0?cid=" + btoa(unescape(encodeURIComponent(id))).replace(/=+$/, "");
+  function copyText(t) {
+    try { navigator.clipboard.writeText(t); return; } catch (e) {}
+    const a = document.createElement("textarea"); a.value = t; document.body.append(a); a.select(); try { document.execCommand("copy"); } catch (e) {} a.remove();
   }
   $("login").addEventListener("submit", async ev => {
     ev.preventDefault();
@@ -884,9 +971,12 @@ body.popup .rz{display:none}
           if (!del.classList.contains("arm")) { del.classList.add("arm"); del.textContent = "삭제 확인"; setTimeout(() => { del.classList.remove("arm"); del.textContent = "삭제"; }, 3000); return; }
           del.disabled = true;
           try {
-            const { data, error } = await sb.from("leaves").delete().eq("id", e.id).select("id");
-            if (error) throw error;
-            toast((data || []).length ? "삭제했어요" : "삭제할 권한이 없어요");
+            if (EXT) { await extDelLeave(e.id); toast("삭제했어요"); }
+            else {
+              const { data, error } = await sb.from("leaves").delete().eq("id", e.id).select("id");
+              if (error) throw error;
+              toast((data || []).length ? "삭제했어요" : "삭제할 권한이 없어요");
+            }
             await reload();
           } catch { toast("삭제하지 못했어요"); del.disabled = false; }
         };
@@ -954,6 +1044,7 @@ body.popup .rz{display:none}
       c.append(b);
     }
     $("sEnd").disabled = HALF.has(sType);
+    if (EXT && extPop.name) { const w = $("sWhere"); if (w && !w.hidden) w.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 등록돼요`; }
   }
   function calc() {
     const s = $("sStart").value, e = HALF.has(sType) ? s : $("sEnd").value, out = $("sCalc");
@@ -969,7 +1060,7 @@ body.popup .rz{display:none}
   function openSheet() {
     if (!me) return;
     if (inHost && !POPUP) {
-      host({ cmd: "popup", kind: "leave", data: { date: selected, uid: me.id,
+      host({ cmd: "popup", kind: "leave", data: { date: selected, uid: me.id, token: gToken, cal: EXT ? extCal() : "", name: EXT ? extName() : "", calName: EXT ? ((gAllCals.find(c => c.id === extCal()) || {}).name || "") : "",
         mine: leaves.filter(l => l.user_id === me.id).map(l => ({ user_id: l.user_id, start_date: l.start_date, end_date: l.end_date })) } });
       return;
     }
@@ -991,15 +1082,15 @@ body.popup .rz{display:none}
     const start = $("sStart").value, end = HALF.has(sType) ? start : $("sEnd").value, memo = $("sMemo").value.trim();
     $("sOk").disabled = true; $("sOk").textContent = "저장 중…";
     try {
-      const { error } = await sb.from("leaves").insert({ type: sType, start_date: start, end_date: end, memo: memo || null });
-      if (error) throw error;
+      if (EXT) await extAddLeave(start, end, memo);
+      else { const { error } = await sb.from("leaves").insert({ type: sType, start_date: start, end_date: end, memo: memo || null }); if (error) throw error; }
       const doneMsg = `${fmtShort(start)}${start !== end ? "~" + fmtShort(end) : ""} ${sType} 등록했어요`;
       if (POPUP) { host({ cmd: "done", msg: doneMsg, date: start }); return; }
       closeSheet(); toast(doneMsg);
       selected = start; const sd = parse(start); view = new Date(sd.getFullYear(), sd.getMonth(), 1);
       await reload();
     } catch (e) {
-      const out = $("sCalc"); out.textContent = "저장하지 못했어요. 다시 로그인한 뒤 시도해 주세요."; out.className = "calc err";
+      const out = $("sCalc"); out.textContent = EXT && e && e.message ? e.message : "저장하지 못했어요. 다시 로그인한 뒤 시도해 주세요."; out.className = "calc err";
     } finally { $("sOk").disabled = false; $("sOk").textContent = "등록하기"; }
   });
 
@@ -1040,7 +1131,9 @@ body.popup .rz{display:none}
   async function loadGoogle(token) {
     const win = gWin(), t0 = win.from, t1 = win.to;
     const cl = await gfetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=100", token);
-    const cals = (cl.items || []).filter(c => !c.hidden);
+    const lvId = EXT ? extCal() : "";
+    gAllCals = (cl.items || []).map(c => ({ id: c.id, name: c.primary ? "내 캘린더" : (c.summaryOverride || c.summary || c.id), color: c.backgroundColor || "", role: c.accessRole }));
+    const cals = (cl.items || []).filter(c => !c.hidden && c.id !== lvId);
     gAllCalIds = new Set((cl.items || []).map(c => c.id));
     const isMine = c => c.primary || c.accessRole === "owner";
     gCals = cals.slice().sort((a, b) => (b.primary ? 2 : isMine(b) ? 1 : 0) - (a.primary ? 2 : isMine(a) ? 1 : 0))
@@ -1050,7 +1143,7 @@ body.popup .rz{display:none}
     const tIds = new Set(tcCfg ? tcCfg.cals.map(c => c.id) : []);
     for (const c of gCals) if (tIds.has(c.id)) c.team = true;
     const extra = tcCfg ? tcCfg.cals.filter(c => !gAllCalIds.has(c.id)).map(c => ({ id: c.id, color: c.color || "#2f6fdb", selected: true, name: c.name || "팀 캘린더", team: true, extra: true })) : [];
-    gWritable = (cl.items || []).filter(c => c.accessRole === "owner" || c.accessRole === "writer")
+    gWritable = (cl.items || []).filter(c => (c.accessRole === "owner" || c.accessRole === "writer") && c.id !== lvId)
       .sort((a, b) => (b.primary ? 1 : 0) - (a.primary ? 1 : 0))
       .map(c => { const n = c.summaryOverride || c.summary || ""; return { id: c.id, color: c.backgroundColor,
         name: c.primary ? ((!n || /@/.test(n)) ? "내 캘린더" : n) + " (기본)" : (n || c.id) }; });
@@ -1073,6 +1166,7 @@ body.popup .rz{display:none}
     gEvents = out; gLoaded = win; gError = ""; gRetried = false;
     try { watchChanges(out, (cl.items || []).find(c => c.primary)); } catch (e) {}
     loadDeadlines(false);
+    if (EXT) loadLeaveCal();
     renderAll(); rfDone();
   }
   function onToken(m) {
@@ -1225,10 +1319,13 @@ body.popup .rz{display:none}
       const chip = c =>
           `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span></button>`;
       if (showCals) {
-        const own = gCals.filter(c => !c.team), team = gCals.filter(c => c.team);
-        if (own.length || gmode === "google") chHtml += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") +
-          (gmode === "google" ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
-        if (team.length) chHtml += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + `</div>`;
+        const offN = gCals.filter(c => !calOn(c)).length, fold = !chipAll && offN > 0;
+        const vis = c => !fold || calOn(c);
+        const own = gCals.filter(c => !c.team && vis(c)), team = gCals.filter(c => c.team && vis(c));
+        const more = offN ? `<button type="button" class="cchip more" id="chipMore" aria-expanded="${!fold}" title="${fold ? "꺼 둔 캘린더도 보기" : "켜진 캘린더만 보기"}">${fold ? `+${offN} 꺼짐` : "접기"}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${fold ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"}"/></svg></button>` : "";
+        if (own.length || gmode === "google") chHtml += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") + (team.length ? "" : more) +
+          (gmode === "google" && !fold ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
+        if (team.length) chHtml += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + more + `</div>`;
       }
       const tEnd = new Date(t0); tEnd.setDate(tEnd.getDate() + 14);
       html += `<div class="gup" id="gUp">`;
@@ -1285,6 +1382,7 @@ body.popup .rz{display:none}
     const gu = body.querySelector("#gUp"); if (gu) gu.addEventListener("scroll", upFade, { passive: true });
     const cc = $("calChips"); cc.innerHTML = chHtml;
     const nc = cc.querySelector("#gNewChip"); if (nc) nc.onclick = () => openNewCalPop(nc);
+    const cm = cc.querySelector("#chipMore"); if (cm) cm.onclick = () => { chipAll = !chipAll; lsSet("tlw.chipAll", chipAll ? "1" : null); renderAll(); const n = $("calChips").querySelector("#chipMore"); if (n) n.focus(); };
     body.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => {
       if (b.dataset.hint === "group") host({ cmd: "open", url: TEAM_GROUP });
       else { lsSet("tlw.hintOff", "1"); renderG(); toast("메뉴 › 내 일정 › 팀 캘린더 안내 다시 보기로 다시 볼 수 있어요"); }
@@ -1295,7 +1393,7 @@ body.popup .rz{display:none}
         calPref[c.id] = !calOn(c);
         try { localStorage.setItem("tlw.calPref", JSON.stringify(calPref)); } catch (e) {}
         renderAll();
-        const nb = $("calChips").querySelector(`[data-cal="${CSS.escape(c.id)}"]`); if (nb) nb.focus();
+        const nb = $("calChips").querySelector(`[data-cal="${CSS.escape(c.id)}"]`) || $("calChips").querySelector("#chipMore"); if (nb) nb.focus();
       };
       // 한 번 클릭 = 보이기/숨기기, 더블클릭 = 초대 링크 (더블클릭일 땐 토글하지 않음)
       b.onclick = e => {
@@ -1830,9 +1928,15 @@ body.popup .rz{display:none}
     selected = data.date || today;
     if (kind === "leave") {
       me = { id: data.uid }; leaves = Array.isArray(data.mine) ? data.mine : [];
-      if (window.supabase) sb = window.supabase.createClient(CFG.URL, CFG.KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "team-leave-auth" } });
+      if (EXT) { gToken = data.token || null; extPop = { cal: data.cal || "", name: data.name || "" }; }
+      else if (window.supabase) sb = window.supabase.createClient(CFG.URL, CFG.KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "team-leave-auth" } });
       openSheet();
-      if (!sb) { const o = $("sCalc"); o.textContent = "팀 휴가 서버에 연결하지 못했어요."; o.className = "calc err"; $("sOk").disabled = true; }
+      if (EXT) {
+        const where = $("sWhere");
+        if (!extPop.cal || !extPop.name) { const o = $("sCalc"); o.textContent = "설정 › 팀 휴가에서 휴가 캘린더와 내 이름을 먼저 정해 주세요."; o.className = "calc err"; $("sOk").disabled = true; }
+        else if (where) { where.hidden = false; where.querySelector("b").textContent = data.calName || "휴가 캘린더"; where.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 등록돼요`; }
+      }
+      else if (!sb) { const o = $("sCalc"); o.textContent = "팀 휴가 서버에 연결하지 못했어요."; o.className = "calc err"; $("sOk").disabled = true; }
     } else if (kind === "gevent") {
       gToken = data.token || null; gWritable = Array.isArray(data.cals) ? data.cals : [];
       openGSheet(data.edit || null);
@@ -1844,14 +1948,16 @@ body.popup .rz{display:none}
     }
   }
   // ======================= 설정 창 =======================
-  const PRIVACY_URL = "https://none-hongcheol.github.io/TeamCal/privacy.html";
-  const HOME_URL = "https://none-hongcheol.github.io/TeamCal/";
+  const PRIVACY_URL = EXT ? "https://none-hongcheol.github.io/TeamCal/external/privacy.html" : "https://none-hongcheol.github.io/TeamCal/privacy.html";
+  const HOME_URL = EXT ? "https://none-hongcheol.github.io/TeamCal/external/" : "https://none-hongcheol.github.io/TeamCal/";
   function openSettings() {
     const prim = gCals.find(c => c.primary);
     const ui = {
       gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
       showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
       ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
+      leaveCal: EXT ? extCal() : "", myName: EXT ? extName() : "", extraNames: EXT ? extExtra().join(",") : "",
+      allCals: EXT ? gAllCals.map(c => ({ id: c.id, name: c.name, color: c.color, w: c.role === "owner" || c.role === "writer" })) : [],
       dlCals: gmode === "google" ? dlEligible().map(c => ({ id: c.id, name: c.name.replace(/ \(기본\)$/, ""), color: c.color || "", on: dlOn(c), has: !!dlData[c.id] })) : []
     };
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
@@ -1861,7 +1967,7 @@ body.popup .rz{display:none}
   const SET_TABS = ["일반", "캘린더", "팀 휴가", "알림", "정보"];
   function showSettings(ui, hs) {
     setUi = ui || {}; setHost = hs || {};
-    $("setVer").textContent = setHost.version ? "TeamCal " + setHost.version : "";
+    $("setVer").textContent = setHost.version ? (EXT ? "TEAM CAL(외부용) " : "TeamCal ") + setHost.version : "";
     renderSettings(); $("setsheet").hidden = false; report();
   }
   function sset(key, value) { host({ cmd: "set", key, value }); }
@@ -1892,8 +1998,21 @@ body.popup .rz{display:none}
       h += sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")
         + (Array.isArray(U.dlCals) && U.dlCals.length ? `<div class="sgrp">데드라인 (캘린더의 마지막 일정까지 D-day)</div>` + U.dlCals.map((c, i) =>
             `<div class="srow"><div class="st" id="l_dl${i}"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>${esc(c.name)}${c.has ? "" : "<small>앞으로의 일정이 없어요</small>"}</div><button type="button" class="ssw" role="switch" aria-labelledby="l_dl${i}" aria-checked="${!!c.on}" data-dlsw="${esc(c.id)}"></button></div>`).join("") : "")
-        + `<div class="sgrp">팀 캘린더 보는 법</div><div class="srow"><div class="st">1. 팀 그룹에 가입하세요<small>2. 가입 후 프로젝트 캘린더 공유 링크를 PM에게 요청하세요. 링크를 열고 [추가]를 누르면 위젯에 자동으로 보여요.</small></div><button type="button" class="sbtn" data-act="group">그룹 열기 ↗</button></div>`
+        + (EXT ? `<div class="sgrp">팀 캘린더 보는 법</div><div class="srow"><div class="st">공유 링크로 추가하세요<small>팀 캘린더 공유 링크를 받아 열고 [추가]를 누르면 위젯에 자동으로 보여요.</small></div></div>`
+          : `<div class="sgrp">팀 캘린더 보는 법</div><div class="srow"><div class="st">1. 팀 그룹에 가입하세요<small>2. 가입 후 프로젝트 캘린더 공유 링크를 PM에게 요청하세요. 링크를 열고 [추가]를 누르면 위젯에 자동으로 보여요.</small></div><button type="button" class="sbtn" data-act="group">그룹 열기 ↗</button></div>`)
         + `<div class="sgrp">기타</div><div class="sbtns"><button type="button" class="sbtn" data-act="gweb">구글 캘린더 열기 ↗</button>${H.gmode === "google" ? "" : `<button type="button" class="sbtn" data-act="gical">iCal 주소로 연결…</button>`}<button type="button" class="sbtn" data-act="gguide">설정 방법 보기</button></div>`;
+    } else if (setTab === "팀 휴가" && EXT) {
+      const cals = Array.isArray(U.allCals) ? U.allCals : [];
+      const cur = cals.find(c => c.id === U.leaveCal);
+      h += `<div class="sgrp">휴가 캘린더</div>`;
+      h += cals.length ? `<div class="srow"><div class="st" id="l_lc">휴가로 쓸 캘린더<small>여기에 “이름 구분” 종일 일정이 휴가로 보여요</small></div><select class="ssel" id="setLc" aria-labelledby="l_lc"><option value="">선택 안 함</option>${cals.map(c => `<option value="${esc(c.id)}"${c.id === U.leaveCal ? " selected" : ""}>${esc(c.name)}${c.w ? "" : " (보기 전용)"}</option>`).join("")}</select></div>`
+        : `<div class="srow"><div class="st">구글 캘린더를 먼저 연결하세요<small>캘린더 탭에서 구글 로그인</small></div></div>`;
+      if (cur && !cur.w) h += `<p class="snote">이 캘린더는 보기 전용이라 휴가 등록은 못 해요. 캘린더 주인에게 ‘일정 변경’ 권한을 요청하세요.</p>`;
+      h += `<div class="srow"><div class="st" id="l_mn">내 이름<small>휴가 제목 앞에 붙어요 · 예: 김설계 연차</small></div><input class="sinp" id="setMn" maxlength="20" value="${esc(U.myName || "")}" placeholder="이름" aria-labelledby="l_mn"></div>`;
+      if (U.leaveCal) h += btn("팀원 초대 링크", "받은 사람이 열고 [추가]를 누르면 이 휴가 캘린더가 보여요", "lcInvite", "링크 복사");
+      h += `<div class="sgrp">팀원</div>` + btn("내 팀원", "휴가 캘린더에 나온 이름 중에서 고르기", "teamPick", "고르기…")
+        + `<div class="srow"><div class="st" id="l_ex">직접 추가한 이름<small>아직 휴가 기록이 없는 사람 · 쉼표로 구분</small></div><input class="sinp" id="setEx" value="${esc(U.extraNames || "")}" placeholder="예: 이구조, 박설비" aria-labelledby="l_ex"></div>`
+        + (U.hasTeam ? sw("showAll", U.showAll, "팀 밖 사람 휴가도 보기", "내 팀원이 아닌 사람은 점선으로") : "");
     } else if (setTab === "팀 휴가") {
       h += `<div class="sgrp">로그인</div>`;
       h += U.teamOn ? `<div class="sacct"><div class="av">${esc((U.teamName || "?").slice(0, 1))}</div><div class="st">${esc(U.teamName || "로그인됨")}<small>팀 휴가 사이트와 같은 계정</small></div><button type="button" class="sbtn" data-act="teamLogout">로그아웃</button></div>`
@@ -1906,10 +2025,10 @@ body.popup .rz{display:none}
         + sw("ntWin", U.ntWin, "Windows 알림도 띄우기", "위젯을 숨겨 두거나 다른 창을 쓸 때")
         + `<div class="sgrp">업데이트</div>` + btn("새 버전 확인", "켤 때 · 30분마다 자동으로 확인해요", "update", "지금 확인");
     } else {
-      h += `<div class="sgrp">TeamCal</div><div class="srow"><div class="st">버전<small>팀 휴가 + 내 일정 위젯</small></div><span style="font-size:12.5px;font-weight:600">${esc(H.version || "")}</span></div>`
+      h += `<div class="sgrp">${EXT ? "TEAM CAL(외부용)" : "TeamCal"}</div><div class="srow"><div class="st">버전<small>팀 휴가 + 내 일정 위젯</small></div><span style="font-size:12.5px;font-weight:600">${esc(H.version || "")}</span></div>`
         + btn("업데이트", "", "update", "확인")
         + btn("홈페이지", "", "home", "열기 ↗") + btn("개인정보처리방침", "", "privacy", "열기 ↗")
-        + `<div class="sgrp">제거</div>` + btn("TeamCal 제거", "설정·로그인 정보가 지워져요", "uninstall", "제거…", "dng");
+        + `<div class="sgrp">제거</div>` + btn(EXT ? "TEAM CAL(외부용) 제거" : "TeamCal 제거", "설정·로그인 정보가 지워져요", "uninstall", "제거…", "dng");
     }
     const body = $("setBody"); body.innerHTML = h;
     body.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => {
@@ -1927,12 +2046,19 @@ body.popup .rz{display:none}
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false"));
       setHost[k] = k === "size" ? +v : v; sset(k, k === "size" ? +v : v);
     });
+    const lc = body.querySelector("#setLc");
+    if (lc) lc.onchange = () => { uiset("leaveCal", lc.value); renderSettings(); };
+    const mn = body.querySelector("#setMn");
+    if (mn) mn.onchange = () => uiset("myName", mn.value.trim().replace(/\s+/g, ""));
+    const ex = body.querySelector("#setEx");
+    if (ex) ex.onchange = () => uiset("extraNames", ex.value.split(/[,，]/).map(x => x.trim().replace(/\s+/g, "")).filter(Boolean).join(","));
     const op = body.querySelector("#setOp");
     if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
     body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const a = b.dataset.act;
       const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP };
       if (urls[a]) { host({ cmd: "open", url: urls[a] }); return; }
+      if (a === "lcInvite") { copyText(extInvite(setUi.leaveCal)); b.textContent = "복사했어요 ✓"; setTimeout(() => { b.textContent = "링크 복사"; }, 1800); return; }
       if (a === "glogout") { setHost.gmode = ""; renderSettings(); }
       if (a === "teamLogout") { setUi.teamOn = false; renderSettings(); }
       host({ cmd: "set", key: "act", value: a });
@@ -1963,6 +2089,7 @@ body.popup .rz{display:none}
       case "openSettings": openSettings(); break;
       case "uipref": {
         const k = m.key, v = !!m.value;
+        if (["leaveCal", "myName", "extraNames"].includes(k)) { lsSet("tlw." + k, m.value ? String(m.value) : null); if (k === "leaveCal") gRequest(); else loadLeaveCal(); break; }
         if (String(k).startsWith("dl:")) setDlOn(String(k).slice(3), v);
         else if (k === "hint") { lsSet("tlw.hintOff", v ? null : "1"); renderG(); }
         else if (k === "ntOn") lsSet("tlw.ntOn", v ? null : "0");
@@ -2069,7 +2196,7 @@ body.popup .rz{display:none}
   }
 
   if (POPUP) { document.body.classList.add("popup"); new ResizeObserver(report).observe($("sForm")); new ResizeObserver(report).observe($("gForm")); new ResizeObserver(report).observe($("tForm")); }
-  else { renderHeader(); renderG(); initSupabase(); }
+  else { renderHeader(); renderG(); if (EXT) initExt(); else initSupabase(); }
   host({ cmd: "ready" });
   window.__tlw = { applyTheme, loadIcs, onToken, openGSheet, initPopup, readGForm, openInvite, setTeamCal, setG: g => { gmode = g; renderG(); }, state: () => ({ gEvents, leaves, members }) };
 })();
@@ -3015,7 +3142,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'size'      { $z = [double]$v; if ($z -ge 0.8 -and $z -le 1.3) { Set-Size $z; if ($script:pop) { try { $script:pop.W.ZoomFactor = $z } catch { } } } }
             'autostart' { Set-AutoStart ([bool]$v) }
             'autoLogin' { Set-AutoLogin ([bool]$v); Send-Config }
-            'ui'        { Send-Main @{ type = 'uipref'; key = [string]$v.key; value = [bool]$v.value } }
+            'ui'        { Send-Main @{ type = 'uipref'; key = [string]$v.key; value = $v.value } }
             'act'       {
                 switch ([string]$v) {
                     'glogin'     { Close-Popup; Start-GoogleLogin }
