@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="ko"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>개인정보처리방침 · TEAM CAL(외부용)</title>
+<style>
+body{margin:0;background:#fbfaf7;color:#1b1b1d;font:15px/1.75 "Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif}
+main{max-width:720px;margin:0 auto;padding:48px 20px 64px}
+h1{font-size:26px;margin:0 0 4px}
+h2{font-size:17px;margin:32px 0 8px}
+p,li{color:#33343a}
+.muted{color:#6b6b70;font-size:13px}
+ul{padding-left:20px}
+a{color:#2754c5}
+</style>
+</head><body><main>
+<h1>개인정보처리방침</h1>
+<p class="muted">TEAM CAL(외부용) (Windows 데스크톱 위젯) · 시행일 2026년 11월 13일</p>
+<p>TEAM CAL(외부용)(이하 "위젯")은 사용자가 지정한 구글 캘린더를 팀 휴가 캘린더로 사용하고, 사용자의 구글 캘린더 일정을 Windows 바탕화면에 보여 주는 도구입니다. 위젯은 별도의 서버를 운영하지 않으며, 사용자의 정보를 위젯 제작자에게 전송하거나 수집하지 않습니다.</p>
+<h2>1. 구글 계정에서 사용하는 정보</h2>
+<ul>
+<li><b>캘린더 목록과 일정</b>(제목, 시간, 장소, 설명, 색상): 위젯 화면에 일정과 팀 휴가를 표시하기 위해 읽습니다.</li>
+<li><b>팀 휴가 캘린더</b>: 사용자가 설정에서 고른 캘린더의 종일 일정 제목에서 이름과 휴가 구분을 읽어 팀원 휴가로 표시합니다.</li>
+<li><b>휴가 등록·삭제</b>: 사용자가 위젯에서 휴가를 등록하면 팀 휴가 캘린더에 "이름 구분" 종일 일정을 만들고, 사용자가 직접 삭제를 누른 본인 휴가 일정만 삭제합니다.</li>
+<li><b>일정 추가·수정·삭제</b>: 사용자가 위젯에서 직접 누른 경우에만 해당 일정을 만들거나 바꾸거나 지웁니다.</li>
+<li><b>새 캘린더</b>: 사용자가 위젯에서 "새 캘린더"를 만들 때에만 사용자의 구글 계정에 캘린더를 만듭니다.</li>
+<li><b>링크 복사</b>: 사용자가 "링크 복사"를 누르면 캘린더·일정 링크를 사용자의 클립보드에 복사합니다. 위젯이 이 링크를 다른 곳에 보내지 않습니다.</li>
+<li>요청하는 권한: <code>calendar.readonly</code>, <code>calendar.events</code>, <code>calendar.app.created</code></li>
+</ul>
+<h2>2. 정보의 저장</h2>
+<ul>
+<li>구글 일정 데이터는 화면 표시를 위해 실행 중인 위젯의 메모리에만 있으며, 별도로 저장하거나 외부로 보내지 않습니다.</li>
+<li>구글 로그인 유지를 위한 토큰은 사용자 PC에만 저장되며, Windows 사용자 계정으로 암호화(DPAPI)됩니다.</li>
+<li>설정(선택한 휴가 캘린더, 내 이름, 직접 추가한 팀원 이름, 화면 설정)은 사용자 PC에만 저장됩니다.</li>
+<li>팀 휴가 일정 자체는 사용자가 지정한 구글 캘린더에 저장되며, 그 캘린더를 공유받은 사람이 볼 수 있습니다. 공유 범위는 캘린더 소유자가 구글 캘린더에서 정합니다.</li>
+</ul>
+<h2>3. 제3자 제공</h2>
+<p>위젯은 사용자의 정보를 판매하거나 제3자에게 제공하지 않습니다. 구글 API에서 받은 정보의 사용은 <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API 서비스 사용자 데이터 정책</a>(제한적 사용 요건 포함)을 따릅니다.</p>
+<h2>4. 연결 해제와 삭제</h2>
+<ul>
+<li>위젯 설정(톱니바퀴) → 캘린더 → "연결 해제"를 누르면 PC에 저장된 로그인 토큰이 삭제됩니다.</li>
+<li>구글 계정 쪽 권한은 <a href="https://myaccount.google.com/permissions">Google 계정 → 보안 → 서드 파티 액세스</a>에서 언제든 삭제할 수 있습니다.</li>
+<li>설정 → 정보 → "TEAM CAL(외부용) 제거"를 누르거나 Windows 앱 목록에서 제거하면 %LOCALAPPDATA%\TeamCalExternal 폴더의 모든 로컬 데이터가 삭제됩니다. 구글 캘린더에 등록한 일정은 지워지지 않습니다.</li>
+</ul>
+<h2>5. 문의</h2>
+<p>문의는 위젯을 배포한 담당자 또는 제작자에게 해 주세요.</p>
+<p><a href="index.html">TEAM CAL(외부용) 소개로 돌아가기</a></p>
+</main></body></html>
