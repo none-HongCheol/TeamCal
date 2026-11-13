@@ -1,5 +1,5 @@
 {
-  "version": "2.0.2",
+  "version": "2.0.3",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "캘린더별 데드라인 (마지막 일정까지 D-day, 캘린더마다 끄기)"
+  "notes": "데드라인에 마지막 일정 내용 표시"
 }

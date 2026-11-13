@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.2'
+$AppVersion = '2.0.3'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -300,7 +300,9 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .dli{display:flex;flex-direction:column;gap:6px;cursor:pointer;border:0;background:none;padding:0;text-align:left;font:inherit;color:inherit;width:100%}
 .dlh{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;min-width:0}
 .dlh i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--c)}
-.dlh .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlh .nm{flex:none;max-width:45%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.dlh .tt{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:500;color:var(--muted)}
+.dlh .tt::before{content:"· ";}
 .dlh b{margin-left:auto;font-size:12px;color:var(--accent);font-variant-numeric:tabular-nums;flex:none}
 .dlh b.past{color:var(--muted)}
 .dlh .off{flex:none;width:18px;height:18px;border-radius:9px;display:none;align-items:center;justify-content:center;color:var(--muted)}
@@ -1471,7 +1473,7 @@ body.popup .rz{display:none}
       const segs = Array.from({ length: 12 }, (_, i) => `<span class="${i < k ? "done" : (i === k ? "now" : "")}"></span>`).join("");
       const dd = left > 0 ? `D-${left}` : (left === 0 ? "D-day" : `D+${-left}`);
       return `<div class="dli" role="button" tabindex="0" data-dl="${esc(c.id)}" style="--c:${esc(c.color || "var(--accent)")}" title="마지막 일정: ${esc(title)} (${md(L)}) · 누르면 그 날짜로">
-        <div class="dlh"><i></i><span class="nm">${esc(c.name.replace(/ \(기본\)$/, ""))}</span><b class="${left < 0 ? "past" : ""}">${dd}</b><span class="off" role="button" tabindex="0" data-dloff="${esc(c.id)}" aria-label="${esc(c.name)} 데드라인 끄기" title="이 캘린더 데드라인 끄기"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
+        <div class="dlh"><i></i><span class="nm">${esc(c.name.replace(/ \(기본\)$/, ""))}</span><span class="tt">${esc(title)}</span><b class="${left < 0 ? "past" : ""}">${dd}</b><span class="off" role="button" tabindex="0" data-dloff="${esc(c.id)}" aria-label="${esc(c.name)} 데드라인 끄기" title="이 캘린더 데드라인 끄기"><svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></span></div>
         <div class="yb" aria-hidden="true">${segs}</div>
         <div class="yl"><span>${md(F)} 시작 · ${done + 1}일째</span><span>${md(L)}(${"일월화수목금토"[L.getDay()]})${left >= 0 ? `까지 ${left}일` : " 지남"}</span></div></div>`;
     }).join("");
