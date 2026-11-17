@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.0.6'
+$AppVersion = '1.0.7'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/external/version.json'
 
 function Write-Log($text) {
@@ -109,7 +109,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .dow div{text-align:center;font-size:11px;font-weight:600;letter-spacing:.04em;color:var(--muted)}
 .dow div:first-child{color:var(--sun)}
 .grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));row-gap:2px}
-.cell{height:54px;border:0;padding:0;margin:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;background:transparent;cursor:pointer}
+.cell{height:var(--cellH,54px);border:0;padding:0;margin:0;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:max(1px,calc((var(--cellH,54px) - 24px) / 6));background:transparent;cursor:pointer}
 .cell:hover{background:var(--sel)}
 .cell.sel{background:var(--sel)}
 .cell.today{box-shadow:inset 0 0 0 1.5px var(--accent)}
@@ -119,6 +119,14 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cell.today .n{opacity:1;color:var(--accent);font-weight:700}
 .cell.red .n{color:var(--sun)}
 .cell.sat .n{color:var(--sat)}
+/* 달력 높이 손잡이: 캘린더 칩 아래 구분선(다음 칸의 윗선) 위에 겹쳐 놓는다 */
+.calgrip{position:relative;z-index:2;height:18px;margin:0 0 -18px;cursor:ns-resize;touch-action:none;outline:none}
+.calgrip::before{content:"";position:absolute;left:0;right:0;bottom:0;border-top:1px solid transparent}
+.calgrip::after{content:"";position:absolute;left:50%;bottom:-2px;width:34px;height:5px;margin-left:-17px;border-radius:3px;background:var(--dot);opacity:0;transition:opacity .15s}
+#calWrap.col .calgrip,#calWrap[hidden] .calgrip{display:none}
+.calgrip:hover::after,.calgrip:focus-visible::after,.calgrip.drag::after{opacity:1}
+.calgrip:hover::before,.calgrip.drag::before{border-top-color:var(--dot)}
+body.gripping,body.gripping *{cursor:ns-resize!important;user-select:none}
 .dots{display:flex;gap:3px;height:8px;align-items:center}
 .tb{display:flex;gap:2px;height:3px}
 .tb{height:4px}
@@ -126,7 +134,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .tb i.me{background:var(--accent);opacity:1}
 .tb i.out{border-radius:0;background:repeating-linear-gradient(90deg,var(--barout) 0 2px,transparent 2px 4px);box-shadow:none}
 /* 넓을 때: 칸 안에 일정 제목 */
-.grid.wide .cell{height:auto;min-height:86px;align-items:stretch;justify-content:flex-start;padding:5px 4px 6px;gap:3px}
+.grid.wide .cell{height:auto;min-height:max(44px,calc(var(--cellH,54px) * 1.6));align-items:stretch;justify-content:flex-start;padding:5px 4px 6px;gap:3px}
 .grid.wide .cell .n{align-self:flex-start;padding-left:3px}
 .evs{display:flex;flex-direction:column;gap:2px;min-width:0}
 .ec{display:block;font-size:10.5px;line-height:1.4;padding:0 4px 0 5px;border-radius:4px;background:color-mix(in srgb,var(--c) 14%,transparent);border-left:2px solid var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--fg);text-align:left}
@@ -227,6 +235,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .btn.danger.arm{background:var(--err);color:#fff;border-color:var(--err)}
 .ev.done .ti{text-decoration:line-through;color:var(--muted)}
 .ev.done .tm{opacity:.6}
+.c12 .ev .tm,.c12 .lv .tm{flex-basis:60px}
 .evx{flex:none;height:20px;min-width:20px;padding:0 4px;margin-top:0;border:0;border-radius:10px;background:transparent;color:var(--muted);font-size:13px;line-height:1;cursor:pointer;opacity:0}
 .ev:hover .evx,.evx:focus-visible,.evx.arm{opacity:1}
 .evx:hover{background:var(--sel);color:var(--fg)}
@@ -275,6 +284,20 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cchip i{width:8px;height:8px;border-radius:50%;flex:none;box-sizing:border-box;border:1.5px solid var(--c)}
 .cchip[aria-checked="true"]{background:var(--sel);color:var(--fg);font-weight:600}
 .cchip[aria-checked="true"] i{background:var(--c)}
+.tlab{display:flex;flex-direction:column;gap:5px;min-width:0}
+.tbtn{height:40px;width:100%;display:flex;align-items:center;justify-content:space-between;padding:0 10px;border-radius:10px;border:1px solid var(--line);background:var(--field);color:var(--fg);font:inherit;font-size:13px;font-weight:500;cursor:pointer;text-align:left}
+.tbtn svg{width:16px;height:16px;opacity:.75;flex:none}
+.tbtn[aria-expanded="true"]{border-color:var(--fg);box-shadow:0 0 0 1px var(--fg)}
+.tpick{position:relative;margin-top:8px;height:160px;border:1px solid var(--line);border-radius:12px;background:var(--field);overflow:hidden}
+.tcols{display:flex;height:100%;position:relative;z-index:1}
+.tcol{flex:1;height:100%;overflow-y:scroll;scroll-snap-type:y mandatory;scrollbar-width:none;overscroll-behavior:contain;outline:none;
+  -webkit-mask-image:linear-gradient(to bottom,transparent,#000 30%,#000 70%,transparent);mask-image:linear-gradient(to bottom,transparent,#000 30%,#000 70%,transparent)}
+.tcol::-webkit-scrollbar{display:none}
+.tcol .pad{height:64px}
+.tcol button{display:block;width:100%;height:32px;border:0;background:none;color:var(--muted);font:inherit;font-size:14px;font-weight:500;scroll-snap-align:center;cursor:pointer;transition:color .12s,font-size .12s}
+.tcol button.on{color:var(--fg);font-size:16px;font-weight:700}
+.tcol:focus-visible{background:color-mix(in srgb,var(--fg) 4%,transparent)}
+.tband{position:absolute;left:8px;right:8px;top:64px;height:32px;border-radius:8px;background:color-mix(in srgb,var(--fg) 7%,transparent);pointer-events:none}
 .grow{display:flex;align-items:center;gap:10px;min-height:28px;margin-top:-2px}.grow .check{margin:0}.gspan{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
 .cchip.more{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 9px 0 11px;gap:3px}.cchip.more svg{width:12px;height:12px}.cchip.more:hover{color:var(--fg);border-color:var(--fg)}
 .cchip.add{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 11px 0 8px}
@@ -468,6 +491,7 @@ body.popup .rz{display:none}
     <div class="legrow"><div class="leg" id="leg" aria-hidden="true"><span id="legMy"><i class="d" style="--c:var(--accent)"></i>내 일정</span><span><i class="bar"></i>팀원 휴가</span><span id="legOut" hidden><i class="bar out"></i>팀 밖</span><span id="legMe" hidden><i class="bar me"></i>내 휴가</span></div><button class="rf" id="bRefresh" type="button" aria-label="새로고침" title="새로고침 (팀 휴가 + 내 일정)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M20 11a8 8 0 1 0-2.3 5.7"/><path d="M20 4v7h-7"/></svg><span id="rfTxt"></span></button></div>
     <div id="calChips" class="calchips"></div>
     </div>
+    <div class="calgrip" id="calGrip" role="separator" aria-orientation="horizontal" tabindex="0" aria-label="달력 높이 조절" aria-valuemin="30" aria-valuemax="54" title="끌어서 달력 높이 조절 · 더블클릭하면 원래대로"></div>
   </div>
 
   <!-- 선택한 날: 내 일정이 먼저, 팀원 휴가는 한 줄 요약 -->
@@ -534,9 +558,12 @@ body.popup .rz{display:none}
         <label for="gDate2">종료일<input type="date" id="gDate2"></label>
       </div>
       <div class="grow"><label class="check" for="gAll"><input type="checkbox" id="gAll">종일</label><span class="gspan" id="gSpan" aria-live="polite"></span></div>
-      <div class="two" id="gTimes">
-        <label for="gStart">시작<input type="time" id="gStart" step="300"></label>
-        <label for="gEnd">종료<input type="time" id="gEnd" step="300"></label>
+      <div id="gTimes">
+        <div class="two">
+          <div class="tlab"><span class="flbl" id="l_gStart">시작</span><button type="button" class="tbtn" id="gStart" value="09:00" aria-labelledby="l_gStart" aria-expanded="false"><span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></button></div>
+          <div class="tlab"><span class="flbl" id="l_gEnd">종료</span><button type="button" class="tbtn" id="gEnd" value="10:00" aria-labelledby="l_gEnd" aria-expanded="false"><span></span><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg></button></div>
+        </div>
+        <div class="tpick" id="tPick" hidden><div class="tcols" id="tCols"></div><div class="tband" aria-hidden="true"></div></div>
       </div>
       <p class="calc" id="gCalNote" hidden></p>
       <div class="fld" id="gCalFld">
@@ -844,7 +871,7 @@ body.popup .rz{display:none}
   }
   function evRow(ev, dayStart) {
     const now = new Date();
-    const tm = ev.all ? "종일" : (dayStart && ev.s < dayStart ? "~" + hhmm(ev.e) : hhmm(ev.s));
+    const tm = ev.all ? "종일" : (dayStart && ev.s < dayStart ? "~" + fmtHM(ev.e, true) : fmtHM(ev.s, true));
     const past = !ev.all && ev.e < now ? " past" : "";
     const key = doneKey(ev), isDone = !!doneMap[key], idx = gEvents.indexOf(ev);
     const canDel = gmode === "google" && ev.id && gWritable.some(c => c.id === ev.cal);
@@ -927,7 +954,7 @@ body.popup .rz{display:none}
         for (const ev of mine.slice(0, show)) {
           const c = document.createElement("span"); c.className = "ec" + (doneMap[doneKey(ev)] ? " dn" : "");
           c.style.setProperty("--c", ev.color || "var(--accent)");
-          c.textContent = (ev.all || (ev.s < d) ? "" : hhmm(ev.s) + " ") + ev.title; c.title = ev.title;
+          c.textContent = (ev.all || (ev.s < d) ? "" : fmtHM(ev.s, true) + " ") + ev.title; c.title = ev.title;
           if (gmode === "google" && ev.id && gWritable.some(w => w.id === ev.cal)) { c.title = ev.title + " (더블클릭해서 수정)"; c.ondblclick = e2 => { e2.stopPropagation(); openEdit(ev); }; }
           dots.append(c);
         }
@@ -1031,6 +1058,35 @@ body.popup .rz{display:none}
   function toast(t) { const el = $("toast"); el.textContent = t; el.hidden = false; clearTimeout(toastT); toastT = setTimeout(() => el.hidden = true, 2200); }
   // ---- 구역 접기 (달력 · 오늘 · 내 일정) ----
   let upCount = 0;
+  // 달력 높이: 아래 선을 위아래로 끌어 칸 높이를 줄인다 (30~54px, 더블클릭 = 원래대로)
+  const CAL_MIN = 30, CAL_MAX = 54;
+  let calH = CAL_MAX; try { const v = +localStorage.getItem("tlw.calH"); if (v >= CAL_MIN && v <= CAL_MAX) calH = v; } catch (e) {}
+  function setCalH(v, save) {
+    calH = Math.round(Math.max(CAL_MIN, Math.min(CAL_MAX, v)));
+    $("grid").style.setProperty("--cellH", calH + "px");
+    $("calGrip").setAttribute("aria-valuenow", calH);
+    if (save) { try { calH === CAL_MAX ? localStorage.removeItem("tlw.calH") : localStorage.setItem("tlw.calH", calH); } catch (e) {} }
+    if (calReady) report();
+  }
+  let calReady = false;
+  (() => {
+    const g = $("calGrip"); if (!g) return;
+    let y0 = 0, h0 = 0, rows = 6;
+    g.addEventListener("pointerdown", e => {
+      e.preventDefault(); g.setPointerCapture(e.pointerId);
+      y0 = e.clientY; h0 = calH; rows = Math.max(1, Math.ceil($("grid").querySelectorAll(".cell").length / 7));
+      g.classList.add("drag"); document.body.classList.add("gripping");
+    });
+    g.addEventListener("pointermove", e => { if (!g.classList.contains("drag")) return; setCalH(h0 + (e.clientY - y0) / rows, false); });
+    const end = () => { if (!g.classList.contains("drag")) return; g.classList.remove("drag"); document.body.classList.remove("gripping"); setCalH(calH, true); };
+    g.addEventListener("pointerup", end); g.addEventListener("pointercancel", end);
+    g.addEventListener("dblclick", () => setCalH(CAL_MAX, true));
+    g.addEventListener("keydown", e => {
+      if (e.key === "ArrowUp") { e.preventDefault(); setCalH(calH - 4, true); }
+      else if (e.key === "ArrowDown") { e.preventDefault(); setCalH(calH + 4, true); }
+    });
+    setCalH(calH, false); calReady = true;
+  })();
   let colSt = {}; try { colSt = JSON.parse(localStorage.getItem("tlw.col") || "{}") || {}; } catch (e) {}
   const COLS = { cal: ["calWrap", "calCh"], day: ["daySec", "dayCh"], g: ["gSec", "gCh"] };
   function applyCol() {
@@ -1464,6 +1520,16 @@ body.popup .rz{display:none}
     report();
   }
   const hhmm = d => `${pad(d.getHours())}:${pad(d.getMinutes())}`;
+  // 시간 표시: 12시간(오전/오후) 또는 24시간 — 설정 › 일반
+  let CLOCK = "12"; try { CLOCK = localStorage.getItem("tlw.clock") === "24" ? "24" : "12"; } catch (e) {}
+  function tLabel(h, m, compact) {
+    if (CLOCK === "24") return `${pad(h)}:${pad(m)}`;
+    const ap = h < 12 ? "오전" : "오후", h12 = h % 12 || 12;
+    return compact ? `${ap}${h12}:${pad(m)}` : `${ap} ${h12}:${pad(m)}`;
+  }
+  const fmtHM = (d, compact) => tLabel(d.getHours(), d.getMinutes(), compact);
+  const clockCls = () => document.documentElement.classList.toggle("c12", CLOCK === "12");
+  clockCls();
 
   // ---------------- 팀 캘린더 같이 보기 (그룹 가입 → 캘린더 추가) ----------------
   const TEAM_GROUP = "https://groups.google.com/g/aaarchi2";
@@ -1494,7 +1560,7 @@ body.popup .rz{display:none}
   }
   let ntItems = [];
   const WD = "일월화수목금토";
-  const fmtWhen = it => { const d = new Date(it.s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})${it.a ? "" : " " + hhmm(d)}`; };
+  const fmtWhen = it => { const d = new Date(it.s); return `${d.getMonth() + 1}/${d.getDate()}(${WD[d.getDay()]})${it.a ? "" : " " + fmtHM(d)}`; };
   function watchChanges(events, primary) {
     const acct = primary ? primary.id : "";
     const t0 = new Date(); t0.setHours(0, 0, 0, 0);
@@ -1555,7 +1621,7 @@ body.popup .rz{display:none}
       let when = fmtWhen(it);
       if (it.kind === "변경" && it.old) {
         const od = new Date(it.old.s);
-        if (it.old.s !== it.s || it.old.e !== it.e) when = (ymd(od) !== ymd(d) ? fmtWhen(it.old) + " → " + fmtWhen(it) : fmtWhen(it.old) + " → " + (it.a ? "종일" : hhmm(d)));
+        if (it.old.s !== it.s || it.old.e !== it.e) when = (ymd(od) !== ymd(d) ? fmtWhen(it.old) + " → " + fmtWhen(it) : fmtWhen(it.old) + " → " + (it.a ? "종일" : fmtHM(d)));
         else if (it.old.t !== it.t) when += ` · '${it.old.t}'에서 이름 변경`;
       }
       return `<li>${one ? "" : `<i style="--c:${esc(cal(it.c).color || "var(--accent)")}"></i>`}<b>${it.kind}</b> ${esc(it.t)} <span>· ${esc(when)}</span></li>`;
@@ -1828,7 +1894,7 @@ body.popup .rz{display:none}
   function openGSheet(edit) {
     if (!gWritable.length) return;
     edit = edit && edit.id ? edit : null;
-    if (inHost && !POPUP) { host({ cmd: "popup", kind: "gevent", data: { date: selected >= today ? selected : today, token: gToken, cals: gWritable, edit } }); return; }
+    if (inHost && !POPUP) { host({ cmd: "popup", kind: "gevent", data: { date: selected >= today ? selected : today, token: gToken, cals: gWritable, edit, clock: CLOCK } }); return; }
     gEdit = edit;
     gSelCal = edit ? edit.cal : (gWritable.find(c => c.id === gSelCal) || gWritable[0]).id;
     const lockCal = !!(edit && edit.rec);   // 반복 일정의 한 회차는 다른 캘린더로 옮길 수 없다
@@ -1853,7 +1919,7 @@ body.popup .rz{display:none}
       for (const id of ["gTitle", "gLoc", "gDesc"]) $(id).value = "";
       gCalc("");
     }
-    $("gNew").hidden = true; renderGCals(); gSpanNote(); gPrevDate = $("gDate").value;
+    $("gNew").hidden = true; renderGCals(); gSpanNote(); gPrevDate = $("gDate").value; tClose();
     $("gsheet").hidden = false; report();
     setTimeout(() => $("gTitle").focus(), 30);
   }
@@ -1865,7 +1931,7 @@ body.popup .rz{display:none}
   $("gClose").onclick = closeGSheet; $("gCancel").onclick = closeGSheet;
   $("gsheet").addEventListener("click", e => { if (e.target === $("gsheet")) closeGSheet(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("gsheet").hidden) closeGSheet(); });
-  $("gAll").addEventListener("change", () => { $("gTimes").hidden = $("gAll").checked; report(); });
+  $("gAll").addEventListener("change", () => { $("gTimes").hidden = $("gAll").checked; if ($("gAll").checked) tClose(); report(); });
   // 기간 일정: 시작일을 옮기면 종료일도 같은 만큼 옮기고, 종료일이 시작일보다 앞서지 않게
   let gPrevDate = "";
   const dayDiff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
@@ -1884,6 +1950,86 @@ body.popup .rz{display:none}
     gPrevDate = a; gSpanNote(); gCalc("");
   });
   $("gDate2").addEventListener("change", () => { gSpanNote(); gCalc(""); });
+  // ---------- 시간 휠 (부드럽게: 휠 한 칸 = 한 항목, 부드러운 스크롤 + 스냅) ----------
+  const T_ROW = 32;
+  let tFor = null;   // 지금 휠이 바꾸는 버튼 (gStart / gEnd)
+  function tSync(b) { const [h, m] = (b.value || "09:00").split(":").map(Number); b.querySelector("span").textContent = tLabel(h, m); }
+  ["gStart", "gEnd"].forEach(id => {
+    const b = $(id); tSync(b);
+    new MutationObserver(() => { tSync(b); if (tFor === b) tFill(); }).observe(b, { attributes: true, attributeFilter: ["value"] });
+    b.onclick = () => { if (tFor === b) tClose(); else tOpen(b); };
+  });
+  function tCols() {
+    const mins = Array.from({ length: 12 }, (_, i) => i * 5);
+    return CLOCK === "24"
+      ? [{ k: "h", items: Array.from({ length: 24 }, (_, i) => [i, pad(i)]), label: "시" }, { k: "m", items: mins.map(m => [m, pad(m)]), label: "분" }]
+      : [{ k: "ap", items: [[0, "오전"], [1, "오후"]], label: "오전/오후" }, { k: "h", items: Array.from({ length: 12 }, (_, i) => [i + 1, String(i + 1)]), label: "시" }, { k: "m", items: mins.map(m => [m, pad(m)]), label: "분" }];
+  }
+  function tParts() {
+    let [h, m] = (tFor.value || "09:00").split(":").map(Number); m = Math.round(m / 5) * 5; if (m === 60) m = 55;
+    return CLOCK === "24" ? { h, m } : { ap: h < 12 ? 0 : 1, h: h % 12 || 12, m };
+  }
+  function tOpen(b) {
+    tFor = b; ["gStart", "gEnd"].forEach(id => $(id).setAttribute("aria-expanded", $(id) === b ? "true" : "false"));
+    const box = $("tCols"); box.replaceChildren();
+    for (const c of tCols()) {
+      const col = document.createElement("div"); col.className = "tcol"; col.dataset.k = c.k; col.tabIndex = 0;
+      col.setAttribute("role", "listbox"); col.setAttribute("aria-label", c.label);
+      col.innerHTML = `<div class="pad"></div>${c.items.map(([v, t]) => `<button type="button" tabindex="-1" data-v="${v}">${t}</button>`).join("")}<div class="pad"></div>`;
+      box.append(col); tWire(col);
+    }
+    $("tPick").hidden = false; tFill(true); report();
+    setTimeout(() => { const f = box.querySelector('[data-k="h"]'); if (f) f.focus({ preventScroll: true }); }, 0);
+  }
+  function tClose() { if (!tFor) return; ["gStart", "gEnd"].forEach(id => $(id).setAttribute("aria-expanded", "false")); $("tPick").hidden = true; tFor = null; report(); }
+  function tFill(instant) {   // 버튼 값 → 각 열 위치
+    if (!tFor || $("tPick").hidden) return;
+    const p = tParts();
+    $("tCols").querySelectorAll(".tcol").forEach(col => {
+      const btns = [...col.querySelectorAll("button")], i = Math.max(0, btns.findIndex(x => +x.dataset.v === p[col.dataset.k]));
+      btns.forEach((x, j) => x.classList.toggle("on", j === i));
+      if (col._busy) return;
+      col._target = i; col.scrollTo({ top: i * T_ROW, behavior: instant ? "auto" : "smooth" });
+    });
+  }
+  function tCommit() {   // 각 열 위치 → 버튼 값
+    if (!tFor) return;
+    const v = {}; $("tCols").querySelectorAll(".tcol").forEach(col => { const b = col.querySelectorAll("button")[col._target || 0]; v[col.dataset.k] = +b.dataset.v; });
+    const h = CLOCK === "24" ? v.h : (v.h % 12) + (v.ap ? 12 : 0);
+    const nv = `${pad(h)}:${pad(v.m)}`;
+    if (nv !== tFor.value) { tFor.value = nv; tFor.dispatchEvent(new Event("change")); }
+  }
+  function tWire(col) {
+    const n = () => col.querySelectorAll("button").length;
+    const go = i => {
+      i = Math.max(0, Math.min(n() - 1, i)); col._target = i; col._busy = true;
+      col.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i));
+      col.scrollTo({ top: i * T_ROW, behavior: "smooth" });
+      clearTimeout(col._t); col._t = setTimeout(() => { col._busy = false; tCommit(); }, 260);
+    };
+    let acc = 0;
+    col.addEventListener("wheel", e => {   // 휠 한 칸에 한 항목씩, 트랙패드는 조금씩 모아서
+      e.preventDefault();
+      acc += e.deltaMode === 1 ? e.deltaY * 16 : e.deltaY;
+      const step = Math.abs(acc) >= 40 ? Math.trunc(acc / 40) || Math.sign(acc) : 0;
+      if (!step) return;
+      acc = 0; go((col._target || 0) + Math.max(-3, Math.min(3, step)));
+    }, { passive: false });
+    col.addEventListener("scroll", () => {   // 끌거나 스크롤바로 움직였을 때
+      if (col._busy) return;
+      const i = Math.round(col.scrollTop / T_ROW);
+      col.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i));
+      clearTimeout(col._t); col._t = setTimeout(() => { col._target = i; tCommit(); }, 140);
+    });
+    col.addEventListener("click", e => { const b = e.target.closest("button"); if (b) go([...col.querySelectorAll("button")].indexOf(b)); });
+    col.addEventListener("keydown", e => {
+      if (e.key === "ArrowDown") { e.preventDefault(); go((col._target || 0) + 1); }
+      else if (e.key === "ArrowUp") { e.preventDefault(); go((col._target || 0) - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); tCommit(); const b = tFor; tClose(); b && b.focus(); }
+      else if (e.key === "Escape") { e.preventDefault(); e.stopPropagation(); const b = tFor; tClose(); b && b.focus(); }
+    });
+  }
+  document.addEventListener("mousedown", e => { if (tFor && !e.target.closest("#tPick") && !e.target.closest(".tbtn")) tClose(); }, true);
   $("gStart").addEventListener("change", () => {
     const [hh, mm] = ($("gStart").value || "09:00").split(":").map(Number);
     const e = new Date(2000, 0, 1, hh + 1, mm); $("gEnd").value = hhmm(e);
@@ -2067,6 +2213,8 @@ body.popup .rz{display:none}
       else if (!sb) { const o = $("sCalc"); o.textContent = "팀 휴가 서버에 연결하지 못했어요."; o.className = "calc err"; $("sOk").disabled = true; }
     } else if (kind === "gevent") {
       gToken = data.token || null; gWritable = Array.isArray(data.cals) ? data.cals : [];
+      if (data.clock) CLOCK = data.clock === "24" ? "24" : "12";
+      tSync($("gStart")); tSync($("gEnd"));
       openGSheet(data.edit || null);
     } else if (kind === "settings") {
       showSettings(data.ui || data, data.host || {});
@@ -2086,6 +2234,7 @@ body.popup .rz{display:none}
       ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
       leaveCal: EXT ? extCal() : "", myName: EXT ? extName() : "", extraNames: EXT ? extExtra().join(",") : "",
       allCals: EXT ? gAllCals.map(c => ({ id: c.id, name: c.name, color: c.color, w: c.role === "owner" || c.role === "writer" })) : [],
+      clock: CLOCK,
       dlCals: gmode === "google" ? dlEligible().map(c => ({ id: c.id, name: c.name.replace(/ \(기본\)$/, ""), color: c.color || "", on: dlOn(c), has: !!dlData[c.id] })) : []
     };
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
@@ -2116,6 +2265,7 @@ body.popup .rz{display:none}
         + sw("hover", H.hover, "마우스를 올리면 선명하게", "투명할 때 마우스를 올리면 잠깐 100%로")
         + sw("top", H.top, "항상 위에 표시")
         + seg("size", String(H.size || 1), [["0.9", "작게"], ["1", "보통"], ["1.15", "크게"]], "글자 크기")
+        + seg("clock", U.clock === "24" ? "24" : "12", [["12", "12시간"], ["24", "24시간"]], "시간 표시")
         + `<div class="sgrp">시작 · 위치</div>` + sw("autostart", H.autostart, "Windows 시작 시 자동 실행")
         + btn("위젯 위치와 크기", "화면 밖으로 사라졌을 때", "resetPos", "처음 위치로");
     } else if (setTab === "캘린더") {
@@ -2172,6 +2322,7 @@ body.popup .rz{display:none}
     body.querySelectorAll("[data-seg]").forEach(b => b.onclick = () => {
       const k = b.dataset.seg, v = b.dataset.v;
       b.parentElement.querySelectorAll("button").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false"));
+      if (k === "clock") { setUi.clock = v; uiset("clock", v); return; }
       setHost[k] = k === "size" ? +v : v; sset(k, k === "size" ? +v : v);
     });
     const lc = body.querySelector("#setLc");
@@ -2217,6 +2368,7 @@ body.popup .rz{display:none}
       case "openSettings": openSettings(); break;
       case "uipref": {
         const k = m.key, v = !!m.value;
+        if (k === "clock") { CLOCK = m.value === "24" ? "24" : "12"; lsSet("tlw.clock", CLOCK === "24" ? "24" : null); clockCls(); renderAll(); break; }
         if (["leaveCal", "myName", "extraNames"].includes(k)) { lsSet("tlw." + k, m.value ? String(m.value) : null); if (k === "leaveCal") gRequest(); else loadLeaveCal(); break; }
         if (String(k).startsWith("dl:")) setDlOn(String(k).slice(3), v);
         else if (k === "hint") { lsSet("tlw.hintOff", v ? null : "1"); renderG(); }
