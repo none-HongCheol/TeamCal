@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.8'
+$AppVersion = '2.0.9'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -417,6 +417,11 @@ body.popup .rz{display:none}
 .ipop input{flex:1;min-width:0;height:32px;border:1px solid var(--line);border-radius:8px;padding:0 9px;background:transparent;color:var(--muted);font-size:11.5px;font-family:inherit}
 .ipop .cp{height:32px;padding:0 12px;border-radius:8px;border:0;background:var(--fg);color:var(--bg);font-weight:600;font-size:12px;cursor:pointer;font-family:inherit;flex:none}
 .ipop p{margin:9px 0 0;color:var(--muted);line-height:1.55;font-size:11.5px}
+.ipop .cl{display:flex;flex-wrap:wrap;gap:6px;margin-top:2px}
+.ipop .cl button{width:19px;height:19px;border-radius:50%;border:0;padding:0;background:var(--k);cursor:pointer;box-shadow:0 0 0 2px var(--bg)}
+.ipop .cl button[aria-checked="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--k)}
+.ipop .cl button:disabled{cursor:default;opacity:.5}
+.ipop .cm{margin:6px 0 0;font-size:11.5px;color:var(--muted);min-height:0}.ipop .cm.err{color:#d23c3c}.ipop .cm button{margin-left:6px;padding:0;border:0;background:none;color:var(--accent);font-weight:600;font-size:11.5px;cursor:pointer;font-family:inherit}
 .ipop .so{margin-top:8px;padding:0;border:0;background:none;color:var(--accent);font-weight:600;font-size:12px;cursor:pointer;font-family:inherit}
 .shd{font-size:11.5px;color:var(--muted);line-height:1.6}
 .pill2{height:28px;padding:0 11px;border-radius:14px;border:1px solid var(--line);background:var(--bg);font-size:11.5px;font-weight:600;cursor:pointer}
@@ -597,7 +602,8 @@ body.popup .rz{display:none}
   };
   const HALF = new Set(["오전반차","오후반차"]);
   const pinPw = pin => `tl-pin-${pin}-calendar`;   // 팀 휴가 사이트와 같은 방식으로 PIN을 비밀번호로 변환
-  const TYPES = ["연차","오전반차","오후반차","경조휴가","병가","교육·출장","기타"];
+  const TYPES = ["연차","오전반차","오후반차","경조휴가","병가","교육·출장","초과근무 보상","기타"];
+  const COUNTED = new Set(["연차","오전반차","오후반차"]);   // 연차에서 차감하는 구분 (팀 휴가 사이트와 같게)
   const PAL = { light:["#2f6fdb","#d2671b","#178a6b","#b0368f","#7656d6","#a07a00","#c23b4a","#2b8fa8"],
                 dark: ["#6f9bff","#ff9a52","#3fc6a0","#e56cc4","#a58bff","#e0b33a","#ff6f80","#4fc3df"] };
   const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
@@ -717,7 +723,7 @@ body.popup .rz{display:none}
     const t = String(title || "").trim().replace(/\s+/g, " ");
     const m = t.match(/^(\S+)\s+(.+)$/); if (!m) return null;
     const rest = m[2].replace(/\s/g, "");
-    const type = TYPES.find(x => x === rest) || TYPES.find(x => x !== "기타" && rest.includes(x.replace("·", ""))) ||
+    const type = TYPES.find(x => x.replace(/\s/g, "") === rest) || (/초과|보상|대휴/.test(rest) ? "초과근무 보상" : "") || TYPES.find(x => x !== "기타" && rest.includes(x.replace("·", ""))) ||
       (/반차/.test(rest) ? (/오후|PM/i.test(rest) ? "오후반차" : "오전반차") : /출장|교육/.test(rest) ? "교육·출장" : /경조/.test(rest) ? "경조휴가" : /병/.test(rest) ? "병가" : /연차|휴가|월차/.test(rest) ? "연차" : "기타");
     return { name: m[1], type };
   }
@@ -1081,7 +1087,7 @@ body.popup .rz{display:none}
     if (!s || !e) { t = "시작일과 종료일을 선택하세요."; bad = true; }
     else if (e < s) { t = "종료일이 시작일보다 빨라요."; bad = true; }
     else if (me && leaves.some(l => l.user_id === me.id && !(sEdit && l.id === sEdit.id) && l.start_date <= e && s <= l.end_date)) { t = "이미 등록한 휴가와 날짜가 겹쳐요."; bad = true; }
-    else { const n = workDays(s, e, sType); t = `차감 기준 ${n}일 (주말·공휴일 제외)`; }
+    else { const n = workDays(s, e, sType); t = COUNTED.has(sType) ? `차감 기준 ${n}일 (주말·공휴일 제외)` : `${n}일 · 연차에서 차감하지 않는 구분이에요`; }
     out.textContent = t; out.className = "calc" + (bad ? " err" : "");
     $("sOk").disabled = bad;
     return !bad;
@@ -1689,6 +1695,36 @@ body.popup .rz{display:none}
   const b64id = id => btoa(unescape(encodeURIComponent(id))).replace(/=+$/, "");
   function closeInvite() { const o = document.querySelector(".ipop"); if (o) o.remove(); document.removeEventListener("mousedown", inviteOutside, true); }
   function inviteOutside(e) { if (!e.target.closest(".ipop") && !e.target.closest(".cchip")) closeInvite(); }
+  // 캘린더 색상: 구글 캘린더 기본 팔레트. 내 캘린더 목록의 표시 색만 바뀐다 (다른 사람 화면은 그대로)
+  const CAL_COLORS = [["#d50000","토마토"],["#e67c73","플라밍고"],["#f4511e","귤"],["#f6bf26","바나나"],["#33b679","세이지"],["#0b8043","바질"],
+    ["#039be5","공작"],["#3f51b5","블루베리"],["#7986cb","라벤더"],["#8e24aa","포도"],["#616161","그래파이트"],["#e0592a","TeamCal 주황"]];
+  const sameColor = (a, b) => String(a || "").toLowerCase() === String(b || "").toLowerCase();
+  async function setCalColor(c, k, pop, cm) {
+    if (!gToken) { cm.className = "cm err"; cm.textContent = "구글에 연결된 뒤 바꿀 수 있어요."; return; }
+    const btns = pop.querySelectorAll(".cl button"); btns.forEach(b => b.disabled = true);
+    cm.className = "cm"; cm.textContent = "바꾸는 중…";
+    try {
+      const h = k.replace("#", ""), n = parseInt(h, 16);
+      const lum = (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;
+      const r = await fetch(`https://www.googleapis.com/calendar/v3/users/me/calendarList/${encodeURIComponent(c.id)}?colorRgbFormat=true`, {
+        method: "PATCH", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" },
+        body: JSON.stringify({ backgroundColor: k, foregroundColor: lum > 0.68 ? "#1d1d1d" : "#ffffff" }) });
+      if (r.status === 403 || r.status === 401) {
+        cm.className = "cm err"; cm.innerHTML = "색을 바꾸려면 구글을 한 번 다시 연결해야 해요.<button type=\"button\">다시 연결</button>";
+        cm.querySelector("button").onclick = () => { closeInvite(); host({ cmd: "glogin" }); };
+        return;
+      }
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      c.color = k;
+      for (const w of gWritable) if (w.id === c.id) w.color = k;
+      if (gEvents) for (const ev of gEvents) if (ev.cal === c.id) ev.color = k;
+      pop.style.setProperty("--c", k);
+      btns.forEach(b => b.setAttribute("aria-checked", sameColor(b.dataset.k, k) ? "true" : "false"));
+      cm.textContent = "색을 바꿨어요. 내 구글 캘린더에도 같이 적용돼요.";
+      renderAll();
+    } catch (e) { cm.className = "cm err"; cm.textContent = "색을 바꾸지 못했어요. 잠시 후 다시 시도해 주세요."; }
+    finally { btns.forEach(b => b.disabled = false); }
+  }
   function openInvite(id) {
     closeInvite();
     const c = gCals.find(x => x.id === id), chip = $("calChips").querySelector(`[data-cal="${CSS.escape(id)}"]`);
@@ -1702,7 +1738,8 @@ body.popup .rz{display:none}
       <div class="il">캘린더 초대 링크</div>
       <div class="ir"><input readonly value="${esc(link)}" aria-label="초대 링크"><button class="cp" type="button">복사</button></div>
       <p>링크를 받은 사람이 열면 이 캘린더가 그 사람 구글 캘린더에 추가돼요.<br>처음 한 번은 공유 설정에서 그 사람 이메일을 추가해 줘야 일정이 보여요.</p>
-      <button class="so" type="button">공유 설정 열기 ↗</button>`;
+      <button class="so" type="button">공유 설정 열기 ↗</button>
+      ${c.extra ? "" : `<div class="il">캘린더 색상 <span style="opacity:.75">· 나에게만 적용, 팀원 화면은 그대로</span></div><div class="cl" role="radiogroup" aria-label="캘린더 색상">${CAL_COLORS.map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-k="${k}" aria-label="${n}" title="${n}" aria-checked="${sameColor(k, c.color)}"></button>`).join("")}</div><p class="cm" aria-live="polite"></p>`}`;
     const r = chip.getBoundingClientRect();
     d.style.top = (r.bottom + window.scrollY + 8) + "px";
     document.body.appendChild(d);
@@ -1710,6 +1747,8 @@ body.popup .rz{display:none}
     inp.onfocus = () => inp.select();
     cp.onclick = async () => { await copyText(link); cp.textContent = "복사됨 ✓"; setTimeout(() => { cp.textContent = "복사"; }, 1800); };
     d.querySelector(".so").onclick = () => host({ cmd: "open", url: settings });
+    const cm = d.querySelector(".cm");
+    d.querySelectorAll(".cl button").forEach(b => b.onclick = () => setCalColor(c, b.dataset.k, d, cm));
     d.querySelector(".x").onclick = () => { closeInvite(); chip.focus(); };
     d.addEventListener("keydown", e => { if (e.key === "Escape") { closeInvite(); chip.focus(); } });
     setTimeout(() => document.addEventListener("mousedown", inviteOutside, true), 0);
@@ -3034,7 +3073,7 @@ public static class TLWPin {
                 try { $form.Activate() } catch { }
             } $null
         } $ctx
-        $scope = [Uri]::EscapeDataString('https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.app.created')
+        $scope = [Uri]::EscapeDataString('https://www.googleapis.com/auth/calendar.readonly https://www.googleapis.com/auth/calendar.events https://www.googleapis.com/auth/calendar.app.created https://www.googleapis.com/auth/calendar.calendarlist')
         $url = "https://accounts.google.com/o/oauth2/v2/auth?client_id=$([Uri]::EscapeDataString($c.Id))&redirect_uri=$([Uri]::EscapeDataString($redirect))&response_type=code&scope=$scope&code_challenge=$challenge&code_challenge_method=S256&access_type=offline&prompt=consent&state=$st"
         Send-UI @{ type = 'gmode'; gmode = 'google' }
         Send-UI @{ type = 'gstatus'; status = 'waiting' }

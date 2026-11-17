@@ -1,5 +1,5 @@
 {
-  "version": "2.0.8",
+  "version": "2.0.9",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "내 휴가 수정 (본인만)"
+  "notes": "휴가 구분 '초과근무 보상' 추가 · 캘린더 칩 더블클릭 창에서 색상 바꾸기"
 }
