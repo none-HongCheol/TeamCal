@@ -1,5 +1,5 @@
 {
-  "version": "2.0.5",
+  "version": "2.0.6",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "작업 표시줄 고정 시 로고 유지 · 투명도 바 수정"
+  "notes": "일정을 기간(시작일~종료일)으로 추가·수정"
 }

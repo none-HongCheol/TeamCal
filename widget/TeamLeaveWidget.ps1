@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.5'
+$AppVersion = '2.0.6'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -274,6 +274,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .cchip i{width:8px;height:8px;border-radius:50%;flex:none;box-sizing:border-box;border:1.5px solid var(--c)}
 .cchip[aria-checked="true"]{background:var(--sel);color:var(--fg);font-weight:600}
 .cchip[aria-checked="true"] i{background:var(--c)}
+.grow{display:flex;align-items:center;gap:10px;min-height:28px;margin-top:-2px}.grow .check{margin:0}.gspan{margin-left:auto;font-size:12px;color:var(--muted);font-weight:600}
 .cchip.more{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 9px 0 11px;gap:3px}.cchip.more svg{width:12px;height:12px}.cchip.more:hover{color:var(--fg);border-color:var(--fg)}
 .cchip.add{border-style:dashed;border-color:var(--dot);color:var(--muted);padding:0 11px 0 8px}
 .cchip.add svg{width:11px;height:11px;stroke:var(--accent)}
@@ -520,9 +521,10 @@ body.popup .rz{display:none}
       <div class="dh"><b id="gTitleH">일정 추가</b><button class="x" type="button" id="gClose" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
       <label for="gTitle">제목<input id="gTitle" maxlength="200" placeholder="예: 구조 검토 미팅" autocomplete="off"></label>
       <div class="two">
-        <label for="gDate">날짜<input type="date" id="gDate"></label>
-        <label class="check" for="gAll" style="align-self:end;height:40px"><input type="checkbox" id="gAll">종일</label>
+        <label for="gDate">시작일<input type="date" id="gDate"></label>
+        <label for="gDate2">종료일<input type="date" id="gDate2"></label>
       </div>
+      <div class="grow"><label class="check" for="gAll"><input type="checkbox" id="gAll">종일</label><span class="gspan" id="gSpan" aria-live="polite"></span></div>
       <div class="two" id="gTimes">
         <label for="gStart">시작<input type="time" id="gStart" step="300"></label>
         <label for="gEnd">종료<input type="time" id="gEnd" step="300"></label>
@@ -1750,19 +1752,19 @@ body.popup .rz{display:none}
     $("gCalNote").hidden = !edit; $("gCalNote").textContent = edit ? `캘린더: ${calName}` : "";
     if (edit) {
       $("gDate").value = edit.date; $("gAll").checked = !!edit.all; $("gTimes").hidden = !!edit.all;
+      { const d2 = parse(edit.date); d2.setDate(d2.getDate() + (edit.span || 0)); $("gDate2").value = ymd(d2); }
       $("gStart").value = edit.all ? "09:00" : edit.s; $("gEnd").value = edit.all ? "10:00" : edit.e;
       $("gTitle").value = edit.title; $("gLoc").value = edit.loc; $("gDesc").value = edit.memo;
-      if (edit.span > 0) gCalc(`${edit.span + 1}일에 걸친 일정이에요. 날짜를 바꾸면 기간은 그대로 옮겨져요.`);
-      else gCalc("");
+      gCalc("");
     } else {
-      $("gDate").value = selected >= today ? selected : today;
+      $("gDate").value = selected >= today ? selected : today; $("gDate2").value = $("gDate").value;
       let h0 = now.getHours() + 1; if (h0 > 22) h0 = 9;
       $("gStart").value = pad(h0) + ":00"; $("gEnd").value = pad(h0 + 1) + ":00";
       $("gAll").checked = false; $("gTimes").hidden = false;
       for (const id of ["gTitle", "gLoc", "gDesc"]) $(id).value = "";
       gCalc("");
     }
-    $("gNew").hidden = true; renderGCals();
+    $("gNew").hidden = true; renderGCals(); gSpanNote(); gPrevDate = $("gDate").value;
     $("gsheet").hidden = false; report();
     setTimeout(() => $("gTitle").focus(), 30);
   }
@@ -1775,6 +1777,24 @@ body.popup .rz{display:none}
   $("gsheet").addEventListener("click", e => { if (e.target === $("gsheet")) closeGSheet(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("gsheet").hidden) closeGSheet(); });
   $("gAll").addEventListener("change", () => { $("gTimes").hidden = $("gAll").checked; report(); });
+  // 기간 일정: 시작일을 옮기면 종료일도 같은 만큼 옮기고, 종료일이 시작일보다 앞서지 않게
+  let gPrevDate = "";
+  const dayDiff = (a, b) => Math.round((parse(b) - parse(a)) / 864e5);
+  function gSpanNote() {
+    const a = $("gDate").value, b = $("gDate2").value, el = $("gSpan");
+    if (!a || !b) { el.textContent = ""; return; }
+    const n = dayDiff(a, b);
+    el.textContent = n > 0 ? `${n + 1}일 일정 · ${md(a)}~${md(b)}` : n < 0 ? "" : "";
+  }
+  const md = d => { const x = parse(d); return `${x.getMonth() + 1}/${x.getDate()}`; };
+  $("gDate").addEventListener("change", () => {
+    const a = $("gDate").value, b = $("gDate2").value;
+    if (a && gPrevDate && b) { const sh = parse(b); sh.setDate(sh.getDate() + dayDiff(gPrevDate, a)); $("gDate2").value = ymd(sh); }
+    else if (a && !b) $("gDate2").value = a;
+    if (a && $("gDate2").value < a) $("gDate2").value = a;
+    gPrevDate = a; gSpanNote(); gCalc("");
+  });
+  $("gDate2").addEventListener("change", () => { gSpanNote(); gCalc(""); });
   $("gStart").addEventListener("change", () => {
     const [hh, mm] = ($("gStart").value || "09:00").split(":").map(Number);
     const e = new Date(2000, 0, 1, hh + 1, mm); $("gEnd").value = hhmm(e);
@@ -1785,15 +1805,18 @@ body.popup .rz{display:none}
     const title = $("gTitle").value.trim(), date = $("gDate").value, all = $("gAll").checked;
     const loc = $("gLoc").value.trim(), url = gEdit ? (gEdit.url || "") : "", memo = $("gDesc").value.trim();
     if (!title) return { err: "제목을 입력하세요.", focus: "gTitle" };
-    if (!date) return { err: "날짜를 선택하세요.", focus: "gDate" };
+    if (!date) return { err: "시작일을 선택하세요.", focus: "gDate" };
+    const date2 = $("gDate2").value || date;
+    const span = dayDiff(date, date2);
+    if (span < 0) return { err: "종료일이 시작일보다 빠를 수 없어요.", focus: "gDate2" };
     let s = "", e = "";
     if (!all) {
       s = $("gStart").value; e = $("gEnd").value;
       if (!s || !e) return { err: "시작·종료 시간을 선택하세요.", focus: "gStart" };
-      if (e <= s && !(gEdit && gEdit.span > 0)) return { err: "종료 시간이 시작 시간보다 늦어야 해요.", focus: "gEnd" };
+      if (e <= s && span === 0) return { err: "종료 시간이 시작 시간보다 늦어야 해요.", focus: "gEnd" };
     }
     const details = [url, memo].filter(Boolean).join("\n");
-    return { title, date, all, s, e, loc, url, details };
+    return { title, date, span, all, s, e, loc, url, details };
   }
   async function copyText(t) {
     host({ cmd: "copy", text: t });
@@ -1803,7 +1826,7 @@ body.popup .rz{display:none}
     const f = readGForm();
     if (f.err) { gCalc(f.err, true); $(f.focus).focus(); return; }
     const ev = { summary: f.title };
-    const span = gEdit ? gEdit.span : 0;
+    const span = f.span;
     if (gEdit) { ev.location = f.loc; ev.description = f.details; }   // 기존 링크(source)는 그대로 둔다
     else { if (f.loc) ev.location = f.loc; if (f.details) ev.description = f.details; }
     if (f.all) { const n = parse(f.date); n.setDate(n.getDate() + 1 + span); ev.start = { date: f.date, dateTime: null }; ev.end = { date: ymd(n), dateTime: null }; }
