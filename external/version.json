@@ -1,5 +1,5 @@
 {
-  "version": "1.0.4",
+  "version": "1.0.5",
   "url": "TeamCalExternal.ps1",
-  "notes": "일정 수정 시 캘린더 바꾸기 · 캘린더 칩에 캘린더 색상"
+  "notes": "내 휴가 수정 (본인만)"
 }

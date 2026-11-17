@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.0.7'
+$AppVersion = '2.0.8'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -206,6 +206,7 @@ button:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline
 .row .ty{font-size:11.5px;color:var(--muted);margin-left:auto;white-space:nowrap}
 .row .memo{font-size:11px;color:var(--muted);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;flex:1}
 .del{height:22px;padding:0 8px;border-radius:11px;border:1px solid var(--line);background:transparent;font-size:11px;color:var(--muted);cursor:pointer;flex:none}
+.del.edt{margin-right:-4px}
 .del.arm{border-color:var(--err);color:var(--err)}
 .empty{font-size:12px;color:var(--muted)}
 .ev{display:flex;gap:8px;font-size:13px;min-width:0}
@@ -771,6 +772,20 @@ body.popup .rz{display:none}
     if (r.status === 403) throw new Error("이 휴가 캘린더에 일정을 추가할 권한이 없어요. 캘린더 주인에게 '일정 변경' 권한을 요청하세요.");
     if (!r.ok) throw new Error("저장하지 못했어요 (" + r.status + ")");
   }
+  async function extUpdLeave(id, start, end, memo) {
+    const cal = extPop.cal || extCal(), name = extPop.name || extName();
+    if (!cal || !name) throw new Error("설정 › 팀 휴가에서 휴가 캘린더와 내 이름을 먼저 정해 주세요.");
+    const url = `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(cal)}/events/${encodeURIComponent(id)}`;
+    const cur = await fetch(url + "?fields=summary", { headers: { Authorization: "Bearer " + gToken } });
+    if (cur.status === 401) throw new Error("구글 연결이 만료됐어요. 위젯에서 새로고침 후 다시 시도해 주세요.");
+    if (!cur.ok) throw new Error("휴가를 찾지 못했어요 (" + cur.status + ")");
+    const p = extParse((await cur.json()).summary);
+    if (!p || p.name !== name) throw new Error("본인 휴가만 수정할 수 있어요.");
+    const r = await fetch(url, { method: "PATCH", headers: { Authorization: "Bearer " + gToken, "Content-Type": "application/json" },
+      body: JSON.stringify({ summary: `${name} ${sType}`, description: memo || "", start: { date: start }, end: { date: nextDay(end) } }) });
+    if (r.status === 403) throw new Error("이 휴가 캘린더를 수정할 권한이 없어요. 캘린더 주인에게 '일정 변경' 권한을 요청하세요.");
+    if (!r.ok) throw new Error("저장하지 못했어요 (" + r.status + ")");
+  }
   async function extDelLeave(id) {
     const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(extCal())}/events/${encodeURIComponent(id)}`, { method: "DELETE", headers: { Authorization: "Bearer " + gToken } });
     if (!r.ok && r.status !== 410) throw new Error("HTTP " + r.status);
@@ -974,6 +989,11 @@ body.popup .rz{display:none}
       const ty = document.createElement("span"); ty.className = "ty"; ty.textContent = e.type + (e.start !== e.end ? ` · ${fmtShort(e.start)}~${fmtShort(e.end)}` : "");
       li.append(dot, nm, memo, ty);
       if (me && e.uid === me.id) {
+        const ed = document.createElement("button"); ed.type = "button"; ed.className = "del edt"; ed.textContent = "수정";
+        ed.setAttribute("aria-label", `${e.type} ${fmtShort(e.start)} 수정`);
+        const goEdit = () => openSheet({ id: e.id, type: e.type, start: e.start, end: e.end, memo: e.memo || "" });
+        ed.onclick = goEdit; li.ondblclick = ev => { if (!ev.target.closest("button")) goEdit(); };
+        li.title = "더블클릭해서 수정"; li.append(ed);
         const del = document.createElement("button"); del.type = "button"; del.className = "del"; del.textContent = "삭제";
         del.setAttribute("aria-label", `${e.type} ${fmtShort(e.start)} 삭제`);
         del.onclick = async () => {
@@ -1043,7 +1063,7 @@ body.popup .rz{display:none}
   $("mNum").parentElement.ondblclick = () => { view = new Date(); view.setDate(1); selected = today; renderAll(); };
 
   // ---------------- 휴가 등록 팝업 ----------------
-  let sType = "연차";
+  let sType = "연차", sEdit = null;   // sEdit: 수정 중인 내 휴가 {id,type,start,end,memo}
   function renderChips() {
     const c = $("chips"); c.replaceChildren();
     for (const t of TYPES) {
@@ -1053,33 +1073,37 @@ body.popup .rz{display:none}
       c.append(b);
     }
     $("sEnd").disabled = HALF.has(sType);
-    if (EXT && extPop.name) { const w = $("sWhere"); if (w && !w.hidden) w.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 등록돼요`; }
+    if (EXT && extPop.name) { const w = $("sWhere"); if (w && !w.hidden) w.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 ${sEdit ? "저장" : "등록"}돼요`; }
   }
   function calc() {
     const s = $("sStart").value, e = HALF.has(sType) ? s : $("sEnd").value, out = $("sCalc");
     let t = "", bad = false;
     if (!s || !e) { t = "시작일과 종료일을 선택하세요."; bad = true; }
     else if (e < s) { t = "종료일이 시작일보다 빨라요."; bad = true; }
-    else if (me && leaves.some(l => l.user_id === me.id && l.start_date <= e && s <= l.end_date)) { t = "이미 등록한 휴가와 날짜가 겹쳐요."; bad = true; }
+    else if (me && leaves.some(l => l.user_id === me.id && !(sEdit && l.id === sEdit.id) && l.start_date <= e && s <= l.end_date)) { t = "이미 등록한 휴가와 날짜가 겹쳐요."; bad = true; }
     else { const n = workDays(s, e, sType); t = `차감 기준 ${n}일 (주말·공휴일 제외)`; }
     out.textContent = t; out.className = "calc" + (bad ? " err" : "");
     $("sOk").disabled = bad;
     return !bad;
   }
-  function openSheet() {
+  function openSheet(edit) {
     if (!me) return;
+    if (edit && edit.type === undefined) edit = null;   // 버튼 클릭 이벤트가 넘어온 경우
     if (inHost && !POPUP) {
-      host({ cmd: "popup", kind: "leave", data: { date: selected, uid: me.id, token: gToken, cal: EXT ? extCal() : "", name: EXT ? extName() : "", calName: EXT ? ((gAllCals.find(c => c.id === extCal()) || {}).name || "") : "",
-        mine: leaves.filter(l => l.user_id === me.id).map(l => ({ user_id: l.user_id, start_date: l.start_date, end_date: l.end_date })) } });
+      host({ cmd: "popup", kind: "leave", data: { date: selected, edit: edit || null, uid: me.id, token: gToken, cal: EXT ? extCal() : "", name: EXT ? extName() : "", calName: EXT ? ((gAllCals.find(c => c.id === extCal()) || {}).name || "") : "",
+        mine: leaves.filter(l => l.user_id === me.id).map(l => ({ id: l.id, user_id: l.user_id, start_date: l.start_date, end_date: l.end_date })) } });
       return;
     }
-    sType = "연차"; $("sStart").value = selected; $("sEnd").value = selected; $("sMemo").value = "";
+    sEdit = edit || null;
+    $("sTitle").textContent = sEdit ? "휴가 수정" : "휴가 등록"; $("sOk").textContent = sEdit ? "저장" : "등록하기";
+    if (sEdit) { sType = TYPES.includes(sEdit.type) ? sEdit.type : "기타"; $("sStart").value = sEdit.start; $("sEnd").value = sEdit.end; $("sMemo").value = sEdit.memo || ""; }
+    else { sType = "연차"; $("sStart").value = selected; $("sEnd").value = selected; $("sMemo").value = ""; }
     renderChips(); calc();
     $("sheet").hidden = false; report();
     setTimeout(() => $("chips").firstChild && $("chips").firstChild.focus(), 30);
   }
   function closeSheet() { if (POPUP) { host({ cmd: "close" }); return; } $("sheet").hidden = true; report(); $("addBtn").focus(); }
-  $("addBtn").onclick = openSheet;
+  $("addBtn").onclick = () => openSheet();
   $("sClose").onclick = closeSheet; $("sCancel").onclick = closeSheet;
   $("sheet").addEventListener("click", e => { if (e.target === $("sheet")) closeSheet(); });
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("sheet").hidden) closeSheet(); });
@@ -1091,16 +1115,31 @@ body.popup .rz{display:none}
     const start = $("sStart").value, end = HALF.has(sType) ? start : $("sEnd").value, memo = $("sMemo").value.trim();
     $("sOk").disabled = true; $("sOk").textContent = "저장 중…";
     try {
-      if (EXT) await extAddLeave(start, end, memo);
+      if (sEdit) {
+        if (EXT) await extUpdLeave(sEdit.id, start, end, memo);
+        else {
+          const row = { type: sType, start_date: start, end_date: end, memo: memo || null };
+          const { data, error } = await sb.from("leaves").update(row).eq("id", sEdit.id).eq("user_id", me.id).select("id");
+          if (error) throw error;
+          if (!(data || []).length) {   // 서버가 수정을 막아 두었으면: 새로 등록하고 예전 것을 지운다 (둘 다 본인 것만 가능)
+            const { data: old } = await sb.from("leaves").select("id").eq("id", sEdit.id).eq("user_id", me.id);
+            if (!(old || []).length) throw new Error("본인 휴가만 수정할 수 있어요.");
+            const ins = await sb.from("leaves").insert(row); if (ins.error) throw ins.error;
+            await sb.from("leaves").delete().eq("id", sEdit.id).eq("user_id", me.id);
+          }
+        }
+      }
+      else if (EXT) await extAddLeave(start, end, memo);
       else { const { error } = await sb.from("leaves").insert({ type: sType, start_date: start, end_date: end, memo: memo || null }); if (error) throw error; }
-      const doneMsg = `${fmtShort(start)}${start !== end ? "~" + fmtShort(end) : ""} ${sType} 등록했어요`;
+      const rng = `${fmtShort(start)}${start !== end ? "~" + fmtShort(end) : ""} ${sType}`;
+      const doneMsg = sEdit ? `휴가를 수정했어요 · ${rng}` : `${rng} 등록했어요`;
       if (POPUP) { host({ cmd: "done", msg: doneMsg, date: start }); return; }
       closeSheet(); toast(doneMsg);
       selected = start; const sd = parse(start); view = new Date(sd.getFullYear(), sd.getMonth(), 1);
       await reload();
     } catch (e) {
-      const out = $("sCalc"); out.textContent = EXT && e && e.message ? e.message : "저장하지 못했어요. 다시 로그인한 뒤 시도해 주세요."; out.className = "calc err";
-    } finally { $("sOk").disabled = false; $("sOk").textContent = "등록하기"; }
+      const out = $("sCalc"); out.textContent = e && e.message && (EXT || /본인/.test(e.message)) ? e.message : "저장하지 못했어요. 다시 로그인한 뒤 시도해 주세요."; out.className = "calc err";
+    } finally { $("sOk").disabled = false; $("sOk").textContent = sEdit ? "저장" : "등록하기"; }
   });
 
   // ======================= 내 일정 (구글 / iCal) =======================
@@ -1980,11 +2019,11 @@ body.popup .rz{display:none}
       me = { id: data.uid }; leaves = Array.isArray(data.mine) ? data.mine : [];
       if (EXT) { gToken = data.token || null; extPop = { cal: data.cal || "", name: data.name || "" }; }
       else if (window.supabase) sb = window.supabase.createClient(CFG.URL, CFG.KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "team-leave-auth" } });
-      openSheet();
+      openSheet(data.edit || null);
       if (EXT) {
         const where = $("sWhere");
         if (!extPop.cal || !extPop.name) { const o = $("sCalc"); o.textContent = "설정 › 팀 휴가에서 휴가 캘린더와 내 이름을 먼저 정해 주세요."; o.className = "calc err"; $("sOk").disabled = true; }
-        else if (where) { where.hidden = false; where.querySelector("b").textContent = data.calName || "휴가 캘린더"; where.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 등록돼요`; }
+        else if (where) { where.hidden = false; where.querySelector("b").textContent = data.calName || "휴가 캘린더"; where.querySelector("span").textContent = `“${extPop.name} ${sType}” 종일 일정으로 ${sEdit ? "저장" : "등록"}돼요`; }
       }
       else if (!sb) { const o = $("sCalc"); o.textContent = "팀 휴가 서버에 연결하지 못했어요."; o.className = "calc err"; $("sOk").disabled = true; }
     } else if (kind === "gevent") {
