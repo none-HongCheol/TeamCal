@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '2.1.0'
+$AppVersion = '2.1.1'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/widget/version.json'
 
 function Write-Log($text) {
@@ -1963,11 +1963,12 @@ body.popup .rz{display:none}
     const mins = Array.from({ length: 12 }, (_, i) => i * 5);
     return CLOCK === "24"
       ? [{ k: "h", items: Array.from({ length: 24 }, (_, i) => [i, pad(i)]), label: "시" }, { k: "m", items: mins.map(m => [m, pad(m)]), label: "분" }]
-      : [{ k: "ap", items: [[0, "오전"], [1, "오후"]], label: "오전/오후" }, { k: "h", items: Array.from({ length: 12 }, (_, i) => [i + 1, String(i + 1)]), label: "시" }, { k: "m", items: mins.map(m => [m, pad(m)]), label: "분" }];
+      // 12시간: 시 열은 0~23시를 12·1·…·11·12·1·…·11로 이어서 보여 줘서, 11시를 넘기면 오전/오후가 저절로 바뀐다
+      : [{ k: "ap", items: [[0, "오전"], [1, "오후"]], label: "오전/오후" }, { k: "h", items: Array.from({ length: 24 }, (_, i) => [i, String(i % 12 || 12)]), label: "시" }, { k: "m", items: mins.map(m => [m, pad(m)]), label: "분" }];
   }
   function tParts() {
     let [h, m] = (tFor.value || "09:00").split(":").map(Number); m = Math.round(m / 5) * 5; if (m === 60) m = 55;
-    return CLOCK === "24" ? { h, m } : { ap: h < 12 ? 0 : 1, h: h % 12 || 12, m };
+    return CLOCK === "24" ? { h, m } : { ap: h < 12 ? 0 : 1, h, m };
   }
   function tOpen(b) {
     tFor = b; ["gStart", "gEnd"].forEach(id => $(id).setAttribute("aria-expanded", $(id) === b ? "true" : "false"));
@@ -1992,17 +1993,18 @@ body.popup .rz{display:none}
       col._target = i; col.scrollTo({ top: i * T_ROW, behavior: instant ? "auto" : "smooth" });
     });
   }
+  let tLastK = "";   // 마지막으로 움직인 열
   function tCommit() {   // 각 열 위치 → 버튼 값
     if (!tFor) return;
     const v = {}; $("tCols").querySelectorAll(".tcol").forEach(col => { const b = col.querySelectorAll("button")[col._target || 0]; v[col.dataset.k] = +b.dataset.v; });
-    const h = CLOCK === "24" ? v.h : (v.h % 12) + (v.ap ? 12 : 0);
+    const h = CLOCK === "24" || tLastK !== "ap" ? v.h : (v.h % 12) + (v.ap ? 12 : 0);
     const nv = `${pad(h)}:${pad(v.m)}`;
     if (nv !== tFor.value) { tFor.value = nv; tFor.dispatchEvent(new Event("change")); }
   }
   function tWire(col) {
     const n = () => col.querySelectorAll("button").length;
     const go = i => {
-      i = Math.max(0, Math.min(n() - 1, i)); col._target = i; col._busy = true;
+      i = Math.max(0, Math.min(n() - 1, i)); col._target = i; col._busy = true; tLastK = col.dataset.k;
       col.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i));
       col.scrollTo({ top: i * T_ROW, behavior: "smooth" });
       clearTimeout(col._t); col._t = setTimeout(() => { col._busy = false; tCommit(); }, 260);
@@ -2019,7 +2021,7 @@ body.popup .rz{display:none}
       if (col._busy) return;
       const i = Math.round(col.scrollTop / T_ROW);
       col.querySelectorAll("button").forEach((x, j) => x.classList.toggle("on", j === i));
-      clearTimeout(col._t); col._t = setTimeout(() => { col._target = i; tCommit(); }, 140);
+      clearTimeout(col._t); col._t = setTimeout(() => { col._target = i; tLastK = col.dataset.k; tCommit(); }, 140);
     });
     col.addEventListener("click", e => { const b = e.target.closest("button"); if (b) go([...col.querySelectorAll("button")].indexOf(b)); });
     col.addEventListener("keydown", e => {
