@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://pa-architect.github.io/team-leave/'
-$AppVersion = '1.0.3'
+$AppVersion = '1.0.4'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/external/version.json'
 
 function Write-Log($text) {
@@ -388,6 +388,9 @@ body.popup .dh button{app-region:no-drag;-webkit-app-region:no-drag}
 body.popup .rz{display:none}
 .fld{display:flex;flex-direction:column;gap:7px}
 .flbl{font-size:11px;font-weight:600;color:var(--muted)}
+.chip.cal{display:inline-flex;align-items:center;gap:6px;padding:0 12px 0 10px}
+.chip.cal i{width:9px;height:9px;border-radius:50%;background:var(--c);flex:none}
+.chip.cal.on{background:var(--c);border-color:var(--c);color:var(--ct,#fff)}.chip.cal.on i{background:var(--ct,#fff);opacity:.9}
 .chip.add{border-style:dashed;border-color:var(--dot);font-weight:600;display:inline-flex;align-items:center;gap:4px}
 .chip.add svg{width:12px;height:12px;stroke:var(--accent)}
 .newcal{display:flex;flex-direction:column;gap:10px;padding:12px;border-radius:12px;background:var(--sel)}
@@ -1167,7 +1170,7 @@ body.popup .rz{display:none}
       const s = all ? parse(e.start.date) : new Date(e.start.dateTime);
       const en = all ? parse(e.end.date) : new Date(e.end.dateTime || e.start.dateTime);
       out.push({ s, e: en, all, title: e.summary || "(제목 없음)", color, cal, id: e.id,
-        loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "" });
+        loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "", rec: e.recurringEventId || "" });
     }
     gEvents = out; gLoaded = win; gError = ""; gRetried = false;
     try { watchChanges(out, (cl.items || []).find(c => c.primary)); } catch (e) {}
@@ -1681,12 +1684,19 @@ body.popup .rz{display:none}
   function renderGCals() {
     const box = $("gCals"); box.replaceChildren();
     for (const c of gWritable) {
-      const b = document.createElement("button"); b.type = "button"; b.className = "chip" + (c.id === gSelCal ? " on" : "");
-      b.textContent = c.name; b.setAttribute("role", "radio"); b.setAttribute("aria-checked", c.id === gSelCal ? "true" : "false");
+      const b = document.createElement("button"); b.type = "button"; b.className = "chip" + (c.color ? " cal" : "") + (c.id === gSelCal ? " on" : "");
+      if (c.color) {
+        b.style.setProperty("--c", c.color);
+        const h = c.color.replace("#", ""), n = parseInt(h.length === 3 ? h.replace(/./g, "$&$&") : h, 16);
+        const lum = (0.299 * (n >> 16 & 255) + 0.587 * (n >> 8 & 255) + 0.114 * (n & 255)) / 255;   // 밝은 색이면 글자를 어둡게
+        if (lum > 0.68) b.style.setProperty("--ct", "#1a1a1a");
+        const dot = document.createElement("i"); dot.setAttribute("aria-hidden", "true"); b.append(dot);
+      }
+      b.append(c.name); b.setAttribute("role", "radio"); b.setAttribute("aria-checked", c.id === gSelCal ? "true" : "false");
       b.onclick = () => { gSelCal = c.id; renderGCals(); };
       box.append(b);
     }
-    if ($("gNew").hidden) {
+    if ($("gNew").hidden && !gEdit) {
       const add = document.createElement("button"); add.type = "button"; add.className = "chip add";
       add.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke-width="2.6" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>새 캘린더';
       add.onclick = openNewCal; box.append(add);
@@ -1734,7 +1744,7 @@ body.popup .rz{display:none}
     if (url && memo.split("\n")[0].trim() === url) memo = memo.split("\n").slice(1).join("\n");
     else if (!url) { const first = memo.split("\n")[0].trim(); if (/^https?:\/\/\S+$/i.test(first)) { url = first; memo = memo.split("\n").slice(1).join("\n"); } }
     const edit = { id: ev.id, cal: ev.cal, title: ev.title === "(제목 없음)" ? "" : ev.title, date: ymd(d0), all: ev.all,
-      s: hhmm(ev.s), e: hhmm(ev.e), span: Math.max(0, Math.round((d1 - d0) / 864e5)), loc: ev.loc || "", url, memo: memo.trim() };
+      s: hhmm(ev.s), e: hhmm(ev.e), span: Math.max(0, Math.round((d1 - d0) / 864e5)), loc: ev.loc || "", url, memo: memo.trim(), rec: ev.rec || "" };
     openGSheet(edit);
   }
   function openGSheet(edit) {
@@ -1743,13 +1753,14 @@ body.popup .rz{display:none}
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "gevent", data: { date: selected >= today ? selected : today, token: gToken, cals: gWritable, edit } }); return; }
     gEdit = edit;
     gSelCal = edit ? edit.cal : (gWritable.find(c => c.id === gSelCal) || gWritable[0]).id;
+    const lockCal = !!(edit && edit.rec);   // 반복 일정의 한 회차는 다른 캘린더로 옮길 수 없다
     const now = new Date();
     $("gTitleH").textContent = edit ? "일정 수정" : "일정 추가";
     $("gOk").textContent = edit ? "저장" : "추가하기";
     $("gDel").hidden = !edit; $("gDel").classList.remove("arm"); $("gDel").textContent = "삭제";
-    $("gCalFld").hidden = !!edit;
+    $("gCalFld").hidden = lockCal;
     const calName = edit ? ((gWritable.find(c => c.id === edit.cal) || {}).name || "") : "";
-    $("gCalNote").hidden = !edit; $("gCalNote").textContent = edit ? `캘린더: ${calName}` : "";
+    $("gCalNote").hidden = !lockCal; $("gCalNote").textContent = lockCal ? `캘린더: ${calName} · 반복 일정은 캘린더를 바꿀 수 없어요` : "";
     if (edit) {
       $("gDate").value = edit.date; $("gAll").checked = !!edit.all; $("gTimes").hidden = !!edit.all;
       { const d2 = parse(edit.date); d2.setDate(d2.getDate() + (edit.span || 0)); $("gDate2").value = ymd(d2); }
@@ -1856,6 +1867,18 @@ body.popup .rz{display:none}
       if (!r.ok) throw new Error("HTTP " + r.status);
       let doneMsg = gEdit ? `${f.title} 일정을 수정했어요` : `${f.title} 일정을 추가했어요`;
       const selfIds = gEdit ? [`${gEdit.cal}|${gEdit.id}`] : [`add|${gSelCal || "primary"}|${f.title}`];
+      // 수정하면서 다른 캘린더를 골랐으면 그 캘린더로 옮긴다
+      if (gEdit && gSelCal && gSelCal !== gEdit.cal && !gEdit.rec) {
+        const dest = (gWritable.find(c => c.id === gSelCal) || {}).name || "다른 캘린더";
+        const mv = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(gEdit.cal)}/events/${encodeURIComponent(gEdit.id)}/move?destination=${encodeURIComponent(gSelCal)}`, {
+          method: "POST", headers: { Authorization: "Bearer " + gToken } });
+        if (mv.ok) { doneMsg = `${f.title} 일정을 '${dest.replace(/ \(기본\)$/, "")}' 캘린더로 옮겼어요`; selfIds.push(`${gSelCal}|${gEdit.id}`); }
+        else {
+          gCalc(mv.status === 403 ? "내용은 저장했지만 캘린더는 옮기지 못했어요. 원래 캘린더나 옮길 캘린더의 권한을 확인해 주세요." : "내용은 저장했지만 캘린더는 옮기지 못했어요. 잠시 후 다시 시도해 주세요.", true);
+          if (!POPUP) gRequest();
+          return;
+        }
+      }
       if (POPUP) { host({ cmd: "done", msg: doneMsg, date: f.date, ids: selfIds }); return; }
       selfFrom(selfIds);
       closeGSheet(); toast(doneMsg);

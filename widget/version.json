@@ -1,5 +1,5 @@
 {
-  "version": "2.0.6",
+  "version": "2.0.7",
   "url": "TeamLeaveWidget.ps1",
-  "notes": "일정을 기간(시작일~종료일)으로 추가·수정"
+  "notes": "일정 수정 시 캘린더 바꾸기 · 캘린더 칩에 캘린더 색상"
 }
