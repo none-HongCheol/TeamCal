@@ -23,7 +23,7 @@ $Launcher   = Join-Path $AppDir 'launch.vbs'
 $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
-$SiteUrl    = 'https://pa-architect.github.io/team-leave/'
+$SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
 $AppVersion = '1.0.8'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/external/version.json'
 
@@ -60,7 +60,6 @@ $WidgetHtml = @'
 <title>TEAM CAL(외부용)</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#fbfaf7; --fg:#1b1b1d; --muted:#6b6b70; --line:#ebe8e1; --sel:#f0ede6; --field:#ffffff;
@@ -613,9 +612,9 @@ body.popup .rz{display:none}
   const EDITION = "external", EXT = EDITION === "external";   // external: 팀 휴가를 구글 '휴가 캘린더'로
   if (EXT) document.documentElement.classList.add("ext");
   const CFG = {
-    URL: "https://otfggkzxspsvxljogwgj.supabase.co",
-    KEY: "sb_publishable_hfmN0pqZmUOiwUYEX61NTw_cgnyS78Z",
-    SITE: "https://pa-architect.github.io/team-leave/"
+    URL: "",
+    KEY: "",
+    SITE: ""
   };
   const HOLIDAYS = {
     "2026-01-01":"신정","2026-02-16":"설날 연휴","2026-02-17":"설날","2026-02-18":"설날 연휴","2026-03-01":"삼일절","2026-03-02":"대체공휴일",
