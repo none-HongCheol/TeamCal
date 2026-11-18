@@ -24,7 +24,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '0.2.0'
+$AppVersion = '0.2.1'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/beta/version.json'
 
 function Write-Log($text) {
@@ -393,6 +393,19 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .fcon .ok{color:#1e9e5a;font-size:12.5px;font-weight:700;flex:none}.fcon .soon{color:var(--muted);font-size:12px;flex:none}
 .fcon .sbtn{flex:none}
 .cchip.conn{border-style:dashed}
+button.fcon{width:100%;text-align:left;font:inherit;color:inherit;background:var(--bg);cursor:pointer}
+button.fcon[aria-checked="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.fcon.dis{opacity:.55}
+.fck{width:20px;height:20px;border-radius:6px;border:1.6px solid var(--dot);flex:none;display:grid;place-items:center}
+[aria-checked="true"]>.fck{background:var(--fg);border-color:var(--fg)}
+[aria-checked="true"]>.fck::after{content:"";width:9px;height:5px;border:2px solid var(--bg);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+.fq{font-size:15px;margin:12px 0 3px}
+.fmade{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:color-mix(in srgb,var(--c) 14%,transparent);font-weight:700;font-size:13px;margin-top:10px}
+.finv{border:1px dashed var(--dot);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:12.5px;line-height:1.5}
+.lo.sm{width:22px;height:22px;border-radius:6px;font-size:11px;line-height:1;display:grid;place-items:center;color:#fff;font-weight:800;flex:none;background:var(--c)}
+.lo.g.sm{background:#fff;border:1px solid var(--line)}.lo.sm svg{width:13px;height:13px}
+.frow .soon{color:var(--muted);font-size:11.5px}
+.fsub{font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 0}
 .fcard{border:1px solid var(--line);border-radius:12px;padding:8px 11px;margin:8px 0}
 .fcard .fh{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:700}
 .fcard .fh small{font-weight:500;color:var(--muted);font-size:11px;margin-left:auto}
@@ -2330,7 +2343,7 @@ body.popup .rz{display:none}
   // ---------- 0.2.0: 계정 먼저 · 구글 없이도 공유 칩 · 양방향 사본 ----------
   const MIR_PRE = "TeamCal · ", GAPI = "https://www.googleapis.com/calendar/v3";
   let gMirAll = [], bMir = new Set((() => { try { return JSON.parse(localStorage.getItem("tcb.mir") || "[]"); } catch (e) { return []; } })());
-  let bCalKey = null, bLoadedOk = false, fGate = false, bSyncBusy = false, bSyncAgain = false, bSyncAt = 0, bSyncErr = "", bSyncT = null, bSyncForce = false;
+  let bLinked = new Set(), bCalKey = null, bLoadedOk = false, fGate = false, bSyncBusy = false, bSyncAgain = false, bSyncAt = 0, bSyncErr = "", bSyncT = null, bSyncForce = false;
   const isMir = c => bMir.has(c.id) || (c.accessRole === "owner" && String(c.summary || "").startsWith(MIR_PRE));
   function bOnly() { return BETA && !!bUser && gmode !== "ical" && !(gmode === "google" && gToken && gLoaded); }
   function gUse() { return gmode === "google" || bOnly(); }
@@ -2407,13 +2420,15 @@ body.popup .rz{display:none}
       const rows = r.data || [], mine = new Map(rows.map(m => [m.cal_id, m]));
       for (const m of rows) bMir.add(m.mirror_cal_id);
       const joined = new Set(bCals.map(c => c.raw));
-      for (const m of rows) if (!joined.has(m.cal_id)) {      // 나갔거나 지워진 공유 칩 → 내 구글의 사본도 정리
-        if (m.account === acct) { try { await gj("DELETE", `${GAPI}/calendars/${enc(m.mirror_cal_id)}`); } catch (e) { if (![403, 404, 410].includes(e.status)) throw e; } }
+      for (const m of rows) if (!joined.has(m.cal_id) || m.sync_token === "off") {      // 나갔거나 지워졌거나 연결을 끈 공유 칩 → 내 구글의 사본 정리
+        mine.delete(m.cal_id);
+        if (m.mirror_cal_id && m.account === acct) { try { await gj("DELETE", `${GAPI}/calendars/${enc(m.mirror_cal_id)}`); } catch (e) { if (![403, 404, 410].includes(e.status)) throw e; } }
         await sb.from("mirror_links").delete().eq("user_id", bUser.id).eq("provider", "google").eq("cal_id", m.cal_id);
         await sb.from("mirror_cals").delete().eq("user_id", bUser.id).eq("provider", "google").eq("cal_id", m.cal_id);
         bMir.delete(m.mirror_cal_id);
       }
-      for (const c of bCals) if (await bSyncCal(sb, c, mine.get(c.raw), acct)) changed = true;
+      for (const c of bCals) { const m = mine.get(c.raw); if (m && await bSyncCal(sb, c, m.mirror_cal_id ? m : null, acct)) changed = true; }   // 연결하기로 고른 칩만
+      bLinked = new Set(mine.keys());
       bSyncAt = Date.now(); bSyncErr = "";
     } catch (e) {
       console.warn("TeamCal sync", e);
@@ -2554,7 +2569,8 @@ body.popup .rz{display:none}
     const t = !bUser ? "TeamCal 계정 · 로그인" : bBadgeN ? `TeamCal 친구 · 새 요청 ${bBadgeN}` : "TeamCal 친구 · 공유 칩";
     b.title = t; b.setAttribute("aria-label", t);
   }
-  function openFriends(tab) { if (inHost) host({ cmd: "popup", kind: "friends", data: { tab: tab || "" } }); }
+  function gState() { const p = gCals.find(c => c.primary); return { gOn: gmode === "google" && !!gToken, gMail: p ? p.id : "" }; }
+  function openFriends(tab, extra) { if (inHost) host({ cmd: "popup", kind: "friends", data: Object.assign({ tab: tab || "" }, gState(), extra || {}) }); }
   async function bLoad() {
     if (!BETA || POPUP) return;
     const sb = bClient(); if (!sb) return;
@@ -2653,7 +2669,8 @@ body.popup .rz{display:none}
     const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", r = new Uint32Array(12); crypto.getRandomValues(r);
     const c = Array.from(r, x => A[x % A.length]).join(""); return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`;
   }
-  function showFriends(data) { if (data && data.tab) fTab = data.tab; $("fsheet").hidden = false; fRender(); }
+  let fG = { gOn: false, gMail: "" }, fLink = null;
+  function showFriends(data) { if (data && data.tab) fTab = data.tab; if (data && "gOn" in data) fG = { gOn: !!data.gOn, gMail: data.gMail || "" }; $("fsheet").hidden = false; fRender(); }
   $("fClose").onclick = () => { if (POPUP) host({ cmd: "close" }); else { $("fsheet").hidden = true; report(); } };
   document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("fsheet").hidden) $("fClose").click(); });
   async function fRender() {
@@ -2860,11 +2877,55 @@ body.popup .rz{display:none}
     fMsg(error ? "요청을 보내지 못했어요." : `${p.display_name}님에게 친구 요청을 보냈어요.`, !!error); fSync(); fRender();
   }
   // --- 공유 칩 탭 ---
+  // --- 공유 칩 ↔ 내 캘린더 연결 고르기 (만들 때 · 초대를 수락할 때 · 칩 카드에서) ---
+  async function fSetLink(sb, calId, on) {
+    const me = bUser.id, k = q => q.eq("user_id", me).eq("provider", "google").eq("cal_id", calId);
+    const ex = (await k(sb.from("mirror_cals").select("cal_id,mirror_cal_id")).maybeSingle()).data;
+    if (on) return ex ? k(sb.from("mirror_cals").update({ sync_token: null, updated_at: new Date().toISOString() }))
+      : sb.from("mirror_cals").insert({ user_id: me, cal_id: calId, provider: "google", account: "", mirror_cal_id: "" });
+    if (!ex) return { error: null };
+    return ex.mirror_cal_id ? k(sb.from("mirror_cals").update({ sync_token: "off" })) : k(sb.from("mirror_cals").delete());   // 사본 지우기는 위젯이
+  }
+  const LG = `<span class="lo g">${G_LOGO}</span>`;
+  const soonOpt = (c, l, t) => `<div class="fcon dis"><span class="lo" style="--c:${c}">${l}</span><div class="ft"><b>${t}</b><small>다음 업데이트에서</small></div><span class="soon">준비 중</span></div>`;
+  function fLinkView(sb) {
+    const L = fLink, body = $("fBody"), join = L.mode === "join";
+    const head = join ? `<div class="finv"><b>${esc(L.by)}</b>님이 <b>${esc(L.name)}</b>에 초대했어요 · ${ROLE[L.role] || ""}</div>`
+      : `<div class="fmade" style="--c:${esc(L.color)}"><span class="fdot"></span>${esc(L.name)} · 만들었어요</div>`;
+    const draw = () => {
+      body.innerHTML = head + `<h3 class="fq">어디에 연결할까요?</h3>
+        <p class="fnote" style="margin-top:0">${join ? "지금 안 골라도 공유 칩은 위젯에 보여요. 나중에 공유 칩 카드에서 바꿀 수 있어요." : `고른 캘린더에 ‘TeamCal · ${esc(L.name)}’이 생기고, 거기서 넣고 고친 일정도 함께 쓰는 사람들에게 반영돼요.`}</p>
+        <button type="button" class="fcon" role="checkbox" aria-checked="${L.g}" id="flG">${LG}<div class="ft"><b>Google 캘린더</b><small>${fG.gOn ? esc(fG.gMail || "연결됨") : L.g ? "고르면 구글 로그인 창이 열려요" : "연결 안 됨"}</small></div>${fG.gOn || L.g ? `<span class="fck" aria-hidden="true"></span>` : `<span class="sbtn" aria-hidden="true">구글 연결</span>`}</button>`
+        + soonOpt("#03c75a", "N", "네이버 캘린더") + soonOpt("#0f6cbd", "O", "Outlook")
+        + `<button type="button" class="fbtn" id="flGo">${join ? (L.g ? "수락하고 연결하기" : "수락하기") : (L.g ? "연결하기" : "완료")}</button>
+        <div style="text-align:center"><button type="button" class="flink" id="flSkip">${join ? "수락만 할게요" : "TeamCal에만 둘게요"}</button></div>`;
+      $("flG").onclick = () => { L.g = !L.g; draw(); };
+      $("flGo").onclick = () => go(L.g); $("flSkip").onclick = () => go(false);
+      report();
+    };
+    const go = async link => {
+      $("flGo").disabled = true; $("flSkip").disabled = true;
+      if (join) {
+        const { error } = await sb.from("shared_members").update({ status: "joined" }).eq("cal_id", L.cal).eq("user_id", bUser.id);
+        if (error) { fMsg("참여하지 못했어요.", true); $("flGo").disabled = false; $("flSkip").disabled = false; return; }
+      }
+      let err = null; if (link) err = (await fSetLink(sb, L.cal, true)).error;
+      fLink = null; fOpen = L.cal;
+      fMsg(err ? "공유 칩은 됐지만 구글 연결을 저장하지 못했어요. 칩 카드에서 다시 켜 주세요." : link ? (fG.gOn ? `구글에 ‘TeamCal · ${L.name}’을 만들고 있어요.` : "구글에 로그인하면 바로 만들어져요.") : (join ? "공유 칩에 참여했어요." : L.msg || ""), !!err);
+      fSync();
+      if (link && !fG.gOn && !err) { host({ cmd: "glogin" }); return; }
+      fRender();
+    };
+    $("fTitle").textContent = "TeamCal 친구";
+    draw();
+  }
   async function fChips(sb) {
+    if (fLink) return fLinkView(sb);
     const me = bUser.id;
-    const [{ data: mine, error }, fc] = await Promise.all([
+    const [{ data: mine, error }, fc, mr] = await Promise.all([
       sb.from("shared_members").select("cal_id,role,status,invited_by,shared_cals(id,name,color,owner)").eq("user_id", me),
-      fLoadFriends(sb)]);
+      fLoadFriends(sb), sb.from("mirror_cals").select("cal_id,mirror_cal_id,sync_token,updated_at").eq("user_id", me).eq("provider", "google")]);
+    const mrow = new Map(((mr && mr.data) || []).filter(x => x.sync_token !== "off").map(x => [x.cal_id, x]));
     if (error) throw error;
     const rows = (mine || []).filter(r => r.shared_cals);
     const ids = rows.filter(r => r.status === "joined").map(r => r.cal_id);
@@ -2881,7 +2942,13 @@ body.popup .rz{display:none}
       const c = r.shared_cals, ms = (allm || []).filter(m => m.cal_id === r.cal_id), isOwner = r.role === "owner", open = fOpen === r.cal_id;
       h += `<div class="fcard" style="--c:${esc(c.color)}"><div class="fh" data-open="${r.cal_id}" role="button" tabindex="0" aria-expanded="${open}"><span class="fdot"></span>${esc(c.name)}<small>${ROLE[r.role]} · ${ms.filter(m => m.status === "joined").length}명</small></div>`;
       if (open) {
-        h += `<div class="fx">` + ms.sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0)).map(m => {
+        const lk = mrow.get(r.cal_id);
+        const gsub = !lk ? "연결 안 함" : lk.mirror_cal_id ? `양방향 · 마지막 ${fmtHM(new Date(lk.updated_at), true)}` : fG.gOn ? "곧 만들어져요" : "구글을 연결하면 만들어져요";
+        h += `<div class="fx"><div class="fsub">내 캘린더에 연결</div>
+          <div class="frow"><span class="lo g sm">${G_LOGO}</span><div class="ft" id="lk_${r.cal_id}">Google<small>${gsub}</small></div><button type="button" class="ssw" role="switch" aria-checked="${!!lk}" aria-labelledby="lk_${r.cal_id}" data-lsw="${r.cal_id}"></button></div>
+          <div class="frow" style="opacity:.55"><span class="lo sm" style="--c:#03c75a">N</span><div class="ft">네이버</div><span class="soon">준비 중</span></div>
+          <div class="frow" style="opacity:.55"><span class="lo sm" style="--c:#0f6cbd">O</span><div class="ft">Outlook</div><span class="soon">준비 중</span></div>
+          <div class="fsub">멤버</div>` + ms.sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0)).map(m => {
           const p = prof(m.user_id), wait = m.status === "invited" ? " · 수락 대기" : "";
           const ctl = isOwner && m.role !== "owner"
             ? `<select class="fsel" data-role="${r.cal_id}|${m.user_id}" aria-label="${esc(p.display_name)} 권한"><option value="editor"${m.role === "editor" ? " selected" : ""}>편집 가능</option><option value="viewer"${m.role === "viewer" ? " selected" : ""}>보기만</option></select><button type="button" class="sbtn" data-kick="${r.cal_id}|${m.user_id}" aria-label="${esc(p.display_name)} 내보내기">빼기</button>`
@@ -2909,9 +2976,17 @@ body.popup .rz{display:none}
     const body = $("fBody"); body.innerHTML = h;
     const done = (msg, err) => { fMsg(msg, err); fSync(); fRender(); };
     body.querySelectorAll("[data-open]").forEach(el => { const go = () => { fOpen = fOpen === el.dataset.open ? "" : el.dataset.open; fRender(); }; el.onclick = go; el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }; });
-    body.querySelectorAll("[data-join]").forEach(b => b.onclick = async () => {
-      b.disabled = true; const { error } = await sb.from("shared_members").update({ status: "joined" }).eq("cal_id", b.dataset.join).eq("user_id", me);
-      done(error ? "참여하지 못했어요." : "공유 칩에 참여했어요. 위젯에 바로 보여요.", !!error);
+    body.querySelectorAll("[data-join]").forEach(b => b.onclick = () => {
+      const r = inv.find(x => x.cal_id === b.dataset.join); if (!r) return;
+      fLink = { mode: "join", cal: r.cal_id, name: r.shared_cals.name, color: r.shared_cals.color, role: r.role, by: prof(r.invited_by).display_name, g: fG.gOn };
+      fMsg(""); fRender();
+    });
+    body.querySelectorAll("[data-lsw]").forEach(b => b.onclick = async () => {
+      const on = b.getAttribute("aria-checked") !== "true", cid = b.dataset.lsw, nm = (joined.find(x => x.cal_id === cid) || {}).shared_cals.name;
+      b.disabled = true; const { error } = await fSetLink(sb, cid, on);
+      if (error) { b.disabled = false; fMsg("바꾸지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+      if (on && !fG.gOn) { fMsg("구글에 로그인하면 바로 만들어져요."); fSync(); host({ cmd: "glogin" }); return; }
+      done(on ? `구글에 ‘TeamCal · ${nm}’을 만들고 있어요.` : `구글의 ‘TeamCal · ${nm}’ 캘린더를 지울게요. TeamCal의 공유 칩은 그대로예요.`);
     });
     body.querySelectorAll("[data-leave]").forEach(b => b.onclick = async () => {
       if (b.dataset.ask && !b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 나가기"; return; }
@@ -2955,8 +3030,10 @@ body.popup .rz{display:none}
         if (error || !c) { $("fnMake").disabled = false; fMsg("공유 칩을 만들지 못했어요.", true); return; }
         const sel = [...body.querySelectorAll("[data-nf]")].filter(x => x.checked).map(x => ({ cal_id: c.id, user_id: x.dataset.nf, role: body.querySelector(`[data-nfrole="${x.dataset.nf}"]`).value, status: "invited", invited_by: me }));
         let err = null; if (sel.length) err = (await sb.from("shared_members").insert(sel)).error;
-        fNew = null; fOpen = c.id;
-        done(err ? "공유 칩은 만들었지만 초대를 보내지 못했어요." : sel.length ? `'${name}'을 만들고 ${sel.length}명에게 초대를 보냈어요.` : `'${name}'을 만들었어요.`, !!err);
+        const color = fNew.color; fNew = null; fOpen = c.id;
+        if (err) { done("공유 칩은 만들었지만 초대를 보내지 못했어요.", true); return; }
+        fLink = { mode: "new", cal: c.id, name, color, g: fG.gOn, msg: sel.length ? `${sel.length}명에게 초대를 보냈어요.` : "" };
+        fMsg(sel.length ? `${sel.length}명에게 초대를 보냈어요.` : ""); fSync(); fRender();
       };
     }
   }
@@ -2986,7 +3063,7 @@ body.popup .rz{display:none}
   function openSettings(tab) {
     const prim = gCals.find(c => c.primary);
     const ui = { tab: typeof tab === "string" ? tab : "",
-      bSync: BETA ? { on: !!bUser, err: bSyncErr, at: bSyncAt, cals: bCals.map(c => ({ name: c.name, color: c.color, role: c.role })) } : null,
+      bSync: BETA ? { on: !!bUser, err: bSyncErr, at: bSyncAt, cals: bCals.map(c => ({ name: c.name, color: c.color, role: c.role, on: bLinked.has(c.raw) })) } : null,
       gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
       showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
       ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
@@ -3031,10 +3108,10 @@ body.popup .rz{display:none}
       const B = U.bSync || {};
       h += `<div class="sgrp">내 캘린더</div>` + conRows(H.gmode === "google", U.gEmail || "");
       h += `<div class="sgrp">공유 칩 양방향 사본</div>`;
-      if (H.gmode !== "google") h += `<p class="snote">구글을 연결하면 공유 칩마다 내 구글에 “TeamCal · 칩 이름” 캘린더가 생겨요. 구글 캘린더 앱에서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
+      if (H.gmode !== "google") h += `<p class="snote">구글을 연결하면 연결하기로 고른 공유 칩마다 내 구글에 “TeamCal · 칩 이름” 캘린더가 생겨요. 구글 캘린더 앱에서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
       else {
-        h += (B.cals || []).length ? B.cals.map(c => `<div class="srow"><div class="st"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>TeamCal · ${esc(c.name)}<small>${c.role === "viewer" ? "보기만 · 구글에서 고쳐도 원래대로 돌아가요" : "구글 ↔ TeamCal 양방향"}</small></div></div>`).join("")
-          : `<p class="snote">아직 공유 칩이 없어요. 친구 창에서 공유 칩을 만들면 구글에도 자동으로 생겨요.</p>`;
+        h += (B.cals || []).length ? B.cals.map(c => `<div class="srow"><div class="st"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>TeamCal · ${esc(c.name)}<small>${!c.on ? "연결 안 함 · 친구 창 › 공유 칩에서 켤 수 있어요" : c.role === "viewer" ? "보기만 · 구글에서 고쳐도 원래대로 돌아가요" : "구글 ↔ TeamCal 양방향"}</small></div></div>`).join("")
+          : `<p class="snote">아직 공유 칩이 없어요. 친구 창에서 공유 칩을 만들 때 구글에 연결할지 고를 수 있어요.</p>`;
         h += `<p class="snote">${B.err ? `<span style="color:var(--err)">${esc(B.err)}</span>` : B.at ? `마지막 동기화 ${fmtHM(new Date(B.at), true)} · 위젯이 켜져 있는 동안 1분마다 맞춰요.` : "곧 첫 동기화를 해요."}</p>`
           + btn("지금 맞추기", "", "bsyncNow", "동기화");
       }
