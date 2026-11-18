@@ -25,7 +25,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '0.4.2'
+$AppVersion = '0.4.3'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/beta/version.json'
 
 function Write-Log($text) {
@@ -398,7 +398,8 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .porig{font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 6px;flex:none}
 .cpn{font-size:12px;color:var(--muted);margin:8px 0 0}.cpadd{display:flex;gap:6px;margin-top:8px}.cpadd #cpWho{flex:1;max-width:none}
 .cpwarn{background:color-mix(in srgb,#f3c14b 16%,var(--bg));border:1px solid color-mix(in srgb,#f3c14b 55%,var(--line));border-radius:10px;padding:9px 10px;font-size:11.8px;line-height:1.55;margin-top:10px}
-.cpwb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.cpft{display:flex;justify-content:flex-end;margin-top:10px}
+.cpwb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.cpneed{border:1px solid #f1b8ba;background:color-mix(in srgb,#e5484d 9%,var(--bg));border-radius:10px;padding:9px 10px;margin:4px 0 6px;font-size:11.8px;line-height:1.55}.cpneed>b{display:block;color:#d13438;font-size:12.5px;margin-bottom:2px}
+.cpft{display:flex;justify-content:flex-end;margin-top:10px}
 .cpop .cm.err{color:var(--err)}
 .nstep{display:flex;gap:9px;font-size:12.5px;line-height:1.5;margin:8px 0}.nstep>b{width:18px;height:18px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:10.5px;flex:none;margin-top:1px}
 .nstep small{display:block;color:var(--muted);font-size:11.5px}.nstep .lnk{font-size:12px;color:#03a14f;font-weight:700;padding:0;border:0;background:none;cursor:pointer}
@@ -422,6 +423,7 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .prow{display:flex;align-items:center;gap:8px}.prow .st{flex:1;font-size:13px;font-weight:600}.prow small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
 .pic.sm{display:inline-grid;vertical-align:-5px;margin-right:6px}.pic.sm svg{width:16px;height:16px}.pic.sm .plo.sm{width:16px;height:16px;font-size:9.5px;border-radius:4px}
 .nlock{display:flex;gap:7px;font-size:11.5px;color:var(--muted);background:var(--field);border-radius:9px;padding:8px 10px;margin-top:10px;line-height:1.5}
+.cchip .pv.r{background:#e5484d;animation:pvblink 1.6s ease-in-out infinite}@keyframes pvblink{50%{opacity:.35}}
 .cchip .pv{font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:1px 3.5px;line-height:1.2}.cchip .pv.n{background:#03c75a}.cchip .pv.g{background:#4285f4}
 button.fcon{width:100%;text-align:left;font:inherit;color:inherit;background:var(--bg);cursor:pointer}
 button.fcon[aria-checked="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
@@ -1543,7 +1545,7 @@ body.popup .rz{display:none}
       const showCals = gmode === "google" || bo;
       const offIds = new Set(gCals.filter(c => !calOn(c)).map(c => c.id));
       const chip = c =>
-          `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span>${c.nv ? `<b class="pv n">N</b>` : (BETA && nv.on && !c.shared && !c.team) ? `<b class="pv g">G</b>` : ""}</button>`;
+          `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)}${nvNeed(c) ? " · 네이버에 캘린더를 만들어 주세요 (더블클릭)" : " · 더블클릭하면 연동·함께 쓰는 사람"}" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span>${nvNeed(c) ? `<b class="pv r" aria-label="네이버 캘린더 필요">!</b>` : ""}${c.nv ? `<b class="pv n">N</b>` : (BETA && nv.on && !c.shared && !c.team) ? `<b class="pv g">G</b>` : ""}</button>`;
       if (showCals) {
         const offN = gCals.filter(c => !calOn(c)).length, fold = !chipAll && offN > 0;
         const vis = c => !fold || calOn(c);
@@ -2375,6 +2377,7 @@ body.popup .rz{display:none}
   let gMirAll = [], bMir = new Set((() => { try { return JSON.parse(localStorage.getItem("tcb.mir") || "[]"); } catch (e) { return []; } })());
   let bLinked = new Map(), bCalKey = null, bLoadedOk = false, fGate = false, bSyncBusy = false, bSyncAgain = false, bSyncAt = 0, bSyncErr = "", bSyncT = null, bSyncForce = false;
   const isMir = c => bMir.has(c.id) || (c.accessRole === "owner" && String(c.summary || "").startsWith(MIR_PRE));
+  function nvNeed(c) { return BETA && !!c.shared && nv.on && !!(bLinked.get(c.raw) || { has: () => false }).has("naver:pick"); }
   function bOnly() { return BETA && !!bUser && gmode !== "ical" && !(gmode === "google" && gToken && gLoaded); }
   function gUse() { return gmode === "google" || bOnly(); }
   function bMirSave() { try { localStorage.setItem("tcb.mir", JSON.stringify([...bMir])); localStorage.setItem("tcb.mirnv", JSON.stringify([...bMirNv])); } catch (e) {} }
@@ -2499,6 +2502,9 @@ body.popup .rz{display:none}
         }
       }
       bSyncAt = Date.now();
+      const r2 = await sb.from("mirror_cals").select("cal_id,provider,sync_token").eq("user_id", uid);   // 빨간불(네이버 캘린더 필요) 다시 계산
+      if (!r2.error) { const L2 = new Map(); for (const m of r2.data || []) if (joined.has(m.cal_id) && m.sync_token !== "off") { if (!L2.has(m.cal_id)) L2.set(m.cal_id, new Set()); L2.get(m.cal_id).add(m.provider + (m.sync_token === "pick" ? ":pick" : "")); }
+        const key = x => [...x].map(([k, v]) => k + [...v].sort()).sort().join("|"); if (key(L2) !== key(bLinked)) { bLinked = L2; renderAll(); } }
     } catch (e) {
       console.warn("TeamCal sync", e);
       bSyncErr = /mirror_/.test(String(e.message)) ? "서버 준비가 덜 됐어요 (0.2.0 SQL)." : "동기화하지 못했어요. 잠시 후 다시 시도할게요.";
@@ -3465,13 +3471,14 @@ body.popup .rz{display:none}
       const gRow = kind === "g" ? `<span class="porig">원래 캘린더</span>` : sw("google", !!gl, !writable && kind !== "tc");
       const nRow = kind === "nv" ? `<span class="porig">원래 캘린더</span>` : sw("naver", !!nl, !writable && kind !== "tc");
       const gSub = kind === "g" ? esc(prim ? prim.id : "") : !gOn ? "설정 › 연동에서 먼저 연결해 주세요" : gl && gl.origin === "own" ? "원래 캘린더 · " + esc(prim ? prim.id : "") : gl ? (gl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(prim ? prim.id : "");
-      const nSub = kind === "nv" ? esc(nv.id) : !nv.on ? "설정 › 연동에서 먼저 연결해 주세요" : nl && nl.origin === "own" ? "원래 캘린더 · " + esc(nv.id) : nl ? (nl.sync_token === "pick" ? `네이버가 새 캘린더 만들기를 막았어요. 네이버에서 ‘${esc(c.name)}’ 캘린더를 만들면 자동으로 이어져요. 아래에서 직접 골라도 돼요.` : nl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(nv.id);
+      const nSub = kind === "nv" ? esc(nv.id) : !nv.on ? "설정 › 연동에서 먼저 연결해 주세요" : nl && nl.origin === "own" ? "원래 캘린더 · " + esc(nv.id) : nl ? (nl.sync_token === "pick" ? "연결 대기 중 · 아래에서 직접 골라도 돼요" : nl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(nv.id);
       let h = `<div class="ih"><i></i><span>${esc(c.name)}</span><button class="x" type="button" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
       if (!writable && kind === "g") h += `<p class="cpn">보기 전용 구글 캘린더라 연동·초대는 할 수 없어요.</p>`;
       else {
         h += `<div class="il">연동 · 양방향</div>
           <div class="frow"><span class="plo g sm">${G_LOGO}</span><div class="ft">Google<small>${gSub}</small></div>${gRow}</div>
           <div class="frow"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft" style="white-space:normal">네이버<small>${nSub}</small></div>${nRow}</div>
+          ${nl && nl.sync_token === "pick" ? `<div class="cpneed"><b>네이버 캘린더가 필요해요</b><span>네이버가 앱이 캘린더를 만드는 걸 막아요. 네이버에서 <b>‘${esc(c.name)}’</b> 이름으로 캘린더를 하나 만들어 주세요. 만들면 자동으로 이어져요.</span><div class="cpwb"><button type="button" class="sbtn" id="cpNvOpen">네이버 캘린더 열기 ↗</button><button type="button" class="sbtn pri" id="cpNvChk">만들었어요 · 확인</button></div></div>` : ""}
           ${nl && nl.sync_token === "pick" ? `<div class="frow"><select class="fsel" style="max-width:none;flex:1" id="cpPick"><option value="">연결할 네이버 캘린더 고르기…</option>${nvAll.filter(x => !bMirNv.has(x.href)).map(x => `<option value="${esc(x.href)}">${esc(x.name)}</option>`).join("")}</select></div>` : ""}
           ${nl && nv.err ? `<p class="cpn" style="color:var(--err)">${esc(nv.err)}</p>` : ""}
           <div class="frow" style="opacity:.55"><span class="plo sm" style="--c:#0f6cbd">O</span><div class="ft">Outlook</div><span class="soon">준비 중</span></div>`;
@@ -3525,6 +3532,16 @@ body.popup .rz{display:none}
       });
       const inv = d.querySelector("#cpInv");
       if (inv) inv.onclick = () => { const u = d.querySelector("#cpWho").value; if (!u) { say("초대할 친구를 골라 주세요.", true); draw(); return; } run({ kind: "invite", uid: u, role: d.querySelector("#cpRole").value }); };
+      const no2 = d.querySelector("#cpNvOpen"); if (no2) no2.onclick = () => host({ cmd: "open", url: "https://calendar.naver.com/" });
+      const ck = d.querySelector("#cpNvChk");
+      if (ck) ck.onclick = async () => {
+        ck.disabled = true; ck.textContent = "확인 중…";
+        await nvLoad(); bSyncSoon(0, true);
+        await new Promise(r => setTimeout(r, 400));
+        for (let i = 0; i < 40 && bSyncBusy; i++) await new Promise(r => setTimeout(r, 300));
+        await load(); const n2 = S.links.get("naver");
+        say(n2 && n2.sync_token !== "pick" ? "네이버 캘린더와 이었어요." : `아직 못 찾았어요. 네이버에서 이름을 ‘${c.name}’로 똑같이 만들었는지 확인해 주세요.`, !(n2 && n2.sync_token !== "pick")); draw();
+      };
       const pk = d.querySelector("#cpPick");
       if (pk) pk.onchange = async () => {
         if (!pk.value) return;
