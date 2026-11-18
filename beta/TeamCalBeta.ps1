@@ -25,7 +25,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '0.3.0'
+$AppVersion = '0.3.1'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/beta/version.json'
 
 function Write-Log($text) {
@@ -398,6 +398,22 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .nstep small{display:block;color:var(--muted);font-size:11.5px}.nstep .lnk{font-size:12px;color:#03a14f;font-weight:700;padding:0;border:0;background:none;cursor:pointer}
 .nvopen{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:38px;margin:7px 0 5px;border-radius:9px;border:1px solid #03c75a;background:color-mix(in srgb,#03c75a 10%,var(--bg));color:var(--fg);font:inherit;font-weight:700;font-size:13px;cursor:pointer}
 .nclip{margin-top:6px;padding:9px 10px;border-radius:9px;border:1px dashed var(--dot);color:var(--muted);font-size:12px;text-align:center}.nclip.ok{border-style:solid;border-color:#1e9e5a;color:#1e9e5a;font-weight:700}
+.ptiles{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px 0 2px}
+.ptile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.ptile.on{border-color:#6366f1;box-shadow:inset 0 0 0 1px #6366f1}.ptile.soon{color:var(--muted)}.ptile.soon .pic{opacity:.55}
+.ptile .pic{height:24px;display:grid;place-items:center}.ptile .pic svg{width:22px;height:22px}.ptile .pic .plo{width:22px;height:22px;border-radius:5px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;line-height:1;background:var(--c)}
+.pok{position:absolute;top:5px;right:6px;width:15px;height:15px;border-radius:50%;background:#1e9e5a;color:#fff;font-size:9px;font-style:normal;display:grid;place-items:center}
+.ppanel{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 4px}
+.ppanel .ph{display:block;font-size:13px;margin-bottom:8px}.ppanel .fin{background:var(--bg);height:38px}
+.prow2{display:flex;gap:7px;margin-top:7px}.prow2 .fin{flex:1}
+.pgo{flex:none;min-width:62px;border:0;border-radius:9px;background:#6366f1;color:#fff;font:inherit;font-weight:700;font-size:13px;cursor:pointer}.pgo:disabled{opacity:.6;cursor:default}
+#setBody .pchk{display:flex;flex-direction:row;align-items:center;gap:7px;font-size:12px;margin-top:9px;cursor:pointer;text-align:left;font-weight:600}#setBody .pchk .pt{font-style:normal;flex:1;min-width:0}#setBody .pchk .pt span{color:var(--muted);font-weight:500}
+#setBody .pchk input{appearance:auto;-webkit-appearance:checkbox;width:15px;height:15px;min-width:0;margin:0;padding:0;flex:none;border:0;box-shadow:none}
+.pnote{font-size:11.5px;color:var(--muted);line-height:1.6;margin:8px 0 0}.pnote span{font-size:11px}
+.plink{border:0;background:none;padding:0;color:#6366f1;font:inherit;font-weight:700;cursor:pointer}
+.pmsg{font-size:12px;margin:8px 0 0;color:var(--muted)}.pmsg.err{color:var(--err)}
+.prow{display:flex;align-items:center;gap:8px}.prow .st{flex:1;font-size:13px;font-weight:600}.prow small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.pic.sm{display:inline-grid;vertical-align:-5px;margin-right:6px}.pic.sm svg{width:16px;height:16px}.pic.sm .plo.sm{width:16px;height:16px;font-size:9.5px;border-radius:4px}
 .nlock{display:flex;gap:7px;font-size:11.5px;color:var(--muted);background:var(--field);border-radius:9px;padding:8px 10px;margin-top:10px;line-height:1.5}
 .cchip .pv{font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:1px 3.5px;line-height:1.2}.cchip .pv.n{background:#03c75a}.cchip .pv.g{background:#4285f4}
 button.fcon{width:100%;text-align:left;font:inherit;color:inherit;background:var(--bg);cursor:pointer}
@@ -2363,6 +2379,9 @@ body.popup .rz{display:none}
     if (fGate) { sh.hidden = false; fRender(); } else { sh.hidden = true; $("fTitle").textContent = "TeamCal 친구"; report(); }
   }
   function fStep(n) { $("fSteps").querySelectorAll("i").forEach((x, i) => x.classList.toggle("on", i < n)); }
+  const MS_LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#f25022" d="M2 2h9.5v9.5H2z"/><path fill="#7fba00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00a4ef" d="M2 12.5h9.5V22H2z"/><path fill="#ffb900" d="M12.5 12.5H22V22h-9.5z"/></svg>`;
+  const APPLE_LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.9-.9-3.1-.8C6.8 7.3 5.3 8.2 4.5 9.6c-1.7 2.9-.4 7.2 1.2 9.6.8 1.2 1.7 2.4 3 2.4 1.2 0 1.6-.8 3.1-.8s1.8.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.6-1-2.7-4zM14.1 5.5c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1.1.1 2.1-.5 2.7-1.2z"/></svg>`;
+  const LINK_LOGO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4l-1.1 1.1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.1-1.1"/></svg>`;
   const G_LOGO = `<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.4 2.2-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>`;
   function conRows(gOn, gMail, N) {
     N = N || {};
@@ -2597,7 +2616,7 @@ body.popup .rz{display:none}
     return changed;
   }
   // ======================= 네이버 캘린더 (CalDAV, 호스트가 중계) =======================
-  const NVB = "https://caldav.calendar.naver.com", NS_C = "urn:ietf:params:xml:ns:caldav";
+  let NVB = "https://caldav.calendar.naver.com"; const NS_C = "urn:ietf:params:xml:ns:caldav";
   let nv = { on: false, id: "", home: "", err: "", at: 0 }, nvCals = [], nvEvents = [], nvRid = 0, nvMkFail = false;
   const nvWait = new Map();
   function nvReq(method, url, o = {}) {
@@ -2721,7 +2740,9 @@ body.popup .rz{display:none}
   }
   function onNvState(m) {
     const was = nv.on;
-    nv.on = !!m.on; nv.id = m.id || ""; if (!nv.on) { nv.home = ""; nvCals = []; nvEvents = []; }
+    nv.on = !!m.on; nv.id = m.id || ""; nv.works = !!m.works;
+    const nb = m.base || "https://caldav.calendar.naver.com"; if (nb !== NVB) { NVB = nb; nv.home = ""; }
+    if (!nv.on) { nv.home = ""; nvCals = []; nvEvents = []; }
     if (POPUP) return;
     bApply(); renderAll(); if (fConOn) fConnect();
     if (nv.on && !was) { nvLoad(); bSyncSoon(1500, true); }
@@ -3373,7 +3394,7 @@ body.popup .rz{display:none}
     const prim = gCals.find(c => c.primary);
     const ui = { tab: typeof tab === "string" ? tab : "",
       bSync: BETA ? { on: !!bUser, err: bSyncErr, at: bSyncAt, cals: bCals.map(c => ({ name: c.name, color: c.color, role: c.role, provs: [...(bLinked.get(c.raw) || [])] })) } : null,
-      nv: BETA ? { on: nv.on, id: nv.id, err: nv.err, at: nv.at } : null,
+      nv: BETA ? { on: nv.on, id: nv.id, works: !!nv.works, err: nv.err, at: nv.at } : null,
       gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
       showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
       ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
@@ -3385,11 +3406,11 @@ body.popup .rz{display:none}
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
     showSettings(ui, {});
   }
-  let setUi = {}, setHost = {}, setTab = "일반", nvForm = false, nvMsg = "", nvBusyF = false, nvTyped = "", nvPwV = "", nvClipOk = false, nvManual = false, nvClipT = null, nvBad = "";
+  let setUi = {}, setHost = {}, setTab = "일반", nvForm = false, conSel = "", nvWorks = false, nvWorksHand = false, nvMsg = "", nvBusyF = false, nvTyped = "", nvPwV = "", nvClipOk = false, nvManual = false, nvClipT = null, nvBad = "";
   const SET_TABS = BETA ? ["일반", "캘린더 연결", "팀 휴가", "알림", "정보"] : ["일반", "캘린더", "팀 휴가", "알림", "정보"];
   function showSettings(ui, hs) {
     setUi = ui || {}; setHost = hs || {};
-    if (setUi.tab === "네이버") { setTab = "캘린더 연결"; nvForm = true; nvMsg = ""; }
+    if (setUi.tab === "네이버") { setTab = "캘린더 연결"; conSel = "naver"; nvMsg = ""; }
     else if (setUi.tab && SET_TABS.includes(setUi.tab)) setTab = setUi.tab;
     $("setVer").textContent = setHost.version ? (BETA ? "TeamCal Beta " : EXT ? "TEAM CAL(외부용) " : "TeamCal ") + setHost.version : "";
     renderSettings(); $("setsheet").hidden = false; report();
@@ -3415,36 +3436,34 @@ body.popup .rz{display:none}
         + seg("clock", U.clock === "24" ? "24" : "12", [["12", "12시간"], ["24", "24시간"]], "시간 표시")
         + `<div class="sgrp">시작 · 위치</div>` + sw("autostart", H.autostart, "Windows 시작 시 자동 실행")
         + btn("위젯 위치와 크기", "화면 밖으로 사라졌을 때", "resetPos", "처음 위치로");
-    } else if (setTab === "캘린더 연결" && nvForm) {
-      h += `<div class="sgrp">네이버 캘린더 연결</div>
-        <div class="nstep"><b>1</b><div style="flex:1">네이버 아이디<input class="fin" id="nvId" style="margin-top:5px" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="예: hyun_kim" value="${esc(nvTyped || (U.nv && U.nv.id) || "")}"></div></div>
-        <div class="nstep"><b>2</b><div style="flex:1">네이버에서 연결용 비밀번호를 만들어요
-          <button type="button" class="nvopen" data-act="nvhelp"><span class="plo sm" style="--c:#03c75a">N</span>네이버에서 비밀번호 만들기 ↗</button>
-          <small>브라우저에서 로그인 → 보안설정 › 2단계 인증 › <b>애플리케이션 비밀번호 관리</b> → ‘직접 입력: TeamCal’로 생성<br>2단계 인증이 꺼져 있으면 먼저 켜요 (휴대폰 네이버 앱 필요)</small></div></div>
-        <div class="nstep"><b>3</b><div style="flex:1">만든 16자리를 <b>복사</b>하면 여기에 자동으로 들어가요
-          <div class="nclip${nvClipOk ? " ok" : ""}" id="nvClip">${nvClipOk ? "✓ 복사한 비밀번호를 넣었어요" : "복사를 기다리는 중…"}</div>
-          <button type="button" class="flink" id="nvManual" style="padding-top:4px">${nvManual ? "직접 붙여넣기" : "직접 붙여넣을게요"}</button>
-          <input class="fin" id="nvPw" type="password" autocomplete="off" spellcheck="false" placeholder="16자리 애플리케이션 비밀번호"${nvManual || nvClipOk ? "" : ' hidden'}></div></div>
-        <div class="nlock"><span aria-hidden="true">🔒</span><div>이 PC에만 암호화해서 저장해요. TeamCal 서버로는 보내지 않아요. 네이버에서 이 비밀번호를 지우면 언제든 끊겨요.</div></div>
-        ${nvMsg ? `<p class="snote" style="color:${nvBusyF ? "var(--muted)" : "var(--err)"}">${esc(nvMsg)}</p>` : ""}
-        <button type="button" class="fbtn" id="nvGo"${nvBusyF ? " disabled" : ""}>${nvBusyF ? "확인하는 중…" : "연결 확인"}</button>
-        <div style="text-align:center"><button type="button" class="flink" id="nvBack">돌아가기</button></div>`;
     } else if (setTab === "캘린더 연결") {
-      const B = U.bSync || {};
-      h += `<div class="sgrp">내 캘린더</div>` + conRows(H.gmode === "google", U.gEmail || "", U.nv || {});
+      const B = U.bSync || {}, N = U.nv || {}, gOn = H.gmode === "google";
+      if (!conSel) conSel = !gOn ? "google" : !N.on ? "naver" : "";
+      const T = [["ms", "Microsoft", MS_LOGO, 0], ["google", "Google", G_LOGO, 1], ["apple", "Apple", APPLE_LOGO, 0], ["naver", "네이버", `<span class="plo" style="--c:#03c75a">N</span>`, 1], ["notion", "Notion", `<span class="plo" style="--c:#111">N</span>`, 0], ["url", "URL 구독", LINK_LOGO, 0]];
+      h += `<div class="sgrp">캘린더 계정 추가</div><div class="ptiles" role="tablist">` + T.map(([k, n, ic, ok]) => `<button type="button" class="ptile${conSel === k ? " on" : ""}${ok ? "" : " soon"}" role="tab" aria-selected="${conSel === k}" data-tile="${k}"><span class="pic">${ic}</span><span>${n}</span>${(k === "google" && gOn) || (k === "naver" && N.on) ? `<i class="pok" aria-label="연결됨">✓</i>` : ""}</button>`).join("") + `</div>`;
+      if (conSel === "naver") {
+        if (N.on) h += `<div class="ppanel"><b class="ph">네이버 캘린더 연결됨</b><div class="prow"><div class="st">${esc(N.id)}${N.works ? " · 네이버웍스" : ""}<small${N.err ? ' style="color:var(--err)"' : ""}>${esc(N.err || (N.at ? "마지막 동기화 " + fmtHM(new Date(N.at), true) : "연결됐어요"))}</small></div><button type="button" class="sbtn" data-nvoff="1">연결 해제</button></div></div>`;
+        else h += `<div class="ppanel"><b class="ph">네이버 캘린더 연결</b>
+          <input class="fin" id="nvId" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${nvWorks ? "네이버웍스 아이디 (이메일)" : "네이버 아이디"}" value="${esc(nvTyped)}">
+          <div class="prow2"><input class="fin" id="nvPw" type="password" autocomplete="off" spellcheck="false" placeholder="${nvWorks ? "외부 앱 비밀번호" : "애플리케이션 비밀번호"}"><button type="button" class="pgo" id="nvGo"${nvBusyF ? " disabled" : ""}>${nvBusyF ? "확인 중…" : "연결"}</button></div>
+          <label class="pchk"><input type="checkbox" id="nvWorks"${nvWorks ? " checked" : ""}><em class="pt">네이버웍스(기업용) 계정입니다 <span>· 아이디가 이메일이면 자동 체크</span></em></label>
+          ${nvMsg ? `<p class="pmsg${nvBusyF || nvClipOk ? "" : " err"}">${esc(nvMsg)}</p>` : ""}
+          <p class="pnote">${nvWorks ? "네이버웍스 › 보안 › <b>‘외부 앱 비밀번호’</b>로 캘린더를 연동합니다. 일반 로그인 비밀번호가 아닙니다." : "네이버 2단계 인증의 <b>‘애플리케이션 비밀번호’</b>로 캘린더를 연동합니다. 일반 로그인 비밀번호가 아닙니다."} <button type="button" class="plink" data-act="${nvWorks ? "nvworkshelp" : "nvhelp"}">앱 비밀번호 만들기 ↗</button><br><span>복사하면 비밀번호 칸에 자동으로 들어가요 · 이 PC에만 암호화해서 저장해요</span></p></div>`;
+      } else if (conSel === "google") {
+        h += gOn ? `<div class="ppanel"><b class="ph">구글 캘린더 연결됨</b><div class="prow"><div class="st">${esc(U.gEmail || "")}<small>내 일정 + 공유 칩 양방향</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>${sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")}</div>`
+          : `<div class="ppanel"><b class="ph">구글 캘린더 연결</b><button type="button" class="gbtn" data-act="glogin" style="width:100%;justify-content:center">${G_LOGO}Google 계정으로 로그인</button><p class="pnote">브라우저에서 로그인하면 바로 연결돼요.</p>${sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")}</div>`;
+      } else if (conSel) h += `<div class="ppanel"><b class="ph">${esc((T.find(t => t[0] === conSel) || [])[1] || "")}</b><p class="pnote" style="margin:4px 0 0">준비 중이에요. 다음 업데이트에서 붙일게요.</p></div>`;
+      if (gOn || N.on) h += `<div class="sgrp">연결됨</div>` + (gOn ? `<div class="srow"><div class="st"><span class="pic sm">${G_LOGO}</span>Google<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>` : "")
+        + (N.on ? `<div class="srow"><div class="st"><span class="pic sm"><span class="plo sm" style="--c:#03c75a">N</span></span>${N.works ? "네이버웍스" : "네이버"}<small>${esc(N.id)}</small></div><button type="button" class="sbtn" data-nvoff="1">연결 해제</button></div>` : "");
       h += `<div class="sgrp">공유 칩 양방향 사본</div>`;
-      if (H.gmode !== "google" && !(U.nv && U.nv.on)) h += `<p class="snote">구글이나 네이버를 연결하면 연결하기로 고른 공유 칩마다 그 캘린더에 “TeamCal · 칩 이름” 캘린더가 생겨요. 거기서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
+      if (H.gmode !== "google" && !(U.nv && U.nv.on)) h += `<p class="pnote" style="margin:2px 0 8px">구글이나 네이버를 연결하면 연결하기로 고른 공유 칩마다 그 캘린더에 “TeamCal · 칩 이름” 캘린더가 생겨요. 거기서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
       else {
         h += (B.cals || []).length ? B.cals.map(c => { const pv = c.provs || [], t = [pv.includes("google") && "Google ✓", pv.includes("naver") && "네이버 ✓", pv.includes("naver:pick") && "네이버 (캘린더 고르기 필요)"].filter(Boolean).join(" · ");
           return `<div class="srow"><div class="st"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>${esc(c.name)}<small>${!t ? "연결 안 함 · 친구 창 › 공유 칩에서 켤 수 있어요" : t + (c.role === "viewer" ? " · 보기만이라 고쳐도 원래대로 돌아가요" : " · 양방향")}</small></div></div>`; }).join("")
-          : `<p class="snote">아직 공유 칩이 없어요. 친구 창에서 공유 칩을 만들 때 구글에 연결할지 고를 수 있어요.</p>`;
-        h += `<p class="snote">${B.err ? `<span style="color:var(--err)">${esc(B.err)}</span>` : B.at ? `마지막 동기화 ${fmtHM(new Date(B.at), true)} · 위젯이 켜져 있는 동안 1분마다 맞춰요.` : "곧 첫 동기화를 해요."}</p>`
+          : `<p class="pnote" style="margin:2px 0 8px">아직 공유 칩이 없어요. 친구 창에서 공유 칩을 만들 때 구글에 연결할지 고를 수 있어요.</p>`;
+        h += `<p class="pnote" style="margin:2px 0 8px">${B.err ? `<span style="color:var(--err)">${esc(B.err)}</span>` : B.at ? `마지막 동기화 ${fmtHM(new Date(B.at), true)} · 위젯이 켜져 있는 동안 1분마다 맞춰요.` : "곧 첫 동기화를 해요."}</p>`
           + btn("지금 맞추기", "", "bsyncNow", "동기화");
       }
-      h += `<div class="sgrp">구글 계정</div>`;
-      if (H.gmode === "google") h += `<div class="sacct"><div class="av">G</div><div class="st">구글 캘린더 연결됨<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
-      else h += `<div class="sacct"><div class="av" style="background:var(--dot)">?</div><div class="st">연결 안 됨<small>공유 칩은 구글 없이도 보여요</small></div><button type="button" class="sbtn pri" data-act="glogin">구글 로그인</button></div>`;
-      h += sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결");
     } else if (setTab === "캘린더") {
       h += `<div class="sgrp">구글 계정</div>`;
       if (H.gmode === "google") h += `<div class="sacct"><div class="av">G</div><div class="st">구글 캘린더 연결됨<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
@@ -3511,31 +3530,36 @@ body.popup .rz{display:none}
     const op = body.querySelector("#setOp");
     if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; op.style.setProperty("--f", (op.value - 50) / 50); }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
     body.querySelectorAll("[data-con]").forEach(b => b.onclick = () => {
-      if (b.dataset.con === "naver") { nvForm = true; nvMsg = ""; renderSettings(); return; }
+      if (b.dataset.con === "naver") { conSel = "naver"; nvMsg = ""; renderSettings(); return; }
       host({ cmd: "set", key: "act", value: "glogin" }); });
     body.querySelectorAll("[data-nvoff]").forEach(b => b.onclick = () => {
       if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 해제"; return; }
       host({ cmd: "nvclear" }); });
+    body.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { conSel = b.dataset.tile; nvMsg = ""; renderSettings(); });
     if ($("nvGo")) {
-      $("nvBack").onclick = () => { nvForm = false; nvMsg = ""; nvPwV = ""; nvClipOk = false; renderSettings(); };
-      $("nvPw").value = nvPwV; $("nvPw").oninput = () => { nvPwV = $("nvPw").value; };
-      $("nvId").oninput = () => { nvTyped = $("nvId").value; };
-      $("nvManual").onclick = () => { nvManual = true; renderSettings(); setTimeout(() => $("nvPw") && $("nvPw").focus(), 0); };
-      const go = () => {
-        const id = $("nvId").value.trim(), pw = (nvPwV || $("nvPw").value).replace(/\s/g, "");
-        if (!id) { nvMsg = "네이버 아이디를 적어 주세요."; renderSettings(); return; }
-        if (!pw) { nvMsg = "네이버에서 만든 16자리 비밀번호를 복사해 주세요."; renderSettings(); return; }
-        if (pw.length < 12) { nvMsg = "애플리케이션 비밀번호는 보통 16자리예요. 로그인 비밀번호가 아닌지 확인해 주세요."; renderSettings(); return; }
-        nvTyped = id; nvPwV = pw; nvBusyF = true; nvMsg = "네이버에 확인하는 중…"; renderSettings(); host({ cmd: "nvsave", id, pw });
+      const pwI = $("nvPw"), idI = $("nvId"), wk = $("nvWorks");
+      pwI.value = nvPwV; pwI.oninput = () => { nvPwV = pwI.value; };
+      idI.oninput = () => {
+        nvTyped = idI.value;
+        const auto = /@/.test(nvTyped) && !/@naver\.com$/i.test(nvTyped.trim());   // 이메일 아이디면 네이버웍스로
+        if (auto !== nvWorks && !nvWorksHand) { nvWorks = auto; wk.checked = auto; idI.placeholder = auto ? "네이버웍스 아이디 (이메일)" : "네이버 아이디"; pwI.placeholder = auto ? "외부 앱 비밀번호" : "애플리케이션 비밀번호"; }
       };
-      $("nvGo").onclick = go; $("nvPw").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); go(); } };
-      if (!$("nvId").value) setTimeout(() => $("nvId").focus(), 0);
+      wk.onchange = () => { nvWorks = wk.checked; nvWorksHand = true; renderSettings(); };
+      const go = () => {
+        const id = idI.value.trim(), pw = (nvPwV || pwI.value).replace(/\s/g, "");
+        if (!id) { nvMsg = nvWorks ? "네이버웍스 아이디(이메일)를 적어 주세요." : "네이버 아이디를 적어 주세요."; renderSettings(); return; }
+        if (!pw) { nvMsg = "앱 비밀번호를 넣어 주세요. 만든 비밀번호를 복사하면 자동으로 들어가요."; renderSettings(); return; }
+        nvTyped = id; nvPwV = pw; nvBusyF = true; nvMsg = "확인하는 중…"; renderSettings(); host({ cmd: "nvsave", id, pw, works: nvWorks });
+      };
+      $("nvGo").onclick = go;
+      pwI.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); go(); } };
+      idI.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); pwI.focus(); } };
       clearInterval(nvClipT);
-      if (!nvClipOk && !nvBusyF) nvClipT = setInterval(() => { if (!nvForm || $("setsheet").hidden || nvClipOk) { clearInterval(nvClipT); return; } host({ cmd: "nvclip" }); }, 1200);
+      if (!nvPwV && !nvBusyF) nvClipT = setInterval(() => { if (conSel !== "naver" || $("setsheet").hidden || !$("nvPw") || nvPwV) { clearInterval(nvClipT); return; } host({ cmd: "nvclip" }); }, 1200);
     } else clearInterval(nvClipT);
     body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const a = b.dataset.act;
-      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP, nvhelp: "https://nid.naver.com/user2/help/myInfoV2?m=viewSecurity&lang=ko_KR" };
+      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP, nvhelp: "https://nid.naver.com/user2/help/myInfoV2?m=viewSecurity&lang=ko_KR", nvworkshelp: "https://help.worksmobile.com/ko/use-guides/settings/security/3rd-party-app-password/" };
       if (urls[a]) { host({ cmd: "open", url: urls[a] }); return; }
       if (a === "lcInvite") { copyText(extInvite(setUi.leaveCal)); b.textContent = "복사했어요 ✓"; setTimeout(() => { b.textContent = "링크 복사"; }, 1800); return; }
       if (a === "bsyncNow") { host({ cmd: "bsync" }); b.textContent = "맞추는 중…"; b.disabled = true; return; }
@@ -3557,14 +3581,15 @@ body.popup .rz{display:none}
       else if (m.type === "theme") { applyTheme(m.theme); if (!$("setsheet").hidden) { setHost.theme = m.theme; renderSettings(); } }
       else if (m.type === "settings" && !$("setsheet").hidden) { setHost = m.host || setHost; if (m.ui) setUi = Object.assign(setUi, m.ui); renderSettings(); }
       else if (m.type === "gtoken" && m.token) { gToken = m.token; if (gPendingSave) { const f = gPendingSave; gPendingSave = null; f(); } }
-      else if (m.type === "nvclip" && BETA && nvForm && !$("setsheet").hidden && !nvBusyF) {
-        if ((nvPwV === m.v && nvClipOk) || m.v === nvBad) return;   // 이미 넣었거나 방금 틀린 값이면 다시 보내지 않는다
-        nvPwV = String(m.v || ""); nvClipOk = true; nvMsg = ""; renderSettings();
-        if ((nvTyped || "").trim()) $("nvGo").click(); else { nvMsg = "네이버 아이디를 적고 연결 확인을 눌러 주세요."; renderSettings(); $("nvId").focus(); }
+      else if (m.type === "nvclip" && BETA && conSel === "naver" && $("nvPw") && !$("setsheet").hidden && !nvBusyF) {
+        if (nvPwV || m.v === nvBad) return;   // 이미 넣었거나 방금 틀린 값이면 다시 쓰지 않는다
+        nvPwV = String(m.v || ""); nvClipOk = true;
+        if ((nvTyped || "").trim()) { renderSettings(); $("nvGo").click(); }
+        else { nvMsg = "복사한 비밀번호를 넣었어요. 아이디를 적고 [연결]을 눌러 주세요."; renderSettings(); $("nvId").focus(); }
       }
       else if (m.type === "nv" && BETA && !$("setsheet").hidden) {
         nvBusyF = false; if (!m.error) setUi.nv = Object.assign(setUi.nv || {}, { on: !!m.on, id: m.id || "", err: "" });
-        if (m.error) { nvMsg = m.error; nvBad = nvPwV; nvClipOk = false; nvPwV = ""; } else { nvForm = false; nvMsg = ""; nvPwV = ""; nvClipOk = false; }
+        if (m.error) { nvMsg = m.error; nvBad = nvPwV; nvClipOk = false; nvPwV = ""; } else { nvMsg = ""; nvPwV = ""; nvClipOk = false; setUi.nv.works = !!m.works; }
         renderSettings();
       }
       return;
@@ -4300,6 +4325,7 @@ public static class TLWPin {
 
     # ---- 네이버 캘린더 (CalDAV) : 비밀번호는 이 PC에만 DPAPI로 저장, 위젯에는 주지 않는다 ----
     $script:NvBase = 'https://caldav.calendar.naver.com'
+    $script:NvWorks = 'https://caldav.worksmobile.com'      # 네이버웍스(기업용)
     $script:nv = $null
     function Read-Naver {
         if ($script:nv) { return $script:nv }
@@ -4308,33 +4334,35 @@ public static class TLWPin {
             $sec = ConvertTo-SecureString (Get-Content $NvFile -Raw).Trim()
             $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
             try { $t = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
-            $i = $t.IndexOf("`n"); if ($i -lt 1) { return $null }
-            $script:nv = @{ Id = $t.Substring(0, $i); Pw = $t.Substring($i + 1) }; return $script:nv
+            $p = $t.Split("`n"); if ($p.Count -lt 2 -or -not $p[0]) { return $null }
+            $base = $script:NvBase; if ($p.Count -ge 3 -and $p[2] -eq 'works') { $base = $script:NvWorks }
+            $script:nv = @{ Id = $p[0]; Pw = $p[1]; Base = $base; Works = ($base -eq $script:NvWorks) }; return $script:nv
         } catch { return $null }
     }
-    function Send-NvState([string]$err) { $c = Read-Naver; Send-UI @{ type = 'nv'; on = [bool]$c; id = $(if ($c) { $c.Id } else { '' }); error = $err } }
-    function Save-Naver([string]$id, [string]$pw) {
+    function Send-NvState([string]$err) { $c = Read-Naver; Send-UI @{ type = 'nv'; on = [bool]$c; id = $(if ($c) { $c.Id } else { '' }); base = $(if ($c) { $c.Base } else { '' }); works = [bool]($c -and $c.Works); error = $err } }
+    function Save-Naver([string]$id, [string]$pw, [bool]$works) {
         $id = $id.Trim(); $pw = ($pw -replace '\s', '')
-        if (-not $id -or -not $pw) { Send-NvState '네이버 아이디와 애플리케이션 비밀번호를 입력해 주세요.'; return }
-        if ($id -match '@') { $id = $id.Split('@')[0] }
+        if (-not $id -or -not $pw) { Send-NvState '아이디와 애플리케이션 비밀번호를 입력해 주세요.'; return }
+        if (-not $works -and $id -match '@naver\.com$') { $id = $id.Split('@')[0] }
+        $base = $(if ($works) { $script:NvWorks } else { $script:NvBase })
         $body = '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>'
-        Add-Job ([TLW]::DavSend('PROPFIND', "$script:NvBase/", $id, $pw, '0', 'application/xml', $body, '')) {
+        Add-Job ([TLW]::DavSend('PROPFIND', "$base/", $id, $pw, '0', 'application/xml', $body, '')) {
             param($t, $c)
             if ($t.IsFaulted -or $t.IsCanceled) { Send-NvState "네이버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요. ($(Task-Error $t))"; return }
             $code = [int]$t.Result.Substring(0, $t.Result.IndexOf("`n"))
-            if ($code -eq 401 -or $code -eq 403) { Send-NvState '아이디나 애플리케이션 비밀번호가 맞지 않아요. 로그인 비밀번호가 아니라 2단계 인증에서 만든 16자리를 넣어 주세요.'; return }
+            if ($code -eq 401 -or $code -eq 403) { Send-NvState $(if ($c.Works) { '아이디(이메일)나 외부 앱 비밀번호가 맞지 않아요. 네이버웍스 › 보안 › 외부 앱 비밀번호로 만든 것을 넣어 주세요.' } else { '아이디나 애플리케이션 비밀번호가 맞지 않아요. 로그인 비밀번호가 아니라 2단계 인증에서 만든 16자리를 넣어 주세요.' }); return }
             if ($code -ge 500) { Send-NvState "네이버 캘린더 서버가 응답하지 않아요 ($code). 잠시 후 다시 시도해 주세요."; return }
-            $sec = ConvertTo-SecureString ("$($c.Id)`n$($c.Pw)") -AsPlainText -Force
+            $sec = ConvertTo-SecureString ("$($c.Id)`n$($c.Pw)`n$(if ($c.Works) { 'works' } else { 'naver' })") -AsPlainText -Force
             Set-Content -LiteralPath $NvFile -Value (ConvertFrom-SecureString $sec) -Encoding ASCII
-            $script:nv = @{ Id = $c.Id; Pw = $c.Pw }
+            $script:nv = @{ Id = $c.Id; Pw = $c.Pw; Base = $c.Base; Works = $c.Works }
             Send-NvState ''
-        } @{ Id = $id; Pw = $pw }
+        } @{ Id = $id; Pw = $pw; Base = $base; Works = $works }
     }
     function Clear-Naver { Remove-Item $NvFile -ErrorAction SilentlyContinue; $script:nv = $null; Send-NvState '' }
     function Naver-Request($m) {
         $rid = [string]$m.rid; $c = Read-Naver; $u = [string]$m.url
         if (-not $c) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'nocred' }; return }
-        if (-not $u.StartsWith("$script:NvBase/") -or $u.Contains('..')) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'url' }; return }
+        if (-not $u.StartsWith("$($c.Base)/") -or $u.Contains('..')) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'url' }; return }
         $meth = [string]$m.method
         if (@('PROPFIND', 'REPORT', 'GET', 'PUT', 'DELETE', 'MKCALENDAR', 'PROPPATCH') -notcontains $meth) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'method' }; return }
         $body = $null; if ($null -ne $m.body) { $body = [string]$m.body }
@@ -4804,7 +4832,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
                 if ($t -match '^[A-Za-z0-9]{16}$') { Send-Pop @{ type = 'nvclip'; v = $t } }
             }
             'nvstate' { Send-NvState '' }
-            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) }
+            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) ([bool]$m.works) }
             'nvclear' { Clear-Naver }
             'done'   { Send-Main @{ type = 'popupDone'; kind = $p.Kind; msg = [string]$m.msg; date = [string]$m.date; ids = @($m.ids) }; Close-Popup }
             'gtoken' { Request-GToken ([bool]$m.force) }
@@ -4928,7 +4956,7 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'popup'   { Open-Popup ([string]$m.kind) $m.data }
             'glogout' { Disconnect-Google }
             'nvstate' { Send-NvState '' }
-            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) }
+            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) ([bool]$m.works) }
             'nvclear' { Clear-Naver }
             'nvreq'   { Naver-Request $m }
             'gauto'   { Set-AutoLogin ([bool]$m.on) }
