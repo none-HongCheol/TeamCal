@@ -25,7 +25,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '0.4.0'
+$AppVersion = '0.4.2'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/beta/version.json'
 
 function Write-Log($text) {
@@ -2495,7 +2495,7 @@ body.popup .rz{display:none}
           nv.err = ""; nv.at = Date.now();
         } catch (e) {
           console.warn("TeamCal sync naver", e);
-          nv.err = e.status === 401 ? "네이버 로그인이 풀렸어요. 설정 › 연동에서 다시 연결해 주세요." : "네이버와 맞추지 못했어요. 잠시 후 다시 시도할게요.";
+          nv.err = e.status === 401 ? "네이버 로그인이 풀렸어요. 설정 › 연동에서 다시 연결해 주세요." : e.nv ? e.message : "네이버와 맞추지 못했어요: " + (e.message || "알 수 없는 오류");
         }
       }
       bSyncAt = Date.now();
@@ -2510,7 +2510,7 @@ body.popup .rz{display:none}
     }
   }
   async function bSyncCal(sb, c, m, acct) {
-    const uid = bUser.id, want = MIR_PRE + c.name, viewer = c.role === "viewer", own = !!(m && m.origin === "own");
+    const uid = bUser.id, want = c.name, viewer = c.role === "viewer", own = !!(m && m.origin === "own");
     const cutoff = Date.now() - 62 * 864e5;
     let changed = false;
     if (own && m.account && m.account !== acct) return false;   // 다른 구글 계정의 원래 캘린더 → 이 계정에서는 건드리지 않는다
@@ -2526,7 +2526,7 @@ body.popup .rz{display:none}
     }
     if (!m) {
       const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
-      const cal = await gj("POST", `${GAPI}/calendars`, { summary: want, timeZone: tz, description: "TeamCal 공유 칩의 사본이에요. 여기서 넣고 고친 일정은 TeamCal과 함께 쓰는 사람들 캘린더에도 반영돼요." });
+      const cal = await gj("POST", `${GAPI}/calendars`, { summary: want, timeZone: tz, description: "함께 쓰는 공유 캘린더예요. 여기서 넣고 고친 일정은 함께 쓰는 사람들 캘린더에도 반영돼요." });
       bMir.add(cal.id); bMirSave(); gAllCalIds.add(cal.id);
       try { await gj("PATCH", `${GAPI}/users/me/calendarList/${enc(cal.id)}?colorRgbFormat=true`, { backgroundColor: c.color || "#33b679", foregroundColor: "#ffffff" }); } catch (e) {}
       m = { cal_id: c.raw, provider: "google", account: acct, mirror_cal_id: cal.id, sync_token: null };
@@ -2628,7 +2628,7 @@ body.popup .rz{display:none}
   }
   // ======================= 네이버 캘린더 (CalDAV, 호스트가 중계) =======================
   let NVB = "https://caldav.calendar.naver.com"; const NS_C = "urn:ietf:params:xml:ns:caldav";
-  let nv = { on: false, id: "", home: "", err: "", at: 0 }, nvCals = [], nvEvents = [], nvRid = 0, nvMkFail = false;
+  let nv = { on: false, id: "", home: "", err: "", at: 0 }, nvAll = [], nvCals = [], nvEvents = [], nvRid = 0, nvMkFail = false;
   const nvWait = new Map();
   function nvReq(method, url, o = {}) {
     if (!inHost) return Promise.reject(new Error("host"));
@@ -2646,6 +2646,10 @@ body.popup .rz{display:none}
       return r;
     }
     throw new Error("리디렉션이 너무 많아요.");
+  }
+  function nvErr(what, r) {   // 네이버가 돌려준 이유를 짧게 남긴다 (설정 › 연동 · 칩 창에 보임)
+    const body = String(r.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+    const e = new Error(`네이버 ${what} 실패 (${r.status}${body ? " · " + body : ""})`); e.status = r.status; e.nv = true; return e;
   }
   const xdoc = s => new DOMParser().parseFromString(s || "<x/>", "application/xml");
   const xall = (n, ns, tag) => [...n.getElementsByTagNameNS(ns, tag)];
@@ -2691,7 +2695,7 @@ body.popup .rz{display:none}
   function icsFold(line) { const out = []; let s = line; while (s.length > 70) { out.push(s.slice(0, 70)); s = " " + s.slice(70); } out.push(s); return out.join("\r\n"); }
   function tc2ics(e) {
     const s = new Date(e.start_at); let en = new Date(e.end_at); if (e.all_day && en <= s) en = new Date(s.getTime() + 864e5);
-    const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TeamCal//Beta//KO", "BEGIN:VEVENT", `UID:${e.id}@teamcal.app`, `DTSTAMP:${icsUtc(new Date())}`,
+    const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TeamCal//Beta//KO", "BEGIN:VEVENT", `UID:${e.id}`, `DTSTAMP:${icsUtc(new Date())}`,
       e.all_day ? `DTSTART;VALUE=DATE:${icsDay(s)}` : `DTSTART:${icsUtc(s)}`, e.all_day ? `DTEND;VALUE=DATE:${icsDay(en)}` : `DTEND:${icsUtc(en < s ? s : en)}`,
       `SUMMARY:${icsEsc(e.title)}`];
     if (e.location) L.push(`LOCATION:${icsEsc(e.location)}`);
@@ -2727,7 +2731,7 @@ body.popup .rz{display:none}
   const REP = (from, to, data) => `<?xml version="1.0" encoding="utf-8"?><c:calendar-query xmlns:d="DAV:" xmlns:c="${NS_C}"><d:prop><d:getetag/>${data ? "<c:calendar-data/>" : ""}</d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">${from ? `<c:time-range start="${icsUtc(from)}" end="${icsUtc(to)}"/>` : ""}</c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
   async function nvEventsOf(href, from, to) {   // [{href, etag, ics}]
     const r = await nvDo("REPORT", href, { depth: "1", body: REP(from, to, true) });
-    if (r.status !== 207) throw Object.assign(new Error("네이버 일정을 읽지 못했어요 (" + r.status + ")"), { status: r.status });
+    if (r.status !== 207) throw nvErr("일정 읽기", r);
     return xall(xdoc(r.body), "DAV:", "response").map(rs => ({ href: new URL(xtxt(rs, "DAV:", "href"), NVB).pathname, etag: xtxt(rs, "DAV:", "getetag"), ics: xtxt(rs, NS_C, "calendar-data") }))
       .filter(x => x.href && !x.href.endsWith("/"));
   }
@@ -2737,14 +2741,15 @@ body.popup .rz{display:none}
     if (!BETA || POPUP || !nv.on || nvBusy) return;
     nvBusy = true;
     try {
-      const cals = (await nvListCals()).filter(c => !c.name.startsWith(MIR_PRE) && !bMirNv.has(c.href));
+      const all = await nvListCals(); nvAll = all;
+      const cals = all.filter(c => !c.name.startsWith(MIR_PRE) && !bMirNv.has(c.href));
       const w = gWin(), evs = [];
       await Promise.all(cals.map(async c => {
         try { for (const x of await nvEventsOf(c.href, w.from, w.to)) for (const v of icsParse(x.ics))
           evs.push({ s: v.s, e: v.e, all: v.all, title: v.title, color: c.color, cal: "nv:" + c.href, id: "", loc: v.loc, desc: v.desc, url: "", rec: v.rec ? "1" : "", nv: true }); } catch (e) {}
       }));
       nvCals = cals.map(c => ({ id: "nv:" + c.href, name: c.name, color: c.color, nv: true, prov: "N", selected: true, href: c.href }));
-      nvEvents = evs.sort((a, b) => a.s - b.s); nv.err = "";
+      nvEvents = evs.sort((a, b) => a.s - b.s);
       bApply(); renderAll();
     } catch (e) { console.warn("naver load", e); nv.err = e.status === 401 ? "네이버 로그인이 풀렸어요. 설정 › 연동에서 다시 연결해 주세요." : (e.message || "네이버 캘린더를 읽지 못했어요."); }
     finally { nvBusy = false; }
@@ -2771,10 +2776,10 @@ body.popup .rz{display:none}
     const body = `<?xml version="1.0" encoding="utf-8"?><c:mkcalendar xmlns:d="DAV:" xmlns:c="${NS_C}" xmlns:a="http://apple.com/ns/ical/"><d:set><d:prop><d:displayname>${String(name).replace(/[<&>]/g, ch => ({ "<": "&lt;", "&": "&amp;", ">": "&gt;" })[ch])}</d:displayname><a:calendar-color>${color || "#16a085"}</a:calendar-color><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop></d:set></c:mkcalendar>`;
     const r = await nvDo("MKCALENDAR", href, { body });
     if (r.status === 201 || r.status === 200) return href;
-    const e = new Error("mk " + r.status); e.status = r.status; e.mk = true; throw e;
+    const e = nvErr("캘린더 만들기", r); e.mk = true; throw e;
   }
   async function bSyncNvCal(sb, c, m) {
-    const uid = bUser.id, viewer = c.role === "viewer", want = MIR_PRE + c.name, own = m.origin === "own", cutoff = Date.now() - 62 * 864e5;
+    const uid = bUser.id, viewer = c.role === "viewer", want = c.name, own = m.origin === "own", cutoff = Date.now() - 62 * 864e5;
     if (own && m.account && m.account !== nv.id) return false;
     let changed = false;
     if (m && m.mirror_cal_id) {   // 사본이 아직 있는지
@@ -2782,12 +2787,19 @@ body.popup .rz{display:none}
       const cur = list.find(x => x.href === m.mirror_cal_id);
       if (!cur && own) return false;
       if (!cur) { await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw); bMirNv.delete(m.mirror_cal_id); m = Object.assign({}, m, { mirror_cal_id: "" }); }
-      else if (cur.name !== want && cur.name.startsWith(MIR_PRE)) { try { await nvDo("PROPPATCH", cur.href, { body: `<?xml version="1.0" encoding="utf-8"?><d:propertyupdate xmlns:d="DAV:"><d:set><d:prop><d:displayname>${want.replace(/[<&>]/g, "")}</d:displayname></d:prop></d:set></d:propertyupdate>` }); } catch (e) {} }
+      else if (cur.name !== want && !own && /\/teamcal-[^/]+\/$/.test(cur.href)) { try { await nvDo("PROPPATCH", cur.href, { body: `<?xml version="1.0" encoding="utf-8"?><d:propertyupdate xmlns:d="DAV:"><d:set><d:prop><d:displayname>${want.replace(/[<&>]/g, "")}</d:displayname></d:prop></d:set></d:propertyupdate>` }); } catch (e) {} }
     }
     if (!m.mirror_cal_id) {
-      if (m.sync_token === "pick") return false;   // 네이버가 새 캘린더를 막아서 사용자가 고를 차례
-      let href;
-      try { href = await nvMkCal(want, c.color); }
+      if (m.sync_token === "pick") {   // 네이버가 새 캘린더 만들기를 막음 → 같은 이름의 캘린더를 만들어 두면 자동으로 잇는다
+        const same = (await nvListCals()).find(x => !bMirNv.has(x.href) && (x.name.trim() === want || x.name.trim() === MIR_PRE + want));
+        if (!same) { nvMkFail = true; return false; }
+        await sb.from("mirror_cals").update({ mirror_cal_id: same.href, sync_token: null, account: nv.id }).eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw);
+        m = Object.assign({}, m, { mirror_cal_id: same.href, sync_token: null });
+      }
+    }
+    if (!m.mirror_cal_id) {
+      let href = ((await nvListCals()).find(x => /\/teamcal-[^/]+\/$/.test(x.href) && !bMirNv.has(x.href) && (x.name.trim() === want || x.name.trim() === MIR_PRE + want)) || {}).href;   // 전에 만들어 둔 사본이 있으면 그걸 쓴다
+      if (!href) try { href = await nvMkCal(want, c.color); }
       catch (e) {
         if (!e.mk) throw e;
         nvMkFail = true;
@@ -2812,11 +2824,12 @@ body.popup .rz{display:none}
       byEv.set(eid, l); byMir.set(href, l);
     };
     const delLink = async l => { await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "naver").eq("event_id", l.event_id); byEv.delete(l.event_id); byMir.delete(l.mirror_event_id); };
-    const ndel = async href => { const r = await nvDo("DELETE", href); if (r.status >= 400 && r.status !== 404 && r.status !== 410) throw new Error("naver delete " + r.status); };
+    const ndel = async href => { const r = await nvDo("DELETE", href); if (r.status >= 400 && r.status !== 404 && r.status !== 410) throw nvErr("일정 지우기", r); };
     const nput = async (t, href, ifMatch) => {
-      const r = await nvDo("PUT", href, { ctype: "text/calendar", body: tc2ics(t), ifMatch });
-      if (r.status === 412) return null;   // 그새 네이버에서 바뀜 → 다음 차례에
-      if (r.status >= 400) { const e = new Error("naver put " + r.status); e.status = r.status; throw e; }
+      let r = await nvDo("PUT", href, { ctype: "text/calendar", body: tc2ics(t), ifMatch });
+      if (r.status === 412 && ifMatch === "*") return null;
+      if (r.status >= 400 && r.status !== 401 && ifMatch) r = await nvDo("PUT", href, { ctype: "text/calendar", body: tc2ics(t) });   // 조건부 요청을 안 받는 서버
+      if (r.status >= 400) throw nvErr("일정 쓰기", r);
       return r.etag || await nvEtag(href);
     };
     // 1) 네이버 쪽 현재 상태
@@ -2828,7 +2841,7 @@ body.popup .rz{display:none}
       const v = icsParse(it.ics)[0]; if (!v) continue;
       if (!l && own && (v.rec || v.e.getTime() < cutoff)) { seen.add(it.href); continue; }   // 원래 캘린더: 반복·오래된 일정은 네이버에만 둔다
       if (!l) {
-        const tid = (/^(.+)@teamcal\.app$/i.exec(v.uid) || [])[1];
+        const tid = (/^(.+)@teamcal\.app$/i.exec(v.uid) || [])[1] || (tc.has(v.uid) ? v.uid : "");
         if (tid && tc.has(tid) && !byEv.has(tid)) { await putLink(tid, it.href, null, it.etag); continue; }   // 연결표만 잃어버림
         if (tid && !tc.has(tid)) { await ndel(it.href); continue; }
         if (viewer) { await ndel(it.href); continue; }
@@ -2862,7 +2875,7 @@ body.popup .rz{display:none}
     for (const t of tc.values()) {
       if (done.has(t.id)) continue;
       const l = byEv.get(t.id);
-      if (!l) { const href = MC + t.id + ".ics"; const et = await nput(t, href, "*") ?? await nput(t, href, ""); if (et != null) await putLink(t.id, href, t.updated_at, et); continue; }
+      if (!l) { const href = MC + t.id + ".ics"; const et = (await nput(t, href, "*")) ?? (await nput(t, href, "")); if (et != null) await putLink(t.id, href, t.updated_at, et); continue; }
       if (!force.has(t.id) && sameT(t.updated_at, l.tc_updated)) continue;
       const et = await nput(t, l.mirror_event_id, "");
       if (et != null) await putLink(t.id, l.mirror_event_id, t.updated_at, et);
@@ -2889,7 +2902,7 @@ body.popup .rz{display:none}
     const t = !bUser ? "TeamCal 계정 · 로그인" : bBadgeN ? `TeamCal 친구 · 새 요청 ${bBadgeN}` : "TeamCal 친구 · 공유 칩";
     b.title = t; b.setAttribute("aria-label", t);
   }
-  function gState() { const p = gCals.find(c => c.primary); return { gOn: gmode === "google" && !!gToken, gMail: p ? p.id : "", nvOn: nv.on, nvId: nv.id, nvCals: nvCals.map(c => ({ href: c.href, name: c.name })) }; }
+  function gState() { const p = gCals.find(c => c.primary); return { gOn: gmode === "google" && !!gToken, gMail: p ? p.id : "", nvOn: nv.on, nvId: nv.id, nvCals: nvAll.filter(c => !bMirNv.has(c.href)).map(c => ({ href: c.href, name: c.name })) }; }
   function openFriends(tab, extra) { if (inHost) host({ cmd: "popup", kind: "friends", data: Object.assign({ tab: tab || "" }, gState(), extra || {}) }); }
   async function bLoad() {
     if (!BETA || POPUP) return;
@@ -2923,6 +2936,8 @@ body.popup .rz{display:none}
         evs = (data || []).map(e => ({ s: new Date(e.start_at), e: new Date(e.end_at), all: !!e.all_day, title: e.title, color: col[e.cal_id], cal: "tc:" + e.cal_id, id: e.id,
           loc: e.location || "", desc: e.memo || "", url: "", rec: "", shared: true, by: e.created_by && e.created_by !== bUser.id ? (names[e.created_by] || "") : "" }));
       }
+      try { const mr = await sb.from("mirror_cals").select("provider,mirror_cal_id,sync_token").eq("user_id", bUser.id);   // 사본 캘린더는 이름이 칩과 같아서 목록으로 가린다
+        for (const m of mr.data || []) if (m.mirror_cal_id && m.sync_token !== "off") (m.provider === "naver" ? bMirNv : bMir).add(m.mirror_cal_id); } catch (e) {}
       bEvents = evs; bLoadedOk = true;
       bSub(); bApply(); bBadge(); renderAll();
       const ck = bCals.map(c => c.raw + ":" + c.role + ":" + c.name).sort().join("|");
@@ -3215,7 +3230,7 @@ body.popup .rz{display:none}
       : `<div class="fmade" style="--c:${esc(L.color)}"><span class="fdot"></span>${esc(L.name)} · 만들었어요</div>`;
     const draw = () => {
       body.innerHTML = head + `<h3 class="fq">어디에 연결할까요?</h3>
-        <p class="fnote" style="margin-top:0">${join ? "지금 안 골라도 공유 칩은 위젯에 보여요. 나중에 공유 칩 카드에서 바꿀 수 있어요." : `고른 캘린더에 ‘TeamCal · ${esc(L.name)}’이 생기고, 거기서 넣고 고친 일정도 함께 쓰는 사람들에게 반영돼요.`}</p>
+        <p class="fnote" style="margin-top:0">${join ? "지금 안 골라도 공유 칩은 위젯에 보여요. 나중에 공유 칩 카드에서 바꿀 수 있어요." : `고른 캘린더에 ‘${esc(L.name)}’ 캘린더가 생기고, 거기서 넣고 고친 일정도 함께 쓰는 사람들에게 반영돼요.`}</p>
         <button type="button" class="fcon" role="checkbox" aria-checked="${L.g}" id="flG">${LG}<div class="ft"><b>Google 캘린더</b><small>${fG.gOn ? esc(fG.gMail || "연결됨") : L.g ? "고르면 구글 로그인 창이 열려요" : "연결 안 됨"}</small></div>${fG.gOn || L.g ? `<span class="fck" aria-hidden="true"></span>` : `<span class="sbtn" aria-hidden="true">구글 연결</span>`}</button>`
         + (fG.nvOn ? `<button type="button" class="fcon" role="checkbox" aria-checked="${!!L.n}" id="flN"><span class="plo" style="--c:#03c75a">N</span><div class="ft"><b>네이버 캘린더</b><small>${esc(fG.nvId)}</small></div><span class="fck" aria-hidden="true"></span></button>`
           : `<div class="fcon dis"><span class="plo" style="--c:#03c75a">N</span><div class="ft"><b>네이버 캘린더</b><small>설정 › 연동에서 먼저 연결해 주세요</small></div><span class="soon">연결 안 됨</span></div>`)
@@ -3238,7 +3253,7 @@ body.popup .rz{display:none}
       if (link && L.n && !err) err = (await fSetLink(sb, L.cal, true, "naver")).error;
       fLink = null; fOpen = L.cal;
       const where = [L.g && "구글", L.n && "네이버"].filter(Boolean).join("·");
-      fMsg(err ? "공유 칩은 됐지만 연결을 저장하지 못했어요. 칩 카드에서 다시 켜 주세요." : link ? (L.g && !fG.gOn ? "구글에 로그인하면 바로 만들어져요." : `${where}에 ‘TeamCal · ${L.name}’을 만들고 있어요.`) : (join ? "공유 칩에 참여했어요." : L.msg || ""), !!err);
+      fMsg(err ? "공유 칩은 됐지만 연결을 저장하지 못했어요. 칩 카드에서 다시 켜 주세요." : link ? (L.g && !fG.gOn ? "구글에 로그인하면 바로 만들어져요." : `${where}에 ‘${L.name}’ 캘린더를 만들고 있어요.`) : (join ? "공유 칩에 참여했어요." : L.msg || ""), !!err);
       fSync();
       if (link && L.g && !fG.gOn && !err) { host({ cmd: "glogin" }); return; }
       fRender();
@@ -3319,7 +3334,7 @@ body.popup .rz{display:none}
       if (on && !fG.nvOn) { fMsg("설정 › 연동에서 네이버를 먼저 연결해 주세요.", true); return; }
       b.disabled = true; const { error } = await fSetLink(sb, cid, on, "naver");
       if (error) { b.disabled = false; fMsg("바꾸지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
-      done(on ? `네이버에 ‘TeamCal · ${nm}’을 만들고 있어요.` : `네이버의 ‘TeamCal · ${nm}’ 연결을 끊을게요. TeamCal의 공유 칩은 그대로예요.`);
+      done(on ? `네이버에 ‘${nm}’ 캘린더를 만들고 있어요.` : `네이버의 ‘${nm}’ 연동을 끊을게요. 공유 칩은 그대로예요.`);
     });
     body.querySelectorAll("[data-npick]").forEach(s => s.onchange = async () => {
       if (!s.value) return;
@@ -3331,7 +3346,7 @@ body.popup .rz{display:none}
       b.disabled = true; const { error } = await fSetLink(sb, cid, on);
       if (error) { b.disabled = false; fMsg("바꾸지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
       if (on && !fG.gOn) { fMsg("구글에 로그인하면 바로 만들어져요."); fSync(); host({ cmd: "glogin" }); return; }
-      done(on ? `구글에 ‘TeamCal · ${nm}’을 만들고 있어요.` : `구글의 ‘TeamCal · ${nm}’ 캘린더를 지울게요. TeamCal의 공유 칩은 그대로예요.`);
+      done(on ? `구글에 ‘${nm}’ 캘린더를 만들고 있어요.` : `구글의 ‘${nm}’ 사본 캘린더를 지울게요. 공유 칩은 그대로예요.`);
     });
     body.querySelectorAll("[data-leave]").forEach(b => b.onclick = async () => {
       if (b.dataset.ask && !b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 나가기"; return; }
@@ -3449,14 +3464,16 @@ body.popup .rz{display:none}
       const L = S.links, gl = L.get("google"), nl = L.get("naver");
       const gRow = kind === "g" ? `<span class="porig">원래 캘린더</span>` : sw("google", !!gl, !writable && kind !== "tc");
       const nRow = kind === "nv" ? `<span class="porig">원래 캘린더</span>` : sw("naver", !!nl, !writable && kind !== "tc");
-      const gSub = kind === "g" ? esc(prim ? prim.id : "") : !gOn ? "설정 › 연동에서 먼저 연결해 주세요" : gl && gl.origin === "own" ? "원래 캘린더 · " + esc(prim ? prim.id : "") : gl ? (gl.mirror_cal_id ? `‘TeamCal · ${esc(c.name)}’` : "곧 만들어져요") : esc(prim ? prim.id : "");
-      const nSub = kind === "nv" ? esc(nv.id) : !nv.on ? "설정 › 연동에서 먼저 연결해 주세요" : nl && nl.origin === "own" ? "원래 캘린더 · " + esc(nv.id) : nl ? (nl.sync_token === "pick" ? "친구 창에서 연결할 캘린더를 골라 주세요" : nl.mirror_cal_id ? `‘TeamCal · ${esc(c.name)}’` : "곧 만들어져요") : esc(nv.id);
+      const gSub = kind === "g" ? esc(prim ? prim.id : "") : !gOn ? "설정 › 연동에서 먼저 연결해 주세요" : gl && gl.origin === "own" ? "원래 캘린더 · " + esc(prim ? prim.id : "") : gl ? (gl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(prim ? prim.id : "");
+      const nSub = kind === "nv" ? esc(nv.id) : !nv.on ? "설정 › 연동에서 먼저 연결해 주세요" : nl && nl.origin === "own" ? "원래 캘린더 · " + esc(nv.id) : nl ? (nl.sync_token === "pick" ? `네이버가 새 캘린더 만들기를 막았어요. 네이버에서 ‘${esc(c.name)}’ 캘린더를 만들면 자동으로 이어져요. 아래에서 직접 골라도 돼요.` : nl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(nv.id);
       let h = `<div class="ih"><i></i><span>${esc(c.name)}</span><button class="x" type="button" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
       if (!writable && kind === "g") h += `<p class="cpn">보기 전용 구글 캘린더라 연동·초대는 할 수 없어요.</p>`;
       else {
         h += `<div class="il">연동 · 양방향</div>
           <div class="frow"><span class="plo g sm">${G_LOGO}</span><div class="ft">Google<small>${gSub}</small></div>${gRow}</div>
-          <div class="frow"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft">네이버<small>${nSub}</small></div>${nRow}</div>
+          <div class="frow"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft" style="white-space:normal">네이버<small>${nSub}</small></div>${nRow}</div>
+          ${nl && nl.sync_token === "pick" ? `<div class="frow"><select class="fsel" style="max-width:none;flex:1" id="cpPick"><option value="">연결할 네이버 캘린더 고르기…</option>${nvAll.filter(x => !bMirNv.has(x.href)).map(x => `<option value="${esc(x.href)}">${esc(x.name)}</option>`).join("")}</select></div>` : ""}
+          ${nl && nv.err ? `<p class="cpn" style="color:var(--err)">${esc(nv.err)}</p>` : ""}
           <div class="frow" style="opacity:.55"><span class="plo sm" style="--c:#0f6cbd">O</span><div class="ft">Outlook</div><span class="soon">준비 중</span></div>`;
         const mem = kind === "tc" ? S.members.slice().sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0)) : [{ user_id: me, role: "owner", status: "joined" }];
         h += `<div class="il">함께 쓰는 사람 ${mem.filter(m => m.status === "joined").length}</div>` + mem.map(m => {
@@ -3508,6 +3525,12 @@ body.popup .rz{display:none}
       });
       const inv = d.querySelector("#cpInv");
       if (inv) inv.onclick = () => { const u = d.querySelector("#cpWho").value; if (!u) { say("초대할 친구를 골라 주세요.", true); draw(); return; } run({ kind: "invite", uid: u, role: d.querySelector("#cpRole").value }); };
+      const pk = d.querySelector("#cpPick");
+      if (pk) pk.onchange = async () => {
+        if (!pk.value) return;
+        const { error } = await sb.from("mirror_cals").update({ mirror_cal_id: pk.value, sync_token: null, account: nv.id }).eq("user_id", me).eq("provider", "naver").eq("cal_id", c.raw);
+        await after(error ? "바꾸지 못했어요." : "그 네이버 캘린더와 맞출게요. 그 캘린더에 있던 일정도 공유 칩에 들어가요.");
+      };
       const fr = d.querySelector("#cpFr"); if (fr) fr.onclick = () => { closeInvite(); openFriends("friends"); };
       const no = d.querySelector("#cpNo"); if (no) no.onclick = () => { S.ask = null; draw(); };
       const yes = d.querySelector("#cpYes");
@@ -3644,7 +3667,7 @@ body.popup .rz{display:none}
       if (gOn || N.on) h += `<div class="sgrp">연결됨</div>` + (gOn ? `<div class="srow"><div class="st"><span class="pic sm">${G_LOGO}</span>Google<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>` : "")
         + (N.on ? `<div class="srow"><div class="st"><span class="pic sm"><span class="plo sm" style="--c:#03c75a">N</span></span>${N.works ? "네이버웍스" : "네이버"}<small>${esc(N.id)}</small></div><button type="button" class="sbtn" data-nvoff="1">연결 해제</button></div>` : "");
       h += `<div class="sgrp">공유 칩 양방향 사본</div>`;
-      if (H.gmode !== "google" && !(U.nv && U.nv.on)) h += `<p class="pnote" style="margin:2px 0 8px">구글이나 네이버를 연결하면 연결하기로 고른 공유 칩마다 그 캘린더에 “TeamCal · 칩 이름” 캘린더가 생겨요. 거기서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
+      if (H.gmode !== "google" && !(U.nv && U.nv.on)) h += `<p class="pnote" style="margin:2px 0 8px">구글이나 네이버를 연결하면 연결하기로 고른 공유 칩마다 그 캘린더에 칩과 같은 이름의 캘린더가 생겨요. 거기서 넣고 고친 일정도 TeamCal과 함께 쓰는 사람들에게 반영돼요.</p>`;
       else {
         h += (B.cals || []).length ? B.cals.map(c => { const pv = c.provs || [], t = [pv.includes("google") && "Google ✓", pv.includes("naver") && "네이버 ✓", pv.includes("naver:pick") && "네이버 (캘린더 고르기 필요)"].filter(Boolean).join(" · ");
           return `<div class="srow"><div class="st"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>${esc(c.name)}<small>${!t ? "연결 안 함 · 친구 창 › 공유 칩에서 켤 수 있어요" : t + (c.role === "viewer" ? " · 보기만이라 고쳐도 원래대로 돌아가요" : " · 양방향")}</small></div></div>`; }).join("")
