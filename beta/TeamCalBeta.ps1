@@ -25,7 +25,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '0.4.3'
+$AppVersion = '0.4.4'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/beta/version.json'
 
 function Write-Log($text) {
@@ -399,6 +399,10 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .cpn{font-size:12px;color:var(--muted);margin:8px 0 0}.cpadd{display:flex;gap:6px;margin-top:8px}.cpadd #cpWho{flex:1;max-width:none}
 .cpwarn{background:color-mix(in srgb,#f3c14b 16%,var(--bg));border:1px solid color-mix(in srgb,#f3c14b 55%,var(--line));border-radius:10px;padding:9px 10px;font-size:11.8px;line-height:1.55;margin-top:10px}
 .cpwb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.cpneed{border:1px solid #f1b8ba;background:color-mix(in srgb,#e5484d 9%,var(--bg));border-radius:10px;padding:9px 10px;margin:4px 0 6px;font-size:11.8px;line-height:1.55}.cpneed>b{display:block;color:#d13438;font-size:12.5px;margin-bottom:2px}
+.cpdel{border:1px solid #f1b8ba;background:color-mix(in srgb,#e5484d 8%,var(--bg));border-radius:10px;padding:10px;margin-top:10px;font-size:12px;line-height:1.55}.cpdel>b{display:block;color:#d13438;font-size:13px}.cpdel>span{display:block;color:var(--muted)}
+.cpdq{font-weight:700;margin:8px 0 2px}.cpdel .cpck{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:7px;margin:5px 0;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer}.cpdel .cpck input{appearance:auto;-webkit-appearance:checkbox;width:14px;height:14px;margin:2px 0 0;flex:none}
+.cpdel .cpck .pt{font-style:normal}.cpdel .cpck .pt span{color:var(--muted)}.cpdn{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.sbtn.dngf{background:#e5484d;border-color:#e5484d;color:#fff}
 .cpft{display:flex;justify-content:flex-end;margin-top:10px}
 .cpop .cm.err{color:var(--err)}
 .nstep{display:flex;gap:9px;font-size:12.5px;line-height:1.5;margin:8px 0}.nstep>b{width:18px;height:18px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:10.5px;flex:none;margin-top:1px}
@@ -3500,7 +3504,14 @@ body.popup .rz{display:none}
         <div class="cpwb"><button type="button" class="sbtn" id="cpNo">취소</button><button type="button" class="sbtn pri" id="cpYes">바꾸고 ${S.ask.kind === "invite" ? "초대" : "연동"}</button></div></div>`;
       if (kind === "g" && !c.extra) h += `<div class="il">색상 <span style="opacity:.75">· 나에게만 적용</span></div><div class="cl" role="radiogroup" aria-label="캘린더 색상">${CAL_COLORS.map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-k="${k}" aria-label="${n}" title="${n}" aria-checked="${sameColor(k, c.color)}"></button>`).join("")}</div>`;
       if (kind === "tc" && S.owner) h += `<div class="il">색상 <span style="opacity:.75">· 함께 쓰는 사람 모두에게</span></div><div class="cl" role="radiogroup" aria-label="칩 색상">${CAL_COLORS.slice(0, 11).map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-tk="${k}" aria-label="${n}" title="${n}" aria-checked="${sameColor(k, c.color)}"></button>`).join("")}</div>`;
-      if (kind === "tc") h += `<div class="cpft">${S.owner ? `<button type="button" class="sbtn dng" id="cpDel">공유 칩 삭제</button>` : `<button type="button" class="sbtn dng" id="cpLeave">나가기</button>`}</div>`;
+      if (kind === "tc" && S.del) {
+        const own = S.del.owner, opts = S.del.opts;
+        h += `<div class="cpdel"><b>‘${esc(c.name)}’ ${own ? "캘린더를 삭제할까요?" : "캘린더에서 나갈까요?"}</b><span>${own ? "함께 쓰는 사람 모두에게서 사라지고 일정도 지워져요. 되돌릴 수 없어요." : "나만 빠지고, 다른 사람들은 그대로 써요."}</span>`
+          + (opts.length ? `<div class="cpdq">연동된 캘린더도 지울까요?</div>` + opts.map((o, i) => `<label class="pchk cpck"><input type="checkbox" data-dopt="${i}"${o.on ? " checked" : ""}${o.dis ? " disabled" : ""}><em class="pt">${o.label}${o.sub ? `<span> · ${o.sub}</span>` : ""}</em></label>`).join("")
+            + `<span class="cpdn">체크하지 않은 캘린더는 일정과 함께 그대로 남고, 연동만 끊겨요.${own ? " 함께 쓰는 사람들의 연동 캘린더는 각자 위젯에서 정리돼요." : ""}</span>` : "")
+          + `<div class="cpwb"><button type="button" class="sbtn" id="cpDelNo">취소</button><button type="button" class="sbtn dngf" id="cpDelGo">${own ? "삭제" : "나가기"}</button></div></div>`;
+      }
+      if (kind === "tc") h += `<div class="cpft">${S.owner ? `<button type="button" class="sbtn dng" id="cpDel">캘린더 삭제</button>` : `<button type="button" class="sbtn dng" id="cpLeave">나가기</button>`}</div>`;
       h += `<p class="cm${S.err ? " err" : ""}" aria-live="polite">${esc(S.msg)}</p>`;
       d.innerHTML = h; bind(); report();
     };
@@ -3577,19 +3588,50 @@ body.popup .rz{display:none}
         if (!error) { c.color = b.dataset.tk; d.style.setProperty("--c", c.color); }
         await after(error ? "색을 바꾸지 못했어요." : "색을 바꿨어요. 함께 쓰는 사람 화면에도 바뀌어요.");
       });
-      const del = d.querySelector("#cpDel");
-      if (del) del.onclick = async () => {
-        if (!del.classList.contains("arm")) { del.classList.add("arm"); del.textContent = "모든 일정까지 삭제"; return; }
-        const { error } = await sb.from("shared_cals").delete().eq("id", c.raw);
-        if (error) { say("삭제하지 못했어요.", true); draw(); return; }
-        closeInvite(); host({ cmd: "bsync" }); await bLoad(); bSyncSoon(500, true); toast(`‘${c.name}’ 공유 칩을 삭제했어요.`);
+      const askDel = () => {   // 지울 때 연동된 캘린더도 지울지 하나씩 묻는다
+        const opts = [], gl = S.links.get("google"), nl = S.links.get("naver");
+        if (gl && gl.mirror_cal_id) {
+          const isPrim = gl.mirror_cal_id === (prim ? prim.id : "");
+          opts.push({ prov: "google", id: gl.mirror_cal_id, own: gl.origin === "own", on: gl.origin !== "own", dis: isPrim || !gOn,
+            label: gl.origin === "own" ? "구글의 원래 캘린더도 삭제" : `구글 캘린더 ‘${esc(c.name)}’도 삭제`,
+            sub: isPrim ? "기본 캘린더는 지울 수 없어요" : !gOn ? "구글 연결이 필요해요" : gl.origin === "own" ? "원래 쓰던 캘린더예요" : "" });
+        }
+        if (nl && nl.mirror_cal_id) {
+          const mine = /\/teamcal-[^/]+\/$/.test(nl.mirror_cal_id);
+          opts.push({ prov: "naver", id: nl.mirror_cal_id, own: nl.origin === "own", on: nl.origin !== "own", dis: !nv.on,
+            label: nl.origin === "own" ? "네이버의 원래 캘린더도 삭제" : `네이버 캘린더 ‘${esc(c.name)}’도 삭제`,
+            sub: !nv.on ? "네이버 연결이 필요해요" : nl.origin === "own" ? "원래 쓰던 캘린더예요" : mine ? "" : "직접 만든 캘린더예요" });
+        }
+        S.del = { owner: S.owner, opts }; say(""); draw();
+        const box = d.querySelector(".cpdel"); if (box) box.scrollIntoView({ block: "nearest" });
       };
-      const lv = d.querySelector("#cpLeave");
-      if (lv) lv.onclick = async () => {
-        if (!lv.classList.contains("arm")) { lv.classList.add("arm"); lv.textContent = "정말 나가기"; return; }
-        const { error } = await sb.from("shared_members").delete().eq("cal_id", c.raw).eq("user_id", me);
-        if (error) { say("나가지 못했어요.", true); draw(); return; }
-        closeInvite(); await bLoad(); bSyncSoon(500, true); toast(`‘${c.name}’에서 나왔어요.`);
+      const dl = d.querySelector("#cpDel"); if (dl) dl.onclick = askDel;
+      const lv = d.querySelector("#cpLeave"); if (lv) lv.onclick = askDel;
+      const dn = d.querySelector("#cpDelNo"); if (dn) dn.onclick = () => { S.del = null; draw(); };
+      d.querySelectorAll("[data-dopt]").forEach(x => x.onchange = () => { S.del.opts[+x.dataset.dopt].on = x.checked; });
+      const dg = d.querySelector("#cpDelGo");
+      if (dg) dg.onclick = async () => {
+        dg.disabled = true; dg.textContent = "지우는 중…";
+        const left = [];
+        for (const o of S.del.opts) {   // 1) 고른 연동 캘린더 지우기
+          if (!o.on || o.dis) continue;
+          try {
+            if (o.prov === "google") await gj("DELETE", `${GAPI}/calendars/${enc(o.id)}`);
+            else { const r = await nvDo("DELETE", o.id); if (r.status >= 400 && r.status !== 404 && r.status !== 410) throw Object.assign(new Error(""), { status: r.status }); }
+            (o.prov === "google" ? bMir : bMirNv).delete(o.id);
+          } catch (e) { if (e.status !== 404 && e.status !== 410) left.push(o.prov === "google" ? "구글" : "네이버"); }
+        }
+        // 2) 내 연동 기록을 먼저 지운다 (안 고른 캘린더는 그대로 남고 다시 보인다)
+        await sb.from("mirror_links").delete().eq("user_id", me).eq("cal_id", c.raw);
+        await sb.from("mirror_cals").delete().eq("user_id", me).eq("cal_id", c.raw);
+        for (const o of S.del.opts) if (!o.on || o.dis) (o.prov === "google" ? bMir : bMirNv).delete(o.id);
+        bMirSave();
+        // 3) 칩 삭제 / 나가기
+        const { error } = S.del.owner ? await sb.from("shared_cals").delete().eq("id", c.raw) : await sb.from("shared_members").delete().eq("cal_id", c.raw).eq("user_id", me);
+        if (error) { S.del = null; say(S.owner ? "삭제하지 못했어요." : "나가지 못했어요.", true); draw(); return; }
+        closeInvite(); host({ cmd: "bsync" }); await bLoad(); if (gToken) gRequest(); nvLoad(); bSyncSoon(800, true);
+        toast(`‘${c.name}’ ${S.del.owner ? "캘린더를 삭제했어요" : "캘린더에서 나왔어요"}.` + (left.length ? ` ${left.join("·")} 캘린더는 지우지 못했어요. ${left.join("·")}에서 직접 지워 주세요.` : ""));
+        if (left.includes("네이버")) host({ cmd: "open", url: "https://calendar.naver.com/" });
       };
     };
     d.innerHTML = `<div class="ih"><i></i><span>${esc(c.name)}</span></div><p class="cpn">불러오는 중…</p>`;
