@@ -131,6 +131,21 @@ ol.steps{padding:0;margin:0}
 .dlcard.side h3{font-size:19px;margin:0 0 10px;letter-spacing:-.02em}
 .dlcard.side p{margin:0 0 10px;color:var(--fg2);font-size:15px}
 
+/* 업데이트 노트 */
+.rels{max-width:780px;border-left:2px solid var(--line);margin-left:6px}
+.rel{position:relative;padding:0 0 30px 28px}
+.rel::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--line)}
+.rel.new::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
+.rh{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
+.rh b{color:var(--fg);font-size:15px}
+.rh .nb{background:var(--accent);color:#fff;border-radius:999px;padding:0 9px;font-size:12px;font-weight:700}
+.rh time{margin-left:auto}
+.rel h3{font-size:18px;letter-spacing:-.02em;margin:4px 0 6px}
+.rel ul{margin:0;padding-left:18px;color:var(--fg2);font-size:15px}
+.rel li{margin:2px 0}
+.rels.short .rel:nth-child(n+5){display:none}
+.more{margin:4px 0 0 34px;height:42px;font-size:14.5px}
+
 /* FAQ */
 .faq{max-width:780px}
 details{border-bottom:1px solid var(--line)}
@@ -173,7 +188,7 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 <div class="notice"><div class="wrap">
   <span class="tag">업데이트</span>
   <span id="noticeText">새 버전이 나오면 위젯이 알아서 알려 줘요.</span>
-  <a href="#download">버전 정보 보기</a>
+  <a href="#updates">업데이트 노트 보기</a>
 </div></div>
 
 <header id="top"><div class="wrap">
@@ -182,6 +197,7 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
     <a href="#features">기능</a>
     <a href="#start">시작하기</a>
     <a href="#download">다운로드</a>
+    <a href="#updates">업데이트 노트</a>
     <a href="#faq">자주 묻는 질문</a>
     <a href="external/privacy.html">개인정보처리방침</a>
   </nav>
@@ -297,12 +313,31 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
       <h3>팀 담당자라면</h3>
       <p>구글 캘린더에 팀 휴가 캘린더를 하나 만들어 팀원에게 "일정 변경" 권한으로 공유하면 준비 끝이에요.</p>
       <p>받은 zip 폴더에 구글 설정 파일을 넣고 "exe 만들기.cmd"를 실행하면, 팀원은 설정 파일 없이 exe 하나로 설치할 수 있어요.</p>
-      <div class="req"><b>업데이트 내역</b><ul id="notes"><li>불러오는 중…</li></ul></div>
+      <div class="req"><b>최근 업데이트</b><ul id="notes"><li>불러오는 중…</li></ul><p style="margin:8px 0 0"><a href="#updates" style="color:var(--accent);font-weight:600;text-decoration:none">업데이트 노트 전체 보기 →</a></p></div>
     </div>
   </div>
 </div></section>
 
-<section id="faq"><div class="wrap">
+<section id="updates"><div class="wrap">
+  <p class="sec-k">업데이트 노트</p>
+  <h2 class="rv">무엇이 바뀌었나요</h2>
+  <p class="sec-lead rv">새 버전이 나오면 위젯이 알려 주고, [업데이트]를 누르면 설정은 그대로 둔 채 바뀌어요.</p>
+  <div class="rels rv">
+    <article class="rel new"><div class="rh"><b>1.1.0</b><span class="nb">새 버전</span><time datetime="2026-11-23">2026.11.23</time></div><h3>이름이 Plait(플레잇)으로 바뀌었어요</h3><ul><li>앱 이름이 TEAM CAL(외부용)에서 Plait으로 바뀌고, 엮인 두 띠로 만든 새 아이콘이 생겼어요.</li><li>바로가기·트레이·설정 화면이 모두 새 이름으로 바뀌어요.</li><li>업데이트해도 설정과 구글 로그인은 그대로예요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.8</b><time datetime="2026-11-17">2026.11.17</time></div><h3>시간 휠 오전/오후 자동 전환</h3><ul><li>시간 휠에서 11시를 넘기면 오전/오후가 저절로 바뀌어요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.7</b><time datetime="2026-11-17">2026.11.17</time></div><h3>부드러운 시간 휠</h3><ul><li>시간 휠이 더 부드럽게 돌아가요.</li><li>12시간/24시간 표시를 설정에서 고를 수 있어요.</li><li>달력 높이를 조절할 수 있어요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.6</b><time datetime="2026-11-17">2026.11.17</time></div><h3>휴가 구분 추가 · 캘린더 색상</h3><ul><li>휴가 구분에 '초과근무 보상'이 생겼어요.</li><li>캘린더 칩을 더블클릭한 창에서 색상을 바꿀 수 있어요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.5</b><time datetime="2026-11-17">2026.11.17</time></div><h3>내 휴가 수정</h3><ul><li>내가 등록한 휴가를 직접 고칠 수 있어요. (본인 휴가만)</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.4</b><time datetime="2026-11-17">2026.11.17</time></div><h3>일정의 캘린더 바꾸기</h3><ul><li>일정을 고칠 때 다른 캘린더로 옮길 수 있어요.</li><li>캘린더 칩에 캘린더 색상이 보여요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.3</b><time datetime="2026-11-17">2026.11.17</time></div><h3>기간 일정</h3><ul><li>일정을 시작일~종료일 기간으로 추가·수정할 수 있어요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.2</b><time datetime="2026-11-13">2026.11.13</time></div><h3>작은 수정</h3><ul><li>작업 표시줄에 고정해도 로고가 그대로 보여요.</li><li>투명도 바가 끝까지 움직여요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.1</b><time datetime="2026-11-13">2026.11.13</time></div><h3>캘린더 칩 정리</h3><ul><li>켜 둔 캘린더 칩만 보이게 접을 수 있어요.</li></ul></article>
+    <article class="rel"><div class="rh"><b>1.0.0</b><time datetime="2026-11-13">2026.11.13</time></div><h3>첫 공개</h3><ul><li>팀 휴가 캘린더와 내 구글 일정을 바탕화면 위젯 하나로 보는 첫 버전이에요.</li></ul></article>
+  </div>
+  <button type="button" class="btn ghost more" id="relMore">이전 버전 더 보기</button>
+</div></section>
+
+<section id="faq" class="alt"><div class="wrap">
   <p class="sec-k">자주 묻는 질문</p>
   <h2 class="rv">궁금한 점</h2>
   <div class="faq">
@@ -354,6 +389,10 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 
   const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" }) : null;
   document.querySelectorAll(".rv").forEach(el => io ? io.observe(el) : el.classList.add("in"));
+
+  // 업데이트 노트: 처음엔 최근 4개만
+  const rels = document.querySelector(".rels"), more = document.getElementById("relMore");
+  if (rels && more) { rels.classList.add("short"); more.onclick = () => { rels.classList.remove("short"); more.remove(); }; }
 
   // 지금 버전: 업데이트 정보 파일에서 읽어 온다
   const chips = document.getElementById("verChips"), notes = document.getElementById("notes"), notice = document.getElementById("noticeText");
