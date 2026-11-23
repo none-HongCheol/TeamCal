@@ -3,7 +3,7 @@
 #  - 지정한 구글 캘린더를 팀 휴가로 사용 (제목: "이름 구분", 예: 김설계 연차)
 #  - 내 일정: 구글 로그인(브라우저) 또는 iCal 주소
 #  - 라이트/다크 테마, 투명도, 항상 위
-# 사용법: 같은 폴더의 "Plait 설치.cmd" 를 더블클릭하세요. (또는 "exe 만들기.cmd" 로 만든 TeamCalExternal-버전.exe)
+# 사용법: 같은 폴더의 "Plait 설치.cmd" 를 더블클릭하세요. (또는 "exe 만들기.cmd" 로 만든 Plait_setup.exe)
 param([switch]$Setup, [switch]$Uninstall)
 $ErrorActionPreference = 'Stop'
 Add-Type -AssemblyName System.Windows.Forms, System.Drawing, Microsoft.VisualBasic, System.Net.Http
@@ -17,6 +17,7 @@ $UiDir      = Join-Path $AppDir 'ui'
 $StateFile  = Join-Path $AppDir 'state.json'
 $GClientFile= Join-Path $AppDir 'google_client.json'
 $GTokenFile = Join-Path $AppDir 'google_token.dat'
+$NvFile     = Join-Path $AppDir 'naver.dat'          # 네이버 아이디 + 애플리케이션 비밀번호 (Windows 계정으로 암호화, 이 PC에만)
 $GuideFile  = Join-Path $AppDir '구글 캘린더 연결 방법.txt'
 $Installed  = Join-Path $AppDir 'TeamCalExternal.ps1'
 $Launcher   = Join-Path $AppDir 'launch.vbs'
@@ -24,7 +25,7 @@ $StartupLnk = Join-Path ([Environment]::GetFolderPath('Startup')) "$AppName.lnk"
 $DesktopLnk = Join-Path ([Environment]::GetFolderPath('Desktop')) "$AppName.lnk"
 $Utf8       = New-Object System.Text.UTF8Encoding($false)
 $SiteUrl    = 'https://none-hongcheol.github.io/TeamCal/'
-$AppVersion = '1.1.0'
+$AppVersion = '2.0.0'
 $UpdateUrl  = 'https://none-hongcheol.github.io/TeamCal/external/version.json'
 
 function Write-Log($text) {
@@ -60,6 +61,7 @@ $WidgetHtml = @'
 <title>Plait</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;600;700&display=swap">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js"></script>
 <style>
 :root{
   --bg:#fbfaf7; --fg:#1b1b1d; --muted:#6b6b70; --line:#ebe8e1; --sel:#f0ede6; --field:#ffffff;
@@ -354,6 +356,103 @@ input{height:40px;width:100%;min-width:0;padding:0 10px;border-radius:10px;borde
 .stabs{display:flex;gap:2px;margin:10px -16px 0;padding:0 10px;border-bottom:1px solid var(--line);overflow-x:auto}
 .stabs button{flex:none;padding:7px 9px 9px;border:0;border-bottom:2px solid transparent;background:none;color:var(--muted);font:inherit;font-size:12.5px;font-weight:600;cursor:pointer}
 .stabs button[aria-selected="true"]{color:var(--fg);border-color:var(--fg)}
+.bfr{position:relative}.bfr .bdg{position:absolute;top:-3px;right:-4px;min-width:15px;height:15px;padding:0 4px;border-radius:8px;background:var(--accent);color:#fff;font-size:9.5px;font-weight:800;line-height:15px;text-align:center;box-shadow:0 0 0 2px var(--bg)}
+.fbody{min-height:60px}
+.fbody label.fl{display:block;font-size:11.5px;font-weight:700;color:var(--muted);margin:10px 0 4px}
+.fin{width:100%;height:36px;border:1px solid var(--line);border-radius:9px;background:var(--field);color:var(--fg);font:inherit;font-size:13px;padding:0 10px}
+.fin:focus{outline:none;border-color:var(--fg)}
+.fbtn{width:100%;height:38px;margin-top:12px;border-radius:9px;border:0;background:var(--fg);color:var(--bg);font:inherit;font-weight:700;font-size:13.5px;cursor:pointer}
+.fbtn:disabled{opacity:.55;cursor:default}
+.flink{border:0;background:none;color:var(--muted);font:inherit;font-size:12px;text-decoration:underline;cursor:pointer;padding:8px 0 0}
+.fcode{font-family:ui-monospace,Consolas,monospace;font-size:20px;font-weight:800;letter-spacing:.08em;text-align:center;padding:14px 8px;border-radius:10px;background:var(--field);margin:10px 0 6px;user-select:all}
+.fnote{font-size:12px;color:var(--muted);line-height:1.55;margin:6px 0 0}
+.fnote.warn{color:var(--err)}
+.fme{display:flex;align-items:center;gap:10px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin:10px 0 2px}
+.fme .ft{flex:1;min-width:0}.fme b{display:block;font-size:13.5px}.fme small{color:var(--muted);font-size:11.5px}
+.fav{width:28px;height:28px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:12px;flex:none;background:var(--c,#888)}
+.frow{display:flex;align-items:center;gap:9px;padding:7px 0;border-bottom:1px solid var(--line);font-size:13px}
+.frow:last-child{border-bottom:0}
+.frow .ft{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.frow .ft small{display:block;color:var(--muted);font-size:11px}
+.fadd{display:flex;gap:6px;margin-top:10px}.fadd .fin{flex:1}
+.fdot{width:10px;height:10px;border-radius:50%;background:var(--c);flex:none}
+#fsheet.gate{background:var(--bg);padding:0;justify-content:flex-start;z-index:9}
+#fsheet.gate .dlg{max-width:none;width:100%;max-height:none;min-height:100%;border:0;border-radius:inherit;box-shadow:none;padding:14px 18px 18px;overflow:auto}
+#fsheet.gate .grab,#fsheet.gate #fClose{display:none}
+#fsheet.gate .dlg{padding-top:50px}
+#fsheet.gate .stabs:empty{display:none}
+.fcon .plo{line-height:1}
+#fsheet.gate .dh b{font-size:19px;letter-spacing:-.01em;display:flex;align-items:center;gap:8px}
+#fsheet.gate .dh b .lg{width:20px;height:20px;border-radius:5px;background:url(data:image/png;base64,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) center/cover;flex:none}
+#fsheet.gate .stabs{margin:12px 0 0;padding:3px;border:0;border-radius:10px;background:var(--field);gap:3px}
+#fsheet.gate .stabs button{flex:1;border:0;border-radius:8px;padding:7px 0}
+#fsheet.gate .stabs button[aria-selected="true"]{background:var(--bg);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.fsteps{display:flex;gap:6px;margin:2px 0 12px}.fsteps i{flex:1;height:3px;border-radius:2px;background:var(--line)}.fsteps i.on{background:var(--fg)}
+.fcon{display:flex;align-items:center;gap:11px;padding:10px 12px;border:1px solid var(--line);border-radius:12px;margin:8px 0}
+.fcon .plo{width:30px;height:30px;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:14px;flex:none;background:var(--c)}
+.fcon .plo.g{background:#fff;border:1px solid var(--line)}.fcon .plo svg{width:17px;height:17px}
+.fcon .ft{flex:1;min-width:0}.fcon b{display:block;font-size:13.5px}.fcon small{display:block;color:var(--muted);font-size:11.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.fcon .ok{color:#1e9e5a;font-size:12.5px;font-weight:700;flex:none}.fcon .soon{color:var(--muted);font-size:12px;flex:none}
+.fcon .sbtn{flex:none}
+.cchip.conn{border-style:dashed}
+.cpop{max-height:calc(100vh - 20px);overflow:auto}.cpop .frow{font-size:12.5px;padding:6px 0}.cpop .ssw{flex:none}
+.porig{font-size:11px;font-weight:700;color:var(--muted);border:1px solid var(--line);border-radius:6px;padding:2px 6px;flex:none}
+.cpn{font-size:12px;color:var(--muted);margin:8px 0 0}.cpadd{display:flex;gap:6px;margin-top:8px}.cpadd #cpWho{flex:1;max-width:none}
+.cpwarn{background:color-mix(in srgb,#f3c14b 16%,var(--bg));border:1px solid color-mix(in srgb,#f3c14b 55%,var(--line));border-radius:10px;padding:9px 10px;font-size:11.8px;line-height:1.55;margin-top:10px}
+.cpwb{display:flex;gap:6px;justify-content:flex-end;margin-top:8px}.cpneed{border:1px solid #f1b8ba;background:color-mix(in srgb,#e5484d 9%,var(--bg));border-radius:10px;padding:9px 10px;margin:4px 0 6px;font-size:11.8px;line-height:1.55}.cpneed>b{display:block;color:#d13438;font-size:12.5px;margin-bottom:2px}
+.cpdel{border:1px solid #f1b8ba;background:color-mix(in srgb,#e5484d 8%,var(--bg));border-radius:10px;padding:10px;margin-top:10px;font-size:12px;line-height:1.55}.cpdel>b{display:block;color:#d13438;font-size:13px}.cpdel>span{display:block;color:var(--muted)}
+.cpdq{font-weight:700;margin:8px 0 2px}.cpdel .cpck{display:flex!important;flex-direction:row!important;align-items:flex-start;gap:7px;margin:5px 0;font-size:12px;font-weight:600;color:var(--fg);cursor:pointer}.cpdel .cpck input{appearance:auto;-webkit-appearance:checkbox;width:14px;height:14px;margin:2px 0 0;flex:none}
+.cpdel .cpck .pt{font-style:normal}.cpdel .cpck .pt span{color:var(--muted)}.cpdn{display:block;font-size:11px;color:var(--muted);margin-top:4px}
+.sbtn.dngf{background:#e5484d;border-color:#e5484d;color:#fff}
+.cpft{display:flex;justify-content:flex-end;margin-top:10px}
+.cpop .cm.err{color:var(--err)}
+.nstep{display:flex;gap:9px;font-size:12.5px;line-height:1.5;margin:8px 0}.nstep>b{width:18px;height:18px;border-radius:50%;background:var(--fg);color:var(--bg);display:grid;place-items:center;font-size:10.5px;flex:none;margin-top:1px}
+.nstep small{display:block;color:var(--muted);font-size:11.5px}.nstep .lnk{font-size:12px;color:#03a14f;font-weight:700;padding:0;border:0;background:none;cursor:pointer}
+.nvopen{display:flex;align-items:center;justify-content:center;gap:7px;width:100%;height:38px;margin:7px 0 5px;border-radius:9px;border:1px solid #03c75a;background:color-mix(in srgb,#03c75a 10%,var(--bg));color:var(--fg);font:inherit;font-weight:700;font-size:13px;cursor:pointer}
+.nclip{margin-top:6px;padding:9px 10px;border-radius:9px;border:1px dashed var(--dot);color:var(--muted);font-size:12px;text-align:center}.nclip.ok{border-style:solid;border-color:#1e9e5a;color:#1e9e5a;font-weight:700}
+.acc{display:flex;align-items:center;gap:10px;border:1px solid var(--line);border-radius:12px;padding:10px 12px;margin:10px 0 4px;background:var(--bg)}.acc .fav{width:36px;height:36px;font-size:15px}.acc b{display:block;font-size:14px}.acc small{color:var(--muted);font-size:11.5px}
+.ptiles{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:8px 0 2px}
+.ptile{position:relative;display:flex;flex-direction:column;align-items:center;gap:6px;padding:12px 4px 10px;border:1px solid var(--line);border-radius:12px;background:var(--bg);color:var(--fg);font:inherit;font-size:12px;font-weight:700;cursor:pointer}
+.ptile.on{border-color:#6366f1;box-shadow:inset 0 0 0 1px #6366f1}.ptile.soon{color:var(--muted)}.ptile.soon .pic{opacity:.55}
+.ptile .pic{height:24px;display:grid;place-items:center}.ptile .pic svg{width:22px;height:22px}.ptile .pic .plo{width:22px;height:22px;border-radius:5px;display:grid;place-items:center;color:#fff;font-weight:800;font-size:13px;line-height:1;background:var(--c)}
+.pok{position:absolute;top:5px;right:6px;width:15px;height:15px;border-radius:50%;background:#1e9e5a;color:#fff;font-size:9px;font-style:normal;display:grid;place-items:center}
+.ppanel{background:var(--field);border:1px solid var(--line);border-radius:12px;padding:12px;margin:8px 0 4px}
+.ppanel .ph{display:block;font-size:13px;margin-bottom:8px}.ppanel .fin{background:var(--bg);height:38px}
+.prow2{display:flex;gap:7px;margin-top:7px}.prow2 .fin{flex:1}
+.pgo{flex:none;min-width:62px;border:0;border-radius:9px;background:#6366f1;color:#fff;font:inherit;font-weight:700;font-size:13px;cursor:pointer}.pgo:disabled{opacity:.6;cursor:default}
+#setBody .pchk{display:flex;flex-direction:row;align-items:center;gap:7px;font-size:12px;margin-top:9px;cursor:pointer;text-align:left;font-weight:600}#setBody .pchk .pt{font-style:normal;flex:1;min-width:0}#setBody .pchk .pt span{color:var(--muted);font-weight:500}
+#setBody .pchk input{appearance:auto;-webkit-appearance:checkbox;width:15px;height:15px;min-width:0;margin:0;padding:0;flex:none;border:0;box-shadow:none}
+.pnote{font-size:11.5px;color:var(--muted);line-height:1.6;margin:8px 0 0}.pnote span{font-size:11px}
+.plink{border:0;background:none;padding:0;color:#6366f1;font:inherit;font-weight:700;cursor:pointer}
+.pmsg{font-size:12px;margin:8px 0 0;color:var(--muted)}.pmsg.err{color:var(--err)}
+.prow{display:flex;align-items:center;gap:8px}.prow .st{flex:1;font-size:13px;font-weight:600}.prow small{display:block;font-weight:500;color:var(--muted);font-size:11.5px}
+.pic.sm{display:inline-grid;vertical-align:-5px;margin-right:6px}.pic.sm svg{width:16px;height:16px}.pic.sm .plo.sm{width:16px;height:16px;font-size:9.5px;border-radius:4px}
+.nlock{display:flex;gap:7px;font-size:11.5px;color:var(--muted);background:var(--field);border-radius:9px;padding:8px 10px;margin-top:10px;line-height:1.5}
+.cchip .pv.r{background:#e5484d;animation:pvblink 1.6s ease-in-out infinite}@keyframes pvblink{50%{opacity:.35}}
+.cchip .pv{font-size:9px;font-weight:800;color:#fff;border-radius:4px;padding:1px 3.5px;line-height:1.2}.cchip .pv.n{background:#03c75a}.cchip .pv.g{background:#4285f4}
+button.fcon{width:100%;text-align:left;font:inherit;color:inherit;background:var(--bg);cursor:pointer}
+button.fcon[aria-checked="true"]{border-color:var(--fg);box-shadow:inset 0 0 0 1px var(--fg)}
+.fcon.dis{opacity:.55}
+.fck{width:20px;height:20px;border-radius:6px;border:1.6px solid var(--dot);flex:none;display:grid;place-items:center}
+[aria-checked="true"]>.fck{background:var(--fg);border-color:var(--fg)}
+[aria-checked="true"]>.fck::after{content:"";width:9px;height:5px;border:2px solid var(--bg);border-top:0;border-right:0;transform:translateY(-1px) rotate(-45deg)}
+.fq{font-size:15px;margin:12px 0 3px}
+.fmade{display:inline-flex;align-items:center;gap:7px;padding:5px 11px;border-radius:999px;background:color-mix(in srgb,var(--c) 14%,transparent);font-weight:700;font-size:13px;margin-top:10px}
+.finv{border:1px dashed var(--dot);border-radius:12px;padding:10px 12px;margin-top:10px;font-size:12.5px;line-height:1.5}
+.plo.sm{width:22px;height:22px;border-radius:6px;font-size:11px;line-height:1;display:grid;place-items:center;color:#fff;font-weight:800;flex:none;background:var(--c)}
+.plo.g.sm{background:#fff;border:1px solid var(--line)}.plo.sm svg{width:13px;height:13px}
+.frow .soon{color:var(--muted);font-size:11.5px}
+.fsub{font-size:11px;font-weight:700;color:var(--muted);margin:8px 0 0}
+.fcard{border:1px solid var(--line);border-radius:12px;padding:8px 11px;margin:8px 0}
+.fcard .fh{display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13.5px;font-weight:700}
+.fcard .fh small{font-weight:500;color:var(--muted);font-size:11px;margin-left:auto}
+.fcard .fx{margin-top:6px;border-top:1px solid var(--line);padding-top:4px}
+.fsel{flex:none;width:auto;max-width:92px;height:26px;border:1px solid var(--line);border-radius:7px;background:var(--field);color:var(--fg);font:inherit;font-size:11.5px;padding:0 4px}
+.fcols{display:flex;flex-wrap:wrap;gap:6px;margin-top:4px}
+.fcols button{width:22px;height:22px;border-radius:50%;border:0;background:var(--k);cursor:pointer;box-shadow:0 0 0 2px var(--bg)}
+.fcols button[aria-checked="true"]{box-shadow:0 0 0 2px var(--bg),0 0 0 4px var(--k)}
+.fchk{width:16px;height:16px;accent-color:var(--fg);flex:none}
+.frow label.ft{display:flex!important;flex-direction:row!important;align-items:center;gap:8px;margin:0;font-size:13px;font-weight:500;color:var(--fg);cursor:pointer}
+.ev .by{flex:none;font-size:10.5px;color:var(--muted);margin-left:2px;max-width:5.5em;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sgrp{font-size:11px;font-weight:700;color:var(--muted);margin:14px 0 2px}
 .srow{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--line);font-size:13px}
 .srow:last-child{border-bottom:0}
@@ -462,6 +561,7 @@ body.popup .rz{display:none}
     <span class="sep"></span>
     <button class="ib" id="bOpa" aria-label="투명도" title="투명도"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg></button>
     <button class="ib" id="bPin" aria-label="항상 위에 표시" title="항상 위에 표시"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 17v5M8 3h8l-1 6 3 4H6l3-4z"/></svg></button>
+    <button class="ib bfr" id="bFriends" aria-label="Plait 친구" title="Plait 친구" hidden><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.2"/><path d="M3.5 19c.6-3.2 2.9-5 5.5-5s4.9 1.8 5.5 5"/><circle cx="16.8" cy="9.5" r="2.5"/><path d="M15.8 14.2c2.4.2 4.2 1.8 4.7 4.8"/></svg><span class="bdg" hidden></span></button>
     <button class="ib" id="bMenu" aria-label="설정" title="설정"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg></button>
     <button class="ib" id="bHide" aria-label="작업 표시줄로 내리기" title="작업 표시줄로 내리기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 12h14"/></svg></button>
     <button class="ib" id="bTray" aria-label="트레이 아이콘으로 숨기기" title="트레이 아이콘으로 숨기기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
@@ -593,6 +693,18 @@ body.popup .rz{display:none}
     </form>
   </div>
 
+  <!-- Plait 친구 (Beta) -->
+  <div id="fsheet" class="sheet" hidden>
+    <form class="dlg sets" role="dialog" aria-modal="true" aria-labelledby="fTitle" id="fForm" novalidate>
+      <span class="grab" aria-hidden="true"></span>
+      <div class="fsteps" id="fSteps" hidden><i></i><i></i><i></i></div>
+      <div class="dh"><b id="fTitle">Plait 친구</b><button class="x" type="button" id="fClose" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
+      <div class="stabs" role="tablist" id="fTabs"></div>
+      <div id="fBody" class="fbody"></div>
+      <p class="calc" id="fMsg" role="status" aria-live="polite"></p>
+    </form>
+  </div>
+
   <!-- 내 팀원 고르기 -->
   <div id="tsheet" class="sheet" hidden>
     <form class="dlg" role="dialog" aria-modal="true" aria-labelledby="tTitle" id="tForm" novalidate>
@@ -609,7 +721,7 @@ body.popup .rz{display:none}
 <script>
 (() => {
   // ---------------- 설정 (팀 휴가 사이트와 동일) ----------------
-  const EDITION = "external", EXT = EDITION === "external";   // external: 팀 휴가를 구글 '휴가 캘린더'로
+  const EDITION = "beta", BETA = EDITION === "beta", EXT = EDITION === "external" || BETA;   // external: 팀 휴가를 구글 '휴가 캘린더'로
   if (EXT) document.documentElement.classList.add("ext");
   const CFG = {
     URL: "",
@@ -873,9 +985,9 @@ body.popup .rz{display:none}
     const tm = ev.all ? "종일" : (dayStart && ev.s < dayStart ? "~" + fmtHM(ev.e, true) : fmtHM(ev.s, true));
     const past = !ev.all && ev.e < now ? " past" : "";
     const key = doneKey(ev), isDone = !!doneMap[key], idx = gEvents.indexOf(ev);
-    const canDel = gmode === "google" && ev.id && gWritable.some(c => c.id === ev.cal);
+    const canDel = gUse() && ev.id && gWritable.some(c => c.id === ev.cal);
     const canEdit = canDel;
-    return `<div class="ev${past}${isDone ? " done" : ""}${canEdit ? " edit" : ""}"${canEdit ? ` data-ev="${idx}" tabindex="0" title="더블클릭해서 수정"` : ""}><button type="button" class="ck" role="checkbox" aria-checked="${isDone}" aria-label="${esc(ev.title)} 완료" data-done="${idx}" style="--c:${esc(ev.color || "var(--accent)")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tm">${tm}</span><span class="ti" title="${esc(ev.title)}">${esc(ev.title)}</span>${canDel ? `<button type="button" class="evx" data-del="${idx}" aria-label="${esc(ev.title)} 삭제" title="삭제">×</button>` : ""}</div>`;
+    return `<div class="ev${past}${isDone ? " done" : ""}${canEdit ? " edit" : ""}"${canEdit ? ` data-ev="${idx}" tabindex="0" title="더블클릭해서 수정"` : ""}><button type="button" class="ck" role="checkbox" aria-checked="${isDone}" aria-label="${esc(ev.title)} 완료" data-done="${idx}" style="--c:${esc(ev.color || "var(--accent)")}"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button><span class="tm">${tm}</span><span class="ti" title="${esc(ev.title)}">${esc(ev.title)}</span>${ev.by ? `<span class="by" title="${esc(ev.by)}님이 넣은 일정">${esc(ev.by)}</span>` : ""}${canDel ? `<button type="button" class="evx" data-del="${idx}" aria-label="${esc(ev.title)} 삭제" title="삭제">×</button>` : ""}</div>`;
   }
   function bindEvRows(box) {
     box.querySelectorAll(".ev[data-ev]").forEach(r => {
@@ -897,6 +1009,11 @@ body.popup .rz{display:none}
         return;
       }
       b.disabled = true;
+      if (BETA && isTC(ev.cal)) {
+        try { await bDelEvent(ev.id); toast(`'${ev.title}' 일정을 삭제했어요`); bLoad(); }
+        catch (e) { toast(e.message || "일정을 삭제하지 못했어요"); b.disabled = false; }
+        return;
+      }
       try {
         if (!gToken) throw new Error("token");
         const r = await fetch(`https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(ev.cal)}/events/${encodeURIComponent(ev.id)}`, { method: "DELETE", headers: { Authorization: "Bearer " + gToken } });
@@ -954,7 +1071,7 @@ body.popup .rz{display:none}
           const c = document.createElement("span"); c.className = "ec" + (doneMap[doneKey(ev)] ? " dn" : "");
           c.style.setProperty("--c", ev.color || "var(--accent)");
           c.textContent = (ev.all || (ev.s < d) ? "" : fmtHM(ev.s, true) + " ") + ev.title; c.title = ev.title;
-          if (gmode === "google" && ev.id && gWritable.some(w => w.id === ev.cal)) { c.title = ev.title + " (더블클릭해서 수정)"; c.ondblclick = e2 => { e2.stopPropagation(); openEdit(ev); }; }
+          if (gUse() && ev.id && gWritable.some(w => w.id === ev.cal)) { c.title = ev.title + " (더블클릭해서 수정)"; c.ondblclick = e2 => { e2.stopPropagation(); openEdit(ev); }; }
           dots.append(c);
         }
         if (mine.length > show) { const mo = document.createElement("span"); mo.className = "ec more"; mo.textContent = `+${mine.length - show}개`; dots.append(mo); }
@@ -985,7 +1102,7 @@ body.popup .rz{display:none}
   }
   let cellClick = { s: "", t: 0 };
   function addOnDay() {
-    if (gmode === "google" && gWritable.length) openGSheet(null);
+    if (gUse() && gWritable.length) openGSheet(null);
     else toast(gmode === "google" ? "구글 캘린더를 불러오는 중이에요. 잠시 후 다시 해 주세요." : "구글 캘린더를 연결하면 더블클릭으로 일정을 추가할 수 있어요");
   }
   function renderDay() {
@@ -1239,11 +1356,14 @@ body.popup .rz{display:none}
   }
   async function loadGoogle(token) {
     const win = gWin(), t0 = win.from, t1 = win.to;
-    const cl = await gfetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=100", token);
+    const cl = await gfetch("https://www.googleapis.com/calendar/v3/users/me/calendarList?minAccessRole=reader&maxResults=250", token);
+    if (BETA) { gMirAll = (cl.items || []).map(c => ({ id: c.id, summary: c.summary || "", role: c.accessRole }));
+      cl.items = (cl.items || []).filter(c => !isMir(c)); }   // 공유 칩의 구글 사본은 위젯에서는 공유 칩으로만 보인다
     const lvId = EXT ? extCal() : "";
     gAllCals = (cl.items || []).map(c => ({ id: c.id, name: c.primary ? "내 캘린더" : (c.summaryOverride || c.summary || c.id), color: c.backgroundColor || "", role: c.accessRole }));
     const cals = (cl.items || []).filter(c => !c.hidden && c.id !== lvId);
     gAllCalIds = new Set((cl.items || []).map(c => c.id));
+    if (BETA) for (const c of gMirAll) gAllCalIds.add(c.id);
     const isMine = c => c.primary || c.accessRole === "owner";
     gCals = cals.slice().sort((a, b) => (b.primary ? 2 : isMine(b) ? 1 : 0) - (a.primary ? 2 : isMine(a) ? 1 : 0))
       .map(c => ({ id: c.id, color: c.backgroundColor, selected: c.selected, primary: !!c.primary,
@@ -1273,6 +1393,7 @@ body.popup .rz{display:none}
         loc: e.location || "", desc: e.description || "", url: (e.source && e.source.url) || "", rec: e.recurringEventId || "" });
     }
     gEvents = out; gLoaded = win; gError = ""; gRetried = false;
+    if (BETA) { bApply(); bSyncSoon(1500, true); if (fConOn) fConnect(); }
     try { watchChanges(out, (cl.items || []).find(c => c.primary)); } catch (e) {}
     loadDeadlines(false);
     if (EXT) loadLeaveCal();
@@ -1403,37 +1524,40 @@ body.popup .rz{display:none}
     const body = $("gBody");
     $("gOpen").hidden = gmode !== "google";
     let html = "", chHtml = "";
+    const bo = bOnly();
+    if (bo && !gEvents) bApply();
     const loginBlock = (note) => `<div class="gblk">
         <p class="empty" style="margin:0">${note}</p>
         <button class="gbtn" type="button" data-g="glogin"><svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.4 2.2-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>Google 계정으로 로그인</button>
         <label class="check" for="gAutoChk"><input type="checkbox" id="gAutoChk"${gAutoLogin ? " checked" : ""}>자동 로그인 <span style="font-size:11.5px;color:var(--muted);font-weight:500">위젯을 다시 켜도 자동으로 연결돼요</span></label>
         <button class="link" type="button" data-g="gical">iCal 주소로 연결</button>
       </div>`;
-    if (!gmode) {
+    if (!bo && !gmode) {
       html = loginBlock("구글 캘린더를 연결하면 내 일정이 여기에 보여요.");
-    } else if (gmode === "google" && gStatus === "client") {
+    } else if (!bo && gmode === "google" && gStatus === "client") {
       html = loginBlock("처음 한 번 구글 클라우드 설정 파일이 필요해요. 로그인을 누르면 파일을 고를 수 있어요.") +
         `<button class="link" type="button" data-g="gguide">설정 방법 보기</button>`;
-    } else if (gmode === "google" && gStatus === "login") {
+    } else if (!bo && gmode === "google" && gStatus === "login") {
       html = loginBlock("구글 로그인이 필요해요.");
-    } else if (gError) {
+    } else if (!bo && gError) {
       html = `<p class="msg err">${esc(gError)}</p><div class="btnrow"><button class="btn" type="button" data-g="retry">다시 시도</button></div>`;
-    } else if (!gEvents) {
+    } else if (!bo && !gEvents) {
       html = `<p class="empty" style="margin:0">${gStatus === "waiting" ? "브라우저에서 구글 로그인을 마쳐 주세요…" : "불러오는 중…"}</p>`;
     } else {
       const now = new Date(), t0 = new Date(); t0.setHours(0, 0, 0, 0);
       const groups = new Map();
-      const showCals = gmode === "google";
+      const showCals = gmode === "google" || bo;
       const offIds = new Set(gCals.filter(c => !calOn(c)).map(c => c.id));
       const chip = c =>
-          `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)} · 더블클릭하면 초대 링크" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span></button>`;
+          `<button type="button" class="cchip" role="checkbox" aria-checked="${calOn(c)}" data-cal="${esc(c.id)}" title="${esc(c.name)}${nvNeed(c) ? " · 네이버에 캘린더를 만들어 주세요 (더블클릭)" : " · 더블클릭하면 연동·함께 쓰는 사람"}" style="--c:${esc(c.color || "var(--accent)")}"><i></i><span>${esc(c.name)}</span>${nvNeed(c) ? `<b class="pv r" aria-label="네이버 캘린더 필요">!</b>` : ""}${c.nv ? `<b class="pv n">N</b>` : (BETA && nv.on && !c.shared && !c.team) ? `<b class="pv g">G</b>` : ""}</button>`;
       if (showCals) {
         const offN = gCals.filter(c => !calOn(c)).length, fold = !chipAll && offN > 0;
         const vis = c => !fold || calOn(c);
         const own = gCals.filter(c => !c.team && vis(c)), team = gCals.filter(c => c.team && vis(c));
         const more = offN ? `<button type="button" class="cchip more" id="chipMore" aria-expanded="${!fold}" title="${fold ? "꺼 둔 캘린더도 보기" : "켜진 캘린더만 보기"}">${fold ? `+${offN} 꺼짐` : "접기"}<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="${fold ? "M6 9l6 6 6-6" : "M6 15l6-6 6 6"}"/></svg></button>` : "";
-        if (own.length || gmode === "google") chHtml += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") + (team.length ? "" : more) +
-          (gmode === "google" && !fold ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
+        if (own.length || showCals) chHtml += `<div class="cchips" role="group" aria-label="표시할 캘린더">` + own.map(chip).join("") + (team.length ? "" : more) +
+          (BETA && bo && !fold ? `<button type="button" class="cchip add conn" id="bConnChip" title="구글 캘린더 연결"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>캘린더 연결</span></button>` : "") +
+          (gmode === "google" && !bo && !fold ? `<button type="button" class="cchip add" id="gNewChip" title="내 구글 캘린더에 새 캘린더 만들기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg><span>새 캘린더</span></button>` : "") + `</div>`;
         if (team.length) chHtml += `<div class="gsub">${esc(tcCfg && tcCfg.name || "팀 그룹")}</div><div class="cchips" role="group" aria-label="${esc(tcCfg && tcCfg.name || "팀 그룹")} 캘린더">` + team.map(chip).join("") + more + `</div>`;
       }
       const tEnd = new Date(t0); tEnd.setDate(tEnd.getDate() + 14);
@@ -1478,8 +1602,8 @@ body.popup .rz{display:none}
       html += `</div>`;
       upCount = shown;
     }
-    $("gAddBtn").hidden = !(gmode === "google" && gEvents && !gError && gWritable.length);
-    const connected = gmode === "ical" || (gmode === "google" && gStatus !== "login" && gStatus !== "client");
+    $("gAddBtn").hidden = !(gUse() && gEvents && (!gError || bo) && gWritable.length);
+    const connected = bo || gmode === "ical" || (gmode === "google" && gStatus !== "login" && gStatus !== "client");
     $("gOut").hidden = true;      // 로그아웃·연결 해제는 설정 창(캘린더 탭)에서
     $("gHead").textContent = connected ? "다가오는 일정 · 휴가" : "내 일정";
     $("gCh").setAttribute("aria-label", connected ? "다가오는 일정 접기" : "내 일정 접기");
@@ -1491,6 +1615,7 @@ body.popup .rz{display:none}
     const gu = body.querySelector("#gUp"); if (gu) gu.addEventListener("scroll", upFade, { passive: true });
     const cc = $("calChips"); cc.innerHTML = chHtml;
     const nc = cc.querySelector("#gNewChip"); if (nc) nc.onclick = () => openNewCalPop(nc);
+    const bcc = cc.querySelector("#bConnChip"); if (bcc) bcc.onclick = () => openSettings("연동");
     const cm = cc.querySelector("#chipMore"); if (cm) cm.onclick = () => { chipAll = !chipAll; lsSet("tlw.chipAll", chipAll ? "1" : null); renderAll(); const n = $("calChips").querySelector("#chipMore"); if (n) n.focus(); };
     body.querySelectorAll("[data-hint]").forEach(b => b.onclick = () => {
       if (b.dataset.hint === "group") host({ cmd: "open", url: TEAM_GROUP });
@@ -1639,7 +1764,7 @@ body.popup .rz{display:none}
   // 반복 일정은 빼고, 오늘 이후 2년 안의 마지막 일정 = 마감, 2년 전부터의 첫 일정 = 시작
   let dlData = {}, dlAt = 0, dlKey = "";
   function dlPref() { try { return JSON.parse(localStorage.getItem("tlw.dl") || "{}") || {}; } catch (e) { return {}; } }
-  function dlEligible() { return gCals.filter(c => !/@group\.v\.calendar\.google\.com$/.test(c.id) && !/#(contacts|holiday|weeknum)/.test(c.id)); }
+  function dlEligible() { return gCals.filter(c => !c.shared && !/@group\.v\.calendar\.google\.com$/.test(c.id) && !/#(contacts|holiday|weeknum)/.test(c.id)); }
   function dlOn(c) { const p = dlPref(); return c.id in p ? !!p[c.id] : !c.primary; }   // 기본: 개인 '내 캘린더'만 끔
   function setDlOn(id, on) { const p = dlPref(); p[id] = !!on; try { localStorage.setItem("tlw.dl", JSON.stringify(p)); } catch (e) {} renderDeadlines(); report(); }
   async function loadDeadlines(force) {
@@ -1791,6 +1916,7 @@ body.popup .rz{display:none}
     finally { btns.forEach(b => b.disabled = false); }
   }
   function openInvite(id) {
+    if (BETA && bUser) { openChipPop(id); return; }
     closeInvite();
     const c = gCals.find(x => x.id === id), chip = $("calChips").querySelector(`[data-cal="${CSS.escape(id)}"]`);
     if (!c || !chip) return;
@@ -1826,7 +1952,7 @@ body.popup .rz{display:none}
   function gCalc(text, err) { const o = $("gCalc"); o.textContent = text || ""; o.className = "calc" + (err ? " err" : ""); }
   function renderGCals() {
     const box = $("gCals"); box.replaceChildren();
-    for (const c of gWritable) {
+    for (const c of gWritable.filter(c => !gEdit || !BETA || isTC(c.id) === isTC(gEdit.cal))) {
       const b = document.createElement("button"); b.type = "button"; b.className = "chip" + (c.color ? " cal" : "") + (c.id === gSelCal ? " on" : "");
       if (c.color) {
         b.style.setProperty("--c", c.color);
@@ -2072,6 +2198,7 @@ body.popup .rz{display:none}
       ev.end = { dateTime: `${ymd(ed)}T${f.e}:00${tzOff(ed)}`, date: null };
     }
     if (!gEdit) { if (ev.start.dateTime === null) delete ev.start.dateTime; if (ev.end.dateTime === null) delete ev.end.dateTime; if (ev.start.date === null) delete ev.start.date; if (ev.end.date === null) delete ev.end.date; }
+    if (BETA && (isTC(gEdit ? gEdit.cal : gSelCal) || isTC(gSelCal))) return bSaveEvent(f);
     if (!gToken) { gPendingSave = saveGEvent; host({ cmd: "gtoken" }); gCalc("구글에 연결하는 중…"); return; }
     $("gOk").disabled = true; $("gOk").textContent = gEdit ? "저장 중…" : "추가 중…"; gCalc("");
     try {
@@ -2118,6 +2245,17 @@ body.popup .rz{display:none}
     if (!gEdit) return;
     const b = $("gDel");
     if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 삭제"; setTimeout(() => { if (b.isConnected && b.classList.contains("arm")) { b.classList.remove("arm"); b.textContent = "삭제"; } }, 3000); return; }
+    if (BETA && isTC(gEdit.cal)) {
+      b.disabled = true;
+      try {
+        await bDelEvent(gEdit.id);
+        const msgT = `${$("gTitle").value.trim() || "일정"} 일정을 삭제했어요`;
+        if (POPUP) { host({ cmd: "done", msg: msgT, ids: [] }); return; }
+        closeGSheet(); toast(msgT); bLoad();
+      } catch (e) { gCalc(e.message || "일정을 삭제하지 못했어요.", true); }
+      finally { b.disabled = false; }
+      return;
+    }
     if (!gToken) { host({ cmd: "gtoken" }); gCalc("구글에 연결하는 중이에요. 다시 눌러 주세요.", true); return; }
     b.disabled = true;
     try {
@@ -2219,17 +2357,1297 @@ body.popup .rz{display:none}
       openGSheet(data.edit || null);
     } else if (kind === "settings") {
       showSettings(data.ui || data, data.host || {});
+    } else if (kind === "friends") {
+      showFriends(data);
     } else if (kind === "team") {
       me = { id: data.uid };
       showTeam(Array.isArray(data.members) ? data.members : [], Array.isArray(data.sel) ? data.sel : (data.sel ? [data.sel] : []));
     }
   }
+  // ======================= Plait: 계정 · 친구 · 공유 칩 =======================
+  // 공유 칩(공유 캘린더)과 친구는 Plait 서버(Supabase)에, 개인 일정은 지금처럼 각자의 구글에.
+  const BCFG = { URL: "https://tdntqevfdcoaghunduaj.supabase.co", KEY: "sb_publishable_Xb2SHHwNcns1_A0Yqmqlmw_GthVDT_8", DOM: "id.teamcal.app" };
+  let bsb = null, bUser = null, bProfile = null, bCals = [], bEvents = [], bBadgeN = 0, bChan = null, bBusy = false, bAgain = false, bLastUid = "";
+  const isTC = id => typeof id === "string" && id.startsWith("tc:");
+  const idMail = id => `${String(id).trim().toLowerCase()}@${BCFG.DOM}`;
+  const ID_RE = /^[a-z0-9_]{4,20}$/;
+  function bClient() {
+    if (!BETA) return null;
+    if (!bsb && window.supabase) bsb = window.supabase.createClient(BCFG.URL, BCFG.KEY, { auth: { persistSession: true, autoRefreshToken: true, storageKey: "tcb-auth" } });
+    return bsb;
+  }
+  // ---------- 0.2.0: 계정 먼저 · 구글 없이도 공유 칩 · 양방향 사본 ----------
+  const MIR_PRE = "TeamCal · ", GAPI = "https://www.googleapis.com/calendar/v3";
+  let gMirAll = [], bMir = new Set((() => { try { return JSON.parse(localStorage.getItem("tcb.mir") || "[]"); } catch (e) { return []; } })());
+  let bLinked = new Map(), bCalKey = null, bLoadedOk = false, fGate = false, bSyncBusy = false, bSyncAgain = false, bSyncAt = 0, bSyncErr = "", bSyncT = null, bSyncForce = false;
+  const isMir = c => bMir.has(c.id) || (c.accessRole === "owner" && String(c.summary || "").startsWith(MIR_PRE));
+  function nvNeed(c) { return BETA && !!c.shared && nv.on && !!(bLinked.get(c.raw) || { has: () => false }).has("naver:pick"); }
+  function bOnly() { return BETA && !!bUser && gmode !== "ical" && !(gmode === "google" && gToken && gLoaded); }
+  function gUse() { return gmode === "google" || bOnly(); }
+  function bMirSave() { try { localStorage.setItem("tcb.mir", JSON.stringify([...bMir])); localStorage.setItem("tcb.mirnv", JSON.stringify([...bMirNv])); } catch (e) {} }
+  // --- 처음 켜면: Plait 계정 → 내 캘린더 연결 (위젯 전체 화면) ---
+  function bGate(on) {
+    if (POPUP) return;
+    fGate = !!on; fConOn = false; const sh = $("fsheet");
+    sh.classList.toggle("gate", fGate); $("fSteps").hidden = !fGate;
+    if (fGate) { sh.hidden = false; fRender(); } else { sh.hidden = true; $("fTitle").textContent = "Plait 친구"; report(); }
+  }
+  function fStep(n) { $("fSteps").querySelectorAll("i").forEach((x, i) => x.classList.toggle("on", i < n)); }
+  const MS_LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="#f25022" d="M2 2h9.5v9.5H2z"/><path fill="#7fba00" d="M12.5 2H22v9.5h-9.5z"/><path fill="#00a4ef" d="M2 12.5h9.5V22H2z"/><path fill="#ffb900" d="M12.5 12.5H22V22h-9.5z"/></svg>`;
+  const APPLE_LOGO = `<svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M16.4 12.6c0-2.4 2-3.5 2-3.6-1.1-1.6-2.8-1.8-3.4-1.8-1.4-.1-2.8.9-3.5.9s-1.9-.9-3.1-.8C6.8 7.3 5.3 8.2 4.5 9.6c-1.7 2.9-.4 7.2 1.2 9.6.8 1.2 1.7 2.4 3 2.4 1.2 0 1.6-.8 3.1-.8s1.8.8 3.1.8c1.3 0 2.1-1.2 2.9-2.3.9-1.3 1.3-2.6 1.3-2.7-.1 0-2.6-1-2.7-4zM14.1 5.5c.6-.8 1.1-1.9 1-3-.9 0-2.1.6-2.7 1.4-.6.7-1.1 1.8-1 2.8 1.1.1 2.1-.5 2.7-1.2z"/></svg>`;
+  const LINK_LOGO = `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M10 14a4.5 4.5 0 0 0 6.4 0l3.2-3.2a4.5 4.5 0 0 0-6.4-6.4l-1.1 1.1"/><path d="M14 10a4.5 4.5 0 0 0-6.4 0l-3.2 3.2a4.5 4.5 0 0 0 6.4 6.4l1.1-1.1"/></svg>`;
+  const G_LOGO = `<svg viewBox="0 0 48 48" aria-hidden="true"><path fill="#EA4335" d="M24 9.5c3.5 0 6.6 1.2 9.1 3.6l6.8-6.8C35.8 2.4 30.3 0 24 0 14.6 0 6.6 5.4 2.7 13.3l7.9 6.1C12.5 13.6 17.8 9.5 24 9.5z"/><path fill="#4285F4" d="M46.1 24.5c0-1.6-.1-3.1-.4-4.5H24v9h12.4c-.5 2.9-2.2 5.3-4.6 6.9l7.4 5.7c4.3-4 6.9-9.9 6.9-17.1z"/><path fill="#FBBC05" d="M10.6 28.6c-.5-1.4-.8-3-.8-4.6s.3-3.2.8-4.6l-7.9-6.1C1 16.6 0 20.2 0 24s1 7.4 2.7 10.7l7.9-6.1z"/><path fill="#34A853" d="M24 48c6.5 0 11.9-2.1 15.8-5.8l-7.4-5.7c-2.1 1.4-4.8 2.2-8.4 2.2-6.2 0-11.5-4.1-13.4-9.9l-7.9 6.1C6.6 42.6 14.6 48 24 48z"/></svg>`;
+  function conRows(gOn, gMail, N) {
+    N = N || {};
+    const soon = (c, l, t, sub) => `<div class="fcon"><span class="plo" style="--c:${c}">${l}</span><div class="ft"><b>${t}</b><small>${sub}</small></div><span class="soon">준비 중</span></div>`;
+    return `<div class="fcon"><span class="plo g">${G_LOGO}</span><div class="ft"><b>Google 캘린더</b><small>${gOn ? esc(gMail || "연결됨") : "내 일정 + 공유 칩을 구글에도 양방향으로"}</small></div>${gOn ? `<span class="ok">연결됨 ✓</span>` : `<button type="button" class="sbtn pri" data-con="google">연결</button>`}</div>`
+      + `<div class="fcon"><span class="plo" style="--c:#03c75a">N</span><div class="ft"><b>네이버 캘린더</b><small${N.err ? ' style="color:var(--err);white-space:normal"' : ""}>${N.on ? esc(N.err || (N.id + (N.at ? " · 마지막 동기화 " + fmtHM(new Date(N.at), true) : ""))) : "아이디 + 애플리케이션 비밀번호"}</small></div>${N.on ? `<button type="button" class="sbtn" data-nvoff="1">연결 해제</button>` : `<button type="button" class="sbtn pri" data-con="naver">연결</button>`}</div>`
+      + soon("#0f6cbd", "O", "Outlook · Microsoft 365", "회사·학교 계정")
+      + soon("#111", "N", "Notion", "날짜가 있는 데이터베이스");
+  }
+  let fConOn = false;
+  function fConnect() {
+    if (!fGate) { fConOn = false; return; }
+    fConOn = true; fStep(2); $("fTabs").innerHTML = "";
+    $("fTitle").textContent = `${(bProfile && bProfile.display_name) || ""}님, 반가워요`;
+    const gOn = gmode === "google" && !!gToken, prim = gCals.find(c => c.primary);
+    $("fBody").innerHTML = `<p class="fnote" style="margin-top:4px">쓰고 있는 캘린더를 연결하면 공유 칩과 한 화면에 보이고, 공유 칩은 그 캘린더에도 똑같이 생겨요.</p>`
+      + conRows(gOn, prim ? prim.id : "", nv)
+      + `<button type="button" class="fbtn" id="fConNext">다음</button><div style="text-align:center"><button type="button" class="flink" id="fConLater">나중에 연결할게요</button></div>`;
+    $("fBody").querySelectorAll("[data-con]").forEach(b => b.onclick = () => {
+      if (b.dataset.con === "naver") { openSettings("네이버"); return; }
+      fMsg("브라우저에서 구글 로그인을 마쳐 주세요…"); host({ cmd: "glogin" }); });
+    $("fBody").querySelectorAll("[data-nvoff]").forEach(b => b.onclick = () => host({ cmd: "nvclear" }));
+    const done = () => { try { localStorage.setItem("tcb.onboard", bUser ? bUser.id : "1"); } catch (e) {} fMsg(""); bGate(false); bLoad(); };
+    $("fConNext").onclick = done; $("fConLater").onclick = done;
+    report();
+  }
+  // --- 양방향: 공유 칩 ↔ 내 구글 캘린더의 사본 ("Plait · 칩 이름") ---
+  // 원본은 Plait 서버. 사람마다 자기 구글에 사본을 두고, 바뀐 것만 서로 주고받는다.
+  function bSyncSoon(ms, force) { if (force) bSyncForce = true; clearTimeout(bSyncT); bSyncT = setTimeout(bSync, ms == null ? 1500 : ms); }
+  async function gj(method, url, body) {
+    const h = { Authorization: "Bearer " + gToken }; if (body) h["Content-Type"] = "application/json";
+    const r = await fetch(url, { method, headers: h, body: body ? JSON.stringify(body) : undefined });
+    if (r.status === 401) { host({ cmd: "gtoken", force: true }); const e = new Error("auth"); e.status = 401; throw e; }
+    if (r.status === 204) return {};
+    let j = {}; try { j = await r.json(); } catch (e) {}
+    if (!r.ok) { const e = new Error((j.error && j.error.message) || ("HTTP " + r.status)); e.status = r.status; throw e; }
+    return j;
+  }
+  const enc = encodeURIComponent;
+  const sameT = (a, b) => !!a && !!b && new Date(a).getTime() === new Date(b).getTime();
+  const permErr = e => /42501|row-level|permission/i.test(String((e && (e.code + " " + e.message)) || ""));
+  function tc2g(e) {
+    const g = { summary: e.title, location: e.location || "", description: e.memo || "", extendedProperties: { private: { tcid: e.id } } };
+    const s = new Date(e.start_at); let en = new Date(e.end_at);
+    if (e.all_day) { if (en <= s) en = new Date(s.getTime() + 864e5); g.start = { date: ymd(s) }; g.end = { date: ymd(en) }; }
+    else { g.start = { dateTime: s.toISOString() }; g.end = { dateTime: (en < s ? s : en).toISOString() }; }
+    return g;
+  }
+  function g2tc(g) {
+    const all = !!(g.start && g.start.date); let s, e;
+    if (all) { s = parse(g.start.date); e = parse((g.end && g.end.date) || g.start.date); if (e <= s) { e = new Date(s); e.setDate(e.getDate() + 1); } }
+    else { s = new Date(g.start.dateTime); e = new Date((g.end && g.end.dateTime) || g.start.dateTime); if (e < s) e = new Date(s); }
+    return { title: String(g.summary || "(제목 없음)").slice(0, 200), all_day: all, start_at: s.toISOString(), end_at: e.toISOString(), location: g.location || null, memo: g.description || null };
+  }
+  async function bSync() {
+    if (!BETA || POPUP || !bUser || !bLoadedOk) return;
+    const gReady = !!gToken && gmode === "google" && !!gLoaded, nReady = nv.on;
+    if (!gReady && !nReady) return;
+    if (!bSyncForce && Date.now() - bSyncAt < 15000) return;
+    const sb = bClient(); if (!sb) return;
+    if (bSyncBusy) { bSyncAgain = true; return; }
+    bSyncBusy = true; bSyncForce = false;
+    let changed = false;
+    const uid = bUser.id, joined = new Set(bCals.map(c => c.raw));
+    try {
+      const r = await sb.from("mirror_cals").select("*").eq("user_id", uid);
+      if (r.error) throw r.error;
+      const all = r.data || [];
+      const links = new Map();
+      for (const m of all) if (joined.has(m.cal_id) && m.sync_token !== "off") { if (!links.has(m.cal_id)) links.set(m.cal_id, new Set()); links.get(m.cal_id).add(m.provider + (m.sync_token === "pick" ? ":pick" : "")); }
+      bLinked = links;
+      const clean = async (m, prov) => {
+        await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", prov).eq("cal_id", m.cal_id);
+        await sb.from("mirror_cals").delete().eq("user_id", uid).eq("provider", prov).eq("cal_id", m.cal_id);
+      };
+      // --- 구글 ---
+      if (gReady) {
+        try {
+          const prim = gCals.find(c => c.primary); const acct = prim ? prim.id : "";
+          const rows = all.filter(m => m.provider === "google"), mine = new Map(rows.map(m => [m.cal_id, m]));
+          for (const m of rows) if (m.mirror_cal_id) bMir.add(m.mirror_cal_id);
+          for (const m of rows) if (!joined.has(m.cal_id) || m.sync_token === "off") {      // 나갔거나 지워졌거나 연결을 끈 공유 칩 → 내 구글의 사본 정리
+            mine.delete(m.cal_id);
+            if (m.mirror_cal_id && m.account === acct && m.origin !== "own") { try { await gj("DELETE", `${GAPI}/calendars/${enc(m.mirror_cal_id)}`); } catch (e) { if (![403, 404, 410].includes(e.status)) throw e; } }   // 원래 캘린더는 지우지 않는다
+            await clean(m, "google"); bMir.delete(m.mirror_cal_id);
+          }
+          for (const c of bCals) { const m = mine.get(c.raw); if (m && await bSyncCal(sb, c, m.mirror_cal_id ? m : null, acct)) changed = true; }   // 연결하기로 고른 칩만
+          bSyncErr = "";
+        } catch (e) {
+          console.warn("Plait sync google", e);
+          bSyncErr = e.status === 403 ? "구글 권한이 부족해요. 설정 › 연동에서 구글을 다시 연결해 주세요." : e.status === 401 ? "" : "구글과 맞추지 못했어요. 잠시 후 다시 시도할게요.";
+        }
+      }
+      // --- 네이버 ---
+      if (nReady) {
+        try {
+          const rows = all.filter(m => m.provider === "naver");
+          for (const m of rows) if (!joined.has(m.cal_id) || m.sync_token === "off") {
+            if (m.mirror_cal_id && /\/teamcal-[^/]+\/$/.test(m.mirror_cal_id) && m.account === nv.id) { try { await nvDo("DELETE", m.mirror_cal_id); } catch (e) {} }   // 직접 고른 네이버 캘린더는 지우지 않는다
+            await clean(m, "naver"); bMirNv.delete(m.mirror_cal_id);
+          }
+          nvMkFail = false;
+          for (const c of bCals) { const m = rows.find(x => x.cal_id === c.raw && x.sync_token !== "off"); if (m && await bSyncNvCal(sb, c, m)) changed = true; }
+          nv.err = ""; nv.at = Date.now();
+        } catch (e) {
+          console.warn("Plait sync naver", e);
+          nv.err = e.status === 401 ? "네이버 로그인이 풀렸어요. 설정 › 연동에서 다시 연결해 주세요." : e.nv ? e.message : "네이버와 맞추지 못했어요: " + (e.message || "알 수 없는 오류");
+        }
+      }
+      bSyncAt = Date.now();
+      const r2 = await sb.from("mirror_cals").select("cal_id,provider,sync_token").eq("user_id", uid);   // 빨간불(네이버 캘린더 필요) 다시 계산
+      if (!r2.error) { const L2 = new Map(); for (const m of r2.data || []) if (joined.has(m.cal_id) && m.sync_token !== "off") { if (!L2.has(m.cal_id)) L2.set(m.cal_id, new Set()); L2.get(m.cal_id).add(m.provider + (m.sync_token === "pick" ? ":pick" : "")); }
+        const key = x => [...x].map(([k, v]) => k + [...v].sort()).sort().join("|"); if (key(L2) !== key(bLinked)) { bLinked = L2; renderAll(); } }
+    } catch (e) {
+      console.warn("Plait sync", e);
+      bSyncErr = /mirror_/.test(String(e.message)) ? "서버 준비가 덜 됐어요 (0.2.0 SQL)." : "동기화하지 못했어요. 잠시 후 다시 시도할게요.";
+    } finally {
+      bMirSave(); bSyncBusy = false;
+      if (changed) bLoad();
+      if (nReady) nvLoad();
+      if (bSyncAgain) { bSyncAgain = false; bSyncSoon(800, true); }
+    }
+  }
+  async function bSyncCal(sb, c, m, acct) {
+    const uid = bUser.id, want = c.name, viewer = c.role === "viewer", own = !!(m && m.origin === "own");
+    const cutoff = Date.now() - 62 * 864e5;
+    let changed = false;
+    if (own && m.account && m.account !== acct) return false;   // 다른 구글 계정의 원래 캘린더 → 이 계정에서는 건드리지 않는다
+    // 1) 사본 캘린더가 있는지 (지워졌거나 다른 구글 계정이면 새로 만든다)
+    if (m && (m.account !== acct || !gAllCalIds.has(m.mirror_cal_id))) {
+      let alive = false;
+      if (m.account === acct) {
+        try { await gj("GET", `${GAPI}/calendars/${enc(m.mirror_cal_id)}?fields=id`); alive = true; } catch (e) { if (![403, 404, 410].includes(e.status)) throw e; }
+        if (alive) { try { await gj("POST", `${GAPI}/users/me/calendarList`, { id: m.mirror_cal_id }); gAllCalIds.add(m.mirror_cal_id); } catch (e) {} }
+      }
+      if (!alive && own) return false;   // 원래 캘린더가 안 보이면 사본을 새로 만들지 않는다
+      if (!alive) { await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "google").eq("cal_id", c.raw); bMir.delete(m.mirror_cal_id); m = null; }
+    }
+    if (!m) {
+      const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || "Asia/Seoul";
+      const cal = await gj("POST", `${GAPI}/calendars`, { summary: want, timeZone: tz, description: "함께 쓰는 공유 캘린더예요. 여기서 넣고 고친 일정은 함께 쓰는 사람들 캘린더에도 반영돼요." });
+      bMir.add(cal.id); bMirSave(); gAllCalIds.add(cal.id);
+      try { await gj("PATCH", `${GAPI}/users/me/calendarList/${enc(cal.id)}?colorRgbFormat=true`, { backgroundColor: c.color || "#33b679", foregroundColor: "#ffffff" }); } catch (e) {}
+      m = { cal_id: c.raw, provider: "google", account: acct, mirror_cal_id: cal.id, sync_token: null };
+      const w = await sb.from("mirror_cals").upsert({ user_id: uid, ...m, updated_at: new Date().toISOString() });
+      if (w.error) { try { await gj("DELETE", `${GAPI}/calendars/${enc(cal.id)}`); } catch (e) {} bMir.delete(cal.id); throw w.error; }
+    } else {
+      bMir.add(m.mirror_cal_id);
+      const cur = gMirAll.find(x => x.id === m.mirror_cal_id);
+      if (cur && !own && cur.summary !== want) { try { await gj("PATCH", `${GAPI}/calendars/${enc(m.mirror_cal_id)}`, { summary: want }); cur.summary = want; } catch (e) {} }
+    }
+    const MC = `${GAPI}/calendars/${enc(m.mirror_cal_id)}/events`;
+    // 2) 원본 일정 · 연결표
+    const [te, lk] = await Promise.all([
+      sb.from("shared_events").select("id,title,all_day,start_at,end_at,location,memo,updated_at").eq("cal_id", c.raw).limit(5000),
+      sb.from("mirror_links").select("event_id,mirror_event_id,tc_updated,m_updated").eq("user_id", uid).eq("provider", "google").eq("cal_id", c.raw)]);
+    if (te.error) throw te.error; if (lk.error) throw lk.error;
+    const tc = new Map((te.data || []).map(e => [e.id, e])), byEv = new Map(), byMir = new Map();
+    for (const l of lk.data || []) { byEv.set(l.event_id, l); byMir.set(l.mirror_event_id, l); }
+    const putLink = async (eid, mid, tu, mu) => {
+      const l = { user_id: uid, cal_id: c.raw, event_id: eid, provider: "google", mirror_event_id: mid, tc_updated: tu, m_updated: mu };
+      const w = await sb.from("mirror_links").upsert(l); if (w.error) throw w.error;
+      const old = byEv.get(eid); if (old) byMir.delete(old.mirror_event_id);
+      byEv.set(eid, l); byMir.set(mid, l);
+    };
+    const delLink = async l => {
+      await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "google").eq("event_id", l.event_id);
+      byEv.delete(l.event_id); byMir.delete(l.mirror_event_id);
+    };
+    const gdel = async id => { try { await gj("DELETE", `${MC}/${enc(id)}`); } catch (e) { if (![404, 410].includes(e.status)) throw e; } };
+    // 3) 구글 쪽에서 바뀐 것만 받기 (syncToken)
+    let items = [], token = m.sync_token || "", full = !token;
+    for (;;) {
+      items = []; let page = "", next = "";
+      try {
+        do {
+          const q = full ? "showDeleted=true&maxResults=2500" : `syncToken=${enc(token)}&maxResults=2500`;
+          const j = await gj("GET", `${MC}?${q}${page ? "&pageToken=" + enc(page) : ""}`);
+          items.push(...(j.items || [])); page = j.nextPageToken || ""; next = j.nextSyncToken || next;
+        } while (page);
+        token = next; break;
+      } catch (e) { if (e.status === 410 && !full) { full = true; continue; } throw e; }
+    }
+    const done = new Set(), force = new Set();
+    for (const g of items) {
+      if (g.recurringEventId) continue;                 // 반복 일정의 개별 회차는 무시 (첫 회만)
+      const l = byMir.get(g.id);
+      if (g.status === "cancelled") {                   // 구글에서 지움
+        if (!l) continue;
+        const t = tc.get(l.event_id);
+        if (!t || viewer) { await delLink(l); continue; } // 보기만이면 아래에서 다시 만든다
+        const d = await sb.from("shared_events").delete().eq("id", t.id).select("id");
+        if (d.error && !permErr(d.error)) throw d.error;
+        await delLink(l);
+        if (!d.error && (d.data || []).length) { tc.delete(t.id); changed = true; }
+        continue;
+      }
+      if (l && g.updated === l.m_updated) continue;    // 내가 방금 쓴 것
+      if (!l && own && (g.recurrence || new Date(g2tc(g).end_at).getTime() < cutoff)) continue;   // 원래 캘린더: 반복·오래된 일정은 구글에만 둔다
+      if (!l) {
+        const tid = g.extendedProperties && g.extendedProperties.private && g.extendedProperties.private.tcid;
+        if (tid && tc.has(tid) && !byEv.has(tid)) { await putLink(tid, g.id, null, g.updated); continue; }   // 연결표만 잃어버린 경우
+        if (tid && !tc.has(tid) && full) { await gdel(g.id); continue; }
+        if (viewer) { await gdel(g.id); continue; }   // 보기만: 구글에서 넣은 일정은 되돌린다
+        const ins = await sb.from("shared_events").insert({ cal_id: c.raw, ...g2tc(g) }).select("id,title,all_day,start_at,end_at,location,memo,updated_at").single();
+        if (ins.error) { if (permErr(ins.error)) { await gdel(g.id); continue; } throw ins.error; }
+        const g2 = await gj("PATCH", `${MC}/${enc(g.id)}`, { extendedProperties: { private: { tcid: ins.data.id } } });
+        await putLink(ins.data.id, g.id, ins.data.updated_at, g2.updated);
+        tc.set(ins.data.id, ins.data); done.add(ins.data.id); changed = true;
+        continue;
+      }
+      const t = tc.get(l.event_id);
+      if (!t) continue;                                  // 원본이 지워짐 → 아래에서 구글도 지운다
+      if (viewer) { force.add(t.id); continue; }
+      if (!sameT(t.updated_at, l.tc_updated) && new Date(t.updated_at) > new Date(g.updated)) continue;  // 둘 다 바뀌면 나중에 고친 쪽
+      const row = g2tc(g);
+      const u = await sb.from("shared_events").update(row).eq("id", t.id).select("id,updated_at");
+      if (u.error && !permErr(u.error)) throw u.error;
+      if (u.error || !(u.data || []).length) { force.add(t.id); continue; }
+      await putLink(t.id, g.id, u.data[0].updated_at, g.updated);
+      tc.set(t.id, { ...t, ...row, updated_at: u.data[0].updated_at }); done.add(t.id); changed = true;
+    }
+    // 4) Plait → 구글
+    for (const t of tc.values()) {
+      if (done.has(t.id)) continue;
+      const l = byEv.get(t.id);
+      if (!l) { const g = await gj("POST", MC, tc2g(t)); await putLink(t.id, g.id, t.updated_at, g.updated); continue; }
+      if (!force.has(t.id) && sameT(t.updated_at, l.tc_updated)) continue;
+      try { const g = await gj("PUT", `${MC}/${enc(l.mirror_event_id)}`, tc2g(t)); await putLink(t.id, g.id, t.updated_at, g.updated); }
+      catch (e) {
+        if (![404, 410].includes(e.status)) throw e;
+        const g = await gj("POST", MC, tc2g(t)); await putLink(t.id, g.id, t.updated_at, g.updated);
+      }
+    }
+    for (const l of [...byEv.values()]) if (!tc.has(l.event_id)) { await gdel(l.mirror_event_id); await delLink(l); }
+    const w = await sb.from("mirror_cals").update({ sync_token: token || null, account: acct, updated_at: new Date().toISOString() })
+      .eq("user_id", uid).eq("provider", "google").eq("cal_id", c.raw);
+    if (w.error) throw w.error;
+    return changed;
+  }
+  // ======================= 네이버 캘린더 (CalDAV, 호스트가 중계) =======================
+  let NVB = "https://caldav.calendar.naver.com"; const NS_C = "urn:ietf:params:xml:ns:caldav";
+  let nv = { on: false, id: "", home: "", err: "", at: 0 }, nvAll = [], nvCals = [], nvEvents = [], nvRid = 0, nvMkFail = false;
+  const nvWait = new Map();
+  function nvReq(method, url, o = {}) {
+    if (!inHost) return Promise.reject(new Error("host"));
+    const rid = String(++nvRid);
+    return new Promise((res, rej) => {
+      const t = setTimeout(() => { nvWait.delete(rid); rej(new Error("시간 초과")); }, 45000);
+      nvWait.set(rid, m => { clearTimeout(t); m.status ? res(m) : rej(Object.assign(new Error(m.error || "네이버 연결 오류"), { status: 0, code: m.error })); });
+      host({ cmd: "nvreq", rid, method, url: url.startsWith("http") ? url : NVB + url, depth: o.depth || "", ctype: o.ctype || "", body: o.body == null ? null : o.body, ifmatch: o.ifMatch || "" });
+    });
+  }
+  async function nvDo(method, url, o) {   // 리디렉션은 같은 서버 안에서만 따라간다
+    for (let i = 0; i < 4; i++) {
+      const r = await nvReq(method, url, o);
+      if ([301, 302, 307, 308].includes(r.status) && r.loc) { const u = new URL(r.loc, url.startsWith("http") ? url : NVB + url); if (u.origin !== NVB) return r; url = u.pathname + u.search; continue; }
+      return r;
+    }
+    throw new Error("리디렉션이 너무 많아요.");
+  }
+  function nvErr(what, r) {   // 네이버가 돌려준 이유를 짧게 남긴다 (설정 › 연동 · 칩 창에 보임)
+    const body = String(r.body || "").replace(/<[^>]+>/g, " ").replace(/\s+/g, " ").trim().slice(0, 120);
+    const e = new Error(`네이버 ${what} 실패 (${r.status}${body ? " · " + body : ""})`); e.status = r.status; e.nv = true; return e;
+  }
+  const xdoc = s => new DOMParser().parseFromString(s || "<x/>", "application/xml");
+  const xall = (n, ns, tag) => [...n.getElementsByTagNameNS(ns, tag)];
+  const xone = (n, ns, tag) => n.getElementsByTagNameNS(ns, tag)[0] || null;
+  const xtxt = (n, ns, tag) => { const e = xone(n, ns, tag); return e ? e.textContent.trim() : ""; };
+  const xhref = (n, ns, tag) => { const e = xone(n, ns, tag); const h = e && xone(e, "DAV:", "href"); return h ? h.textContent.trim() : ""; };
+  const PF = p => `<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:" xmlns:c="${NS_C}" xmlns:a="http://apple.com/ns/ical/" xmlns:cs="http://calendarserver.org/ns/"><d:prop>${p}</d:prop></d:propfind>`;
+  async function nvHome() {
+    if (nv.home) return nv.home;
+    let pr = "";
+    for (const u of ["/", "/.well-known/caldav"]) {
+      try { const r = await nvDo("PROPFIND", u, { depth: "0", body: PF("<d:current-user-principal/>") }); if (r.status === 207) { pr = xhref(xdoc(r.body), "DAV:", "current-user-principal"); if (pr) break; } } catch (e) {}
+    }
+    if (!pr) pr = `/principals/users/${encodeURIComponent(nv.id)}/`;
+    let home = "";
+    try { const r = await nvDo("PROPFIND", pr, { depth: "0", body: PF("<c:calendar-home-set/>") }); if (r.status === 207) home = xhref(xdoc(r.body), NS_C, "calendar-home-set"); } catch (e) {}
+    if (!home) home = `/calendars/${encodeURIComponent(nv.id)}/`;
+    if (!home.endsWith("/")) home += "/";
+    nv.home = home; return home;
+  }
+  async function nvListCals() {
+    const home = await nvHome();
+    const r = await nvDo("PROPFIND", home, { depth: "1", body: PF("<d:resourcetype/><d:displayname/><a:calendar-color/><c:supported-calendar-component-set/><cs:getctag/>") });
+    if (r.status === 401) throw Object.assign(new Error("auth"), { status: 401 });
+    if (r.status !== 207) throw Object.assign(new Error("네이버 캘린더 목록을 읽지 못했어요 (" + r.status + ")"), { status: r.status });
+    const out = [];
+    for (const rs of xall(xdoc(r.body), "DAV:", "response")) {
+      const href = xtxt(rs, "DAV:", "href"); if (!href || href.replace(/\/$/, "") === home.replace(/\/$/, "")) continue;
+      const rt = xone(rs, "DAV:", "resourcetype"); if (!rt || !xone(rt, NS_C, "calendar")) continue;
+      const comps = xall(rs, NS_C, "comp").map(c => c.getAttribute("name"));
+      if (comps.length && !comps.includes("VEVENT")) continue;
+      let col = xtxt(rs, "http://apple.com/ns/ical/", "calendar-color"); if (/^#[0-9a-f]{8}$/i.test(col)) col = col.slice(0, 7);
+      out.push({ href: new URL(href, NVB).pathname, name: xtxt(rs, "DAV:", "displayname") || "네이버 캘린더", color: /^#[0-9a-f]{6}$/i.test(col) ? col : "#03c75a", ctag: xtxt(rs, "http://calendarserver.org/ns/", "getctag") });
+    }
+    return out;
+  }
+  // --- iCalendar ---
+  const icsEsc = s => String(s || "").replace(/\\/g, "\\\\").replace(/;/g, "\;").replace(/,/g, "\\,").replace(/\r?\n/g, "\\n");
+  const icsUn = s => String(s || "").replace(/\\n/gi, "\n").replace(/\\([\;,])/g, "$1");
+  const p2 = n => String(n).padStart(2, "0");
+  const icsUtc = d => `${d.getUTCFullYear()}${p2(d.getUTCMonth() + 1)}${p2(d.getUTCDate())}T${p2(d.getUTCHours())}${p2(d.getUTCMinutes())}${p2(d.getUTCSeconds())}Z`;
+  const icsDay = d => `${d.getFullYear()}${p2(d.getMonth() + 1)}${p2(d.getDate())}`;
+  function icsFold(line) { const out = []; let s = line; while (s.length > 70) { out.push(s.slice(0, 70)); s = " " + s.slice(70); } out.push(s); return out.join("\r\n"); }
+  function tc2ics(e) {
+    const s = new Date(e.start_at); let en = new Date(e.end_at); if (e.all_day && en <= s) en = new Date(s.getTime() + 864e5);
+    const L = ["BEGIN:VCALENDAR", "VERSION:2.0", "PRODID:-//TeamCal//Beta//KO", "BEGIN:VEVENT", `UID:${e.id}`, `DTSTAMP:${icsUtc(new Date())}`,
+      e.all_day ? `DTSTART;VALUE=DATE:${icsDay(s)}` : `DTSTART:${icsUtc(s)}`, e.all_day ? `DTEND;VALUE=DATE:${icsDay(en)}` : `DTEND:${icsUtc(en < s ? s : en)}`,
+      `SUMMARY:${icsEsc(e.title)}`];
+    if (e.location) L.push(`LOCATION:${icsEsc(e.location)}`);
+    if (e.memo) L.push(`DESCRIPTION:${icsEsc(e.memo)}`);
+    L.push("END:VEVENT", "END:VCALENDAR");
+    return L.map(icsFold).join("\r\n") + "\r\n";
+  }
+  function icsDate(v, params) {
+    const m = /^(\d{4})(\d{2})(\d{2})(?:T(\d{2})(\d{2})(\d{2})(Z)?)?$/.exec(String(v).trim()); if (!m) return null;
+    if (!m[4] || /VALUE=DATE(?!-)/i.test(params || "")) return { all: !m[4], d: new Date(+m[1], +m[2] - 1, +m[3]) };
+    return { all: false, d: m[7] ? new Date(Date.UTC(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6])) : new Date(+m[1], +m[2] - 1, +m[3], +m[4], +m[5], +m[6]) };
+  }
+  function icsDur(v) { const m = /^([+-])?P(?:(\d+)W)?(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:(\d+)S)?)?$/.exec(String(v || "").trim()); if (!m) return 0; return ((+m[2] || 0) * 7 * 864e5 + (+m[3] || 0) * 864e5 + (+m[4] || 0) * 36e5 + (+m[5] || 0) * 6e4 + (+m[6] || 0) * 1e3) * (m[1] === "-" ? -1 : 1); }
+  function icsParse(text) {   // VEVENT 들 (반복의 예외 회차는 빼고 첫 회만)
+    const lines = String(text || "").replace(/\r?\n[ \t]/g, "").split(/\r?\n/), out = []; let cur = null;
+    for (const ln of lines) {
+      if (/^BEGIN:VEVENT$/i.test(ln)) { cur = {}; continue; }
+      if (/^END:VEVENT$/i.test(ln)) { if (cur) out.push(cur); cur = null; continue; }
+      if (!cur) continue;
+      const i = ln.indexOf(":"); if (i < 0) continue;
+      const head = ln.slice(0, i), val = ln.slice(i + 1), name = head.split(";")[0].toUpperCase(), params = head.slice(name.length);
+      if (!(name in cur)) cur[name] = { v: val, p: params };
+    }
+    return out.filter(v => !v["RECURRENCE-ID"]).map(v => {
+      const st = v.DTSTART && icsDate(v.DTSTART.v, v.DTSTART.p); if (!st) return null;
+      let en = v.DTEND && icsDate(v.DTEND.v, v.DTEND.p);
+      let e = en ? en.d : v.DURATION ? new Date(st.d.getTime() + icsDur(v.DURATION.v)) : new Date(st.d.getTime() + (st.all ? 864e5 : 0));
+      if (e < st.d) e = new Date(st.d); if (st.all && e <= st.d) e = new Date(st.d.getTime() + 864e5);
+      return { uid: v.UID ? v.UID.v.trim() : "", title: icsUn(v.SUMMARY ? v.SUMMARY.v : "") || "(제목 없음)", all: st.all, s: st.d, e,
+        loc: icsUn(v.LOCATION ? v.LOCATION.v : ""), desc: icsUn(v.DESCRIPTION ? v.DESCRIPTION.v : ""), rec: !!v.RRULE, mod: v["LAST-MODIFIED"] ? icsDate(v["LAST-MODIFIED"].v) : null };
+    }).filter(Boolean);
+  }
+  const REP = (from, to, data) => `<?xml version="1.0" encoding="utf-8"?><c:calendar-query xmlns:d="DAV:" xmlns:c="${NS_C}"><d:prop><d:getetag/>${data ? "<c:calendar-data/>" : ""}</d:prop><c:filter><c:comp-filter name="VCALENDAR"><c:comp-filter name="VEVENT">${from ? `<c:time-range start="${icsUtc(from)}" end="${icsUtc(to)}"/>` : ""}</c:comp-filter></c:comp-filter></c:filter></c:calendar-query>`;
+  async function nvEventsOf(href, from, to) {   // [{href, etag, ics}]
+    const r = await nvDo("REPORT", href, { depth: "1", body: REP(from, to, true) });
+    if (r.status !== 207) throw nvErr("일정 읽기", r);
+    return xall(xdoc(r.body), "DAV:", "response").map(rs => ({ href: new URL(xtxt(rs, "DAV:", "href"), NVB).pathname, etag: xtxt(rs, "DAV:", "getetag"), ics: xtxt(rs, NS_C, "calendar-data") }))
+      .filter(x => x.href && !x.href.endsWith("/"));
+  }
+  // --- 위젯에 네이버 내 캘린더 보여주기 (보기) ---
+  let nvBusy = false;
+  async function nvLoad() {
+    if (!BETA || POPUP || !nv.on || nvBusy) return;
+    nvBusy = true;
+    try {
+      const all = await nvListCals(); nvAll = all;
+      const cals = all.filter(c => !c.name.startsWith(MIR_PRE) && !bMirNv.has(c.href));
+      const w = gWin(), evs = [];
+      await Promise.all(cals.map(async c => {
+        try { for (const x of await nvEventsOf(c.href, w.from, w.to)) for (const v of icsParse(x.ics))
+          evs.push({ s: v.s, e: v.e, all: v.all, title: v.title, color: c.color, cal: "nv:" + c.href, id: "", loc: v.loc, desc: v.desc, url: "", rec: v.rec ? "1" : "", nv: true }); } catch (e) {}
+      }));
+      nvCals = cals.map(c => ({ id: "nv:" + c.href, name: c.name, color: c.color, nv: true, prov: "N", selected: true, href: c.href }));
+      nvEvents = evs.sort((a, b) => a.s - b.s);
+      bApply(); renderAll();
+    } catch (e) { console.warn("naver load", e); nv.err = e.status === 401 ? "네이버 로그인이 풀렸어요. 설정 › 연동에서 다시 연결해 주세요." : (e.message || "네이버 캘린더를 읽지 못했어요."); }
+    finally { nvBusy = false; }
+  }
+  function onNvState(m) {
+    const was = nv.on;
+    nv.on = !!m.on; nv.id = m.id || ""; nv.works = !!m.works;
+    const nb = m.base || "https://caldav.calendar.naver.com"; if (nb !== NVB) { NVB = nb; nv.home = ""; }
+    if (!nv.on) { nv.home = ""; nvCals = []; nvEvents = []; }
+    if (POPUP) return;
+    bApply(); renderAll(); if (fConOn) fConnect();
+    if (nv.on && !was) { nvLoad(); bSyncSoon(1500, true); }
+  }
+  // --- 공유 칩 ↔ 네이버 사본 (양방향, etag 로 바뀐 것 찾기) ---
+  let bMirNv = new Set((() => { try { return JSON.parse(localStorage.getItem("tcb.mirnv") || "[]"); } catch (e) { return []; } })());
+  const sameEv = (a, b) => a.title === b.title && !!a.all_day === !!b.all_day && sameT(a.start_at, b.start_at) && sameT(a.end_at, b.end_at) && (a.location || "") === (b.location || "") && (a.memo || "") === (b.memo || "");
+  function ics2tc(v) { return { title: String(v.title).slice(0, 200), all_day: v.all, start_at: v.s.toISOString(), end_at: v.e.toISOString(), location: v.loc || null, memo: v.desc || null }; }
+  async function nvEtag(href) {
+    const r = await nvDo("PROPFIND", href, { depth: "0", body: PF("<d:getetag/>") });
+    return r.status === 207 ? xtxt(xdoc(r.body), "DAV:", "getetag") : "";
+  }
+  async function nvMkCal(name, color) {
+    const home = await nvHome(), href = home + "teamcal-" + (crypto.randomUUID ? crypto.randomUUID() : Date.now().toString(36)) + "/";
+    const body = `<?xml version="1.0" encoding="utf-8"?><c:mkcalendar xmlns:d="DAV:" xmlns:c="${NS_C}" xmlns:a="http://apple.com/ns/ical/"><d:set><d:prop><d:displayname>${String(name).replace(/[<&>]/g, ch => ({ "<": "&lt;", "&": "&amp;", ">": "&gt;" })[ch])}</d:displayname><a:calendar-color>${color || "#16a085"}</a:calendar-color><c:supported-calendar-component-set><c:comp name="VEVENT"/></c:supported-calendar-component-set></d:prop></d:set></c:mkcalendar>`;
+    const r = await nvDo("MKCALENDAR", href, { body });
+    if (r.status === 201 || r.status === 200) return href;
+    const e = nvErr("캘린더 만들기", r); e.mk = true; throw e;
+  }
+  async function bSyncNvCal(sb, c, m) {
+    const uid = bUser.id, viewer = c.role === "viewer", want = c.name, own = m.origin === "own", cutoff = Date.now() - 62 * 864e5;
+    if (own && m.account && m.account !== nv.id) return false;
+    let changed = false;
+    if (m && m.mirror_cal_id) {   // 사본이 아직 있는지
+      const list = await nvListCals();
+      const cur = list.find(x => x.href === m.mirror_cal_id);
+      if (!cur && own) return false;
+      if (!cur) { await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw); bMirNv.delete(m.mirror_cal_id); m = Object.assign({}, m, { mirror_cal_id: "" }); }
+      else if (cur.name !== want && !own && /\/teamcal-[^/]+\/$/.test(cur.href)) { try { await nvDo("PROPPATCH", cur.href, { body: `<?xml version="1.0" encoding="utf-8"?><d:propertyupdate xmlns:d="DAV:"><d:set><d:prop><d:displayname>${want.replace(/[<&>]/g, "")}</d:displayname></d:prop></d:set></d:propertyupdate>` }); } catch (e) {} }
+    }
+    if (!m.mirror_cal_id) {
+      if (m.sync_token === "pick") {   // 네이버가 새 캘린더 만들기를 막음 → 같은 이름의 캘린더를 만들어 두면 자동으로 잇는다
+        const same = (await nvListCals()).find(x => !bMirNv.has(x.href) && (x.name.trim() === want || x.name.trim() === MIR_PRE + want));
+        if (!same) { nvMkFail = true; return false; }
+        await sb.from("mirror_cals").update({ mirror_cal_id: same.href, sync_token: null, account: nv.id }).eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw);
+        m = Object.assign({}, m, { mirror_cal_id: same.href, sync_token: null });
+      }
+    }
+    if (!m.mirror_cal_id) {
+      let href = ((await nvListCals()).find(x => /\/teamcal-[^/]+\/$/.test(x.href) && !bMirNv.has(x.href) && (x.name.trim() === want || x.name.trim() === MIR_PRE + want)) || {}).href;   // 전에 만들어 둔 사본이 있으면 그걸 쓴다
+      if (!href) try { href = await nvMkCal(want, c.color); }
+      catch (e) {
+        if (!e.mk) throw e;
+        nvMkFail = true;
+        await sb.from("mirror_cals").update({ sync_token: "pick" }).eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw);
+        return false;
+      }
+      const w = await sb.from("mirror_cals").update({ mirror_cal_id: href, account: nv.id, sync_token: null, updated_at: new Date().toISOString() }).eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw);
+      if (w.error) throw w.error;
+      m = Object.assign({}, m, { mirror_cal_id: href });
+    }
+    const MC = m.mirror_cal_id; bMirNv.add(MC);
+    const [te, lk] = await Promise.all([
+      sb.from("shared_events").select("id,title,all_day,start_at,end_at,location,memo,updated_at").eq("cal_id", c.raw).limit(5000),
+      sb.from("mirror_links").select("event_id,mirror_event_id,tc_updated,m_updated").eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw)]);
+    if (te.error) throw te.error; if (lk.error) throw lk.error;
+    const tc = new Map((te.data || []).map(e => [e.id, e])), byEv = new Map(), byMir = new Map();
+    for (const l of lk.data || []) { byEv.set(l.event_id, l); byMir.set(l.mirror_event_id, l); }
+    const putLink = async (eid, href, tu, et) => {
+      const l = { user_id: uid, cal_id: c.raw, event_id: eid, provider: "naver", mirror_event_id: href, tc_updated: tu, m_updated: et };
+      const w = await sb.from("mirror_links").upsert(l); if (w.error) throw w.error;
+      const old = byEv.get(eid); if (old) byMir.delete(old.mirror_event_id);
+      byEv.set(eid, l); byMir.set(href, l);
+    };
+    const delLink = async l => { await sb.from("mirror_links").delete().eq("user_id", uid).eq("provider", "naver").eq("event_id", l.event_id); byEv.delete(l.event_id); byMir.delete(l.mirror_event_id); };
+    const ndel = async href => { const r = await nvDo("DELETE", href); if (r.status >= 400 && r.status !== 404 && r.status !== 410) throw nvErr("일정 지우기", r); };
+    const nput = async (t, href, ifMatch) => {
+      let r = await nvDo("PUT", href, { ctype: "text/calendar", body: tc2ics(t), ifMatch });
+      if (r.status === 412 && ifMatch === "*") return null;
+      if (r.status >= 400 && r.status !== 401 && ifMatch) r = await nvDo("PUT", href, { ctype: "text/calendar", body: tc2ics(t) });   // 조건부 요청을 안 받는 서버
+      if (r.status >= 400) throw nvErr("일정 쓰기", r);
+      return r.etag || await nvEtag(href);
+    };
+    // 1) 네이버 쪽 현재 상태
+    const items = await nvEventsOf(MC, null, null), seen = new Set(), done = new Set(), force = new Set();
+    for (const it of items) {
+      seen.add(it.href);
+      const l = byMir.get(it.href);
+      if (l && it.etag && it.etag === l.m_updated) continue;          // 그대로
+      const v = icsParse(it.ics)[0]; if (!v) continue;
+      if (!l && own && (v.rec || v.e.getTime() < cutoff)) { seen.add(it.href); continue; }   // 원래 캘린더: 반복·오래된 일정은 네이버에만 둔다
+      if (!l) {
+        const tid = (/^(.+)@teamcal\.app$/i.exec(v.uid) || [])[1] || (tc.has(v.uid) ? v.uid : "");
+        if (tid && tc.has(tid) && !byEv.has(tid)) { await putLink(tid, it.href, null, it.etag); continue; }   // 연결표만 잃어버림
+        if (tid && !tc.has(tid)) { await ndel(it.href); continue; }
+        if (viewer) { await ndel(it.href); continue; }
+        const ins = await sb.from("shared_events").insert({ cal_id: c.raw, ...ics2tc(v) }).select("id,title,all_day,start_at,end_at,location,memo,updated_at").single();
+        if (ins.error) { if (permErr(ins.error)) { await ndel(it.href); continue; } throw ins.error; }
+        await putLink(ins.data.id, it.href, ins.data.updated_at, it.etag);
+        tc.set(ins.data.id, ins.data); done.add(ins.data.id); changed = true; continue;
+      }
+      const t = tc.get(l.event_id); if (!t) continue;
+      const row = ics2tc(v);
+      if (sameEv(row, t)) { await putLink(t.id, it.href, t.updated_at, it.etag); done.add(t.id); continue; }   // 내용이 같으면 표만 맞춘다
+      if (viewer) { force.add(t.id); continue; }
+      const tcChanged = !sameT(t.updated_at, l.tc_updated);
+      if (tcChanged && (!v.mod || new Date(t.updated_at) > v.mod.d)) continue;   // 둘 다 바뀌면 나중에 고친 쪽
+      const u = await sb.from("shared_events").update(row).eq("id", t.id).select("id,updated_at");
+      if (u.error && !permErr(u.error)) throw u.error;
+      if (u.error || !(u.data || []).length) { force.add(t.id); continue; }
+      await putLink(t.id, it.href, u.data[0].updated_at, it.etag);
+      tc.set(t.id, { ...t, ...row, updated_at: u.data[0].updated_at }); done.add(t.id); changed = true;
+    }
+    // 네이버에서 지워진 것
+    for (const l of [...byEv.values()]) {
+      if (seen.has(l.mirror_event_id)) continue;
+      const t = tc.get(l.event_id); await delLink(l);
+      if (!t || viewer) continue;                                       // 보기만이면 아래에서 다시 만든다
+      const d = await sb.from("shared_events").delete().eq("id", t.id).select("id");
+      if (d.error && !permErr(d.error)) throw d.error;
+      if (!d.error && (d.data || []).length) { tc.delete(t.id); changed = true; }
+    }
+    // 2) Plait → 네이버
+    for (const t of tc.values()) {
+      if (done.has(t.id)) continue;
+      const l = byEv.get(t.id);
+      if (!l) { const href = MC + t.id + ".ics"; const et = (await nput(t, href, "*")) ?? (await nput(t, href, "")); if (et != null) await putLink(t.id, href, t.updated_at, et); continue; }
+      if (!force.has(t.id) && sameT(t.updated_at, l.tc_updated)) continue;
+      const et = await nput(t, l.mirror_event_id, "");
+      if (et != null) await putLink(t.id, l.mirror_event_id, t.updated_at, et);
+    }
+    for (const l of [...byEv.values()]) if (!tc.has(l.event_id)) { await ndel(l.mirror_event_id); await delLink(l); }
+    await sb.from("mirror_cals").update({ account: nv.id, updated_at: new Date().toISOString() }).eq("user_id", uid).eq("provider", "naver").eq("cal_id", c.raw);
+    return changed;
+  }
+  function bApply() {   // 공유 칩을 구글 목록에 섞는다 (그리기는 부른 쪽에서)
+    if (!BETA) return;
+    if (bOnly()) {   // 구글을 아직 안 붙였어도 공유 칩(+ 네이버)은 보인다
+      gCals = nvCals.concat(bCals); gWritable = bCals.filter(c => c.role !== "viewer").map(c => ({ id: c.id, name: c.name, color: c.color, shared: true }));
+      gEvents = nvEvents.concat(bEvents).sort((a, b) => a.s - b.s); return;
+    }
+    gCals = (gCals || []).filter(c => !c.shared && !c.nv && !bMir.has(c.id)).concat(nvCals.filter(c => !bMirNv.has(c.href)), bCals);
+    gWritable = (gWritable || []).filter(c => !bMir.has(c.id));
+    gWritable = (gWritable || []).filter(c => !c.shared).concat(bCals.filter(c => c.role !== "viewer").map(c => ({ id: c.id, name: c.name, color: c.color, shared: true })));
+    if (gEvents) gEvents = gEvents.filter(e => !e.shared && !e.nv && !bMir.has(e.cal)).concat(nvEvents.filter(e => !bMirNv.has(String(e.cal).slice(3))), bEvents).sort((a, b) => a.s - b.s);
+  }
+  function bBadge() {
+    const b = $("bFriends"); if (!b || !BETA) return;
+    const n = b.querySelector(".bdg");
+    n.textContent = bBadgeN > 9 ? "9+" : String(bBadgeN); n.hidden = !bBadgeN;
+    const t = !bUser ? "Plait 계정 · 로그인" : bBadgeN ? `Plait 친구 · 새 요청 ${bBadgeN}` : "Plait 친구 · 공유 칩";
+    b.title = t; b.setAttribute("aria-label", t);
+  }
+  function gState() { const p = gCals.find(c => c.primary); return { gOn: gmode === "google" && !!gToken, gMail: p ? p.id : "", nvOn: nv.on, nvId: nv.id, nvCals: nvAll.filter(c => !bMirNv.has(c.href)).map(c => ({ href: c.href, name: c.name })) }; }
+  function openFriends(tab, extra) { if (inHost) host({ cmd: "popup", kind: "friends", data: Object.assign({ tab: tab || "" }, gState(), extra || {}) }); }
+  async function bLoad() {
+    if (!BETA || POPUP) return;
+    const sb = bClient(); if (!sb) return;
+    if (bBusy) { bAgain = true; return; }
+    bBusy = true;
+    try {
+      const { data: { session } } = await sb.auth.getSession();
+      bUser = session ? session.user : null;
+      if (!bUser) { bProfile = null; bCals = []; bEvents = []; bBadgeN = 0; bLoadedOk = false; bSub(); bApply(); bBadge(); renderAll(); if (!fGate) bGate(true); return; }
+      const [pr, mem, fr] = await Promise.all([
+        sb.from("profiles").select("id,username,display_name").eq("id", bUser.id).maybeSingle(),
+        sb.from("shared_members").select("cal_id,role,status,shared_cals(id,name,color,owner)").eq("user_id", bUser.id),
+        sb.from("friendships").select("id").eq("addressee", bUser.id).eq("status", "pending")]);
+      if (mem.error) throw mem.error;
+      bProfile = pr.data || null;
+      if (!bProfile) { if (!fGate) bGate(true); return; }     // 가입을 덜 마침
+      const rows = mem.data || [];
+      bBadgeN = rows.filter(r => r.status === "invited").length + (fr.data || []).length;
+      bCals = rows.filter(r => r.status === "joined" && r.shared_cals).map(r => ({ id: "tc:" + r.cal_id, raw: r.cal_id, name: r.shared_cals.name, color: r.shared_cals.color, role: r.role, shared: true, selected: true }));
+      let evs = [];
+      if (bCals.length) {
+        const win = gWin();
+        const { data, error } = await sb.from("shared_events").select("id,cal_id,title,all_day,start_at,end_at,location,memo,created_by")
+          .in("cal_id", bCals.map(c => c.raw)).lt("start_at", win.to.toISOString()).gte("end_at", win.from.toISOString()).order("start_at").limit(2000);
+        if (error) throw error;
+        const ids = [...new Set((data || []).map(e => e.created_by).filter(x => x && x !== bUser.id))];
+        const names = {};
+        if (ids.length) { const p = await sb.from("profiles").select("id,display_name").in("id", ids); for (const x of p.data || []) names[x.id] = x.display_name; }
+        const col = Object.fromEntries(bCals.map(c => [c.raw, c.color]));
+        evs = (data || []).map(e => ({ s: new Date(e.start_at), e: new Date(e.end_at), all: !!e.all_day, title: e.title, color: col[e.cal_id], cal: "tc:" + e.cal_id, id: e.id,
+          loc: e.location || "", desc: e.memo || "", url: "", rec: "", shared: true, by: e.created_by && e.created_by !== bUser.id ? (names[e.created_by] || "") : "" }));
+      }
+      try { const mr = await sb.from("mirror_cals").select("provider,mirror_cal_id,sync_token").eq("user_id", bUser.id);   // 사본 캘린더는 이름이 칩과 같아서 목록으로 가린다
+        for (const m of mr.data || []) if (m.mirror_cal_id && m.sync_token !== "off") (m.provider === "naver" ? bMirNv : bMir).add(m.mirror_cal_id); } catch (e) {}
+      bEvents = evs; bLoadedOk = true;
+      bSub(); bApply(); bBadge(); renderAll();
+      const ck = bCals.map(c => c.raw + ":" + c.role + ":" + c.name).sort().join("|");
+      bSyncSoon(2000, ck !== bCalKey); bCalKey = ck;
+    } catch (e) { console.warn("Plait load", e); }
+    finally { bBusy = false; if (bAgain) { bAgain = false; setTimeout(bLoad, 300); } }
+  }
+  function bSub() {   // 실시간: 공유 일정·초대·친구 요청이 바뀌면 다시 불러온다
+    const sb = bClient(); if (!sb) return;
+    const uid = bUser ? bUser.id : "";
+    if (uid === bLastUid) return;
+    bLastUid = uid;
+    if (bChan) { try { sb.removeChannel(bChan); } catch (e) {} bChan = null; }
+    if (!uid) return;
+    let t = null; const kick = () => { clearTimeout(t); t = setTimeout(bLoad, 700); };
+    try {
+      bChan = sb.channel("tcb-" + uid);
+      for (const table of ["shared_events", "shared_members", "friendships", "shared_cals"]) bChan.on("postgres_changes", { event: "*", schema: "public", table }, kick);
+      bChan.subscribe();
+    } catch (e) { bChan = null; }
+  }
+  async function bDelEvent(id) {
+    const sb = bClient(); if (!sb) throw new Error("Plait 서버에 연결하지 못했어요.");
+    const { data, error } = await sb.from("shared_events").delete().eq("id", id).select("id");
+    if (error) throw new Error("일정을 삭제하지 못했어요.");
+    if (!(data || []).length) throw new Error("이 공유 칩의 일정을 지울 권한이 없어요.");
+  }
+  async function bSaveEvent(f) {
+    const sb = bClient(); if (!sb) { gCalc("Plait 서버에 연결하지 못했어요.", true); return; }
+    const from = gEdit ? gEdit.cal : null, to = gSelCal || from;
+    if (gEdit && isTC(from) !== isTC(to)) { gCalc("공유 칩과 구글 캘린더 사이로는 옮길 수 없어요.", true); return; }
+    let sAt, eAt;
+    if (f.all) { const a = parse(f.date), b = parse(f.date); b.setDate(b.getDate() + 1 + f.span); sAt = a.toISOString(); eAt = b.toISOString(); }
+    else {
+      const ed = parse(f.date); ed.setDate(ed.getDate() + f.span);
+      sAt = new Date(`${f.date}T${f.s}:00${tzOff(parse(f.date))}`).toISOString();
+      eAt = new Date(`${ymd(ed)}T${f.e}:00${tzOff(ed)}`).toISOString();
+    }
+    const row = { cal_id: to.slice(3), title: f.title, all_day: f.all, start_at: sAt, end_at: eAt, location: f.loc || null, memo: f.details || null };
+    $("gOk").disabled = true; $("gOk").textContent = gEdit ? "저장 중…" : "추가 중…"; gCalc("");
+    try {
+      const q = gEdit ? sb.from("shared_events").update(row).eq("id", gEdit.id).select("id") : sb.from("shared_events").insert(row).select("id");
+      const { data, error } = await q;
+      if (error) throw error;
+      if (!(data || []).length) { gCalc("이 공유 칩의 일정을 바꿀 권한이 없어요.", true); return; }
+      const name = ((gWritable.find(c => c.id === to) || {}).name || "공유 칩");
+      const msg = gEdit ? (to !== from ? `${f.title} 일정을 '${name}'(으)로 옮겼어요` : `${f.title} 일정을 수정했어요`) : `${f.title} 일정을 '${name}'에 추가했어요`;
+      if (POPUP) { host({ cmd: "done", msg, date: f.date, ids: [] }); return; }
+      closeGSheet(); toast(msg); bLoad(); bSyncSoon(2500, true);
+    } catch (e) {
+      gCalc(/42501|row-level|permission/i.test(String((e && (e.code + " " + e.message)) || "")) ? "이 공유 칩에 일정을 넣을 권한이 없어요." : "저장하지 못했어요. 잠시 후 다시 시도해 주세요.", true);
+    } finally { $("gOk").disabled = false; $("gOk").textContent = gEdit ? "저장" : "추가하기"; }
+  }
+
+  // ---------- 친구 창 (팝업) ----------
+  let fTab = "friends", fView = "login", fCode = "", fAfter = "", fReset = null, fOpen = "", fNew = null, fCache = {};
+  const AVC = ["#e0592a", "#2f6fdb", "#8e44ad", "#16a085", "#d68910", "#c0392b", "#33b679", "#3f51b5"];
+  const avc = s => { let h = 0; for (const ch of String(s || "")) h = (h * 31 + ch.charCodeAt(0)) >>> 0; return AVC[h % AVC.length]; };
+  const av = p => `<span class="fav" style="--c:${avc(p && p.username)}" aria-hidden="true">${esc(((p && p.display_name) || "?").slice(0, 1))}</span>`;
+  const ROLE = { owner: "주인", editor: "편집 가능", viewer: "보기만" };
+  function fMsg(t, err) { const m = $("fMsg"); m.textContent = t || ""; m.className = "calc" + (err ? " err" : ""); report(); }
+  function fSync() { if (inHost) host({ cmd: "bsync" }); }
+  function genCode() {
+    const A = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789", r = new Uint32Array(12); crypto.getRandomValues(r);
+    const c = Array.from(r, x => A[x % A.length]).join(""); return `${c.slice(0, 4)}-${c.slice(4, 8)}-${c.slice(8)}`;
+  }
+  let fG = { gOn: false, gMail: "", nvOn: false, nvId: "", nvCals: [] }, fLink = null;
+  function showFriends(data) { if (data && data.tab) fTab = data.tab; if (data && "gOn" in data) fG = { gOn: !!data.gOn, gMail: data.gMail || "", nvOn: !!data.nvOn, nvId: data.nvId || "", nvCals: Array.isArray(data.nvCals) ? data.nvCals : [] }; $("fsheet").hidden = false; fRender(); }
+  $("fClose").onclick = () => { if (POPUP) host({ cmd: "close" }); else { $("fsheet").hidden = true; report(); } };
+  document.addEventListener("keydown", e => { if (e.key === "Escape" && !$("fsheet").hidden) $("fClose").click(); });
+  async function fRender() {
+    const sb = bClient(), body = $("fBody"), tabs = $("fTabs");
+    if (!sb) { tabs.innerHTML = ""; body.innerHTML = `<p class="fnote">Plait 서버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요.</p>`; report(); return; }
+    let session = null; try { session = (await sb.auth.getSession()).data.session; } catch (e) {}
+    if (fView === "code") return fAuth("code");
+    if (!session) return fAuth();
+    const pr = await sb.from("profiles").select("id,username,display_name").eq("id", session.user.id).maybeSingle();
+    if (!pr.data) return fAuth("finish");
+    bUser = session.user; bProfile = pr.data;
+    if (fGate) {
+      let seen = ""; try { seen = localStorage.getItem("tcb.onboard") || ""; } catch (e) {}
+      if (seen === bUser.id) { bGate(false); bLoad(); return; }
+      return fConnect();
+    }
+    $("fTitle").textContent = "Plait 친구";
+    const T = [["friends", "친구"], ["chips", "공유 칩"]]; if (fTab === "me") fTab = "friends";
+    tabs.innerHTML = T.map(([k, t]) => `<button type="button" role="tab" aria-selected="${k === fTab}" data-ft="${k}">${t}</button>`).join("");
+    tabs.querySelectorAll("[data-ft]").forEach(b => b.onclick = () => { fTab = b.dataset.ft; fMsg(""); fRender(); });
+    try {
+      if (fTab === "chips") await fChips(sb); else if (fTab === "me") fMe(sb); else await fFriends(sb);
+    } catch (e) { console.warn(e); body.innerHTML = `<p class="fnote">불러오지 못했어요. 잠시 후 다시 시도해 주세요.</p>`; }
+    report();
+  }
+  // --- 로그인 · 가입 · 비밀번호 찾기 · 복구 코드 ---
+  function fAuth(mode) {
+    if (mode) fView = mode; if (!["login", "signup", "reset", "finish", "code"].includes(fView)) fView = "login";
+    const tabs = $("fTabs"), body = $("fBody");
+    $("fTitle").textContent = "Plait 계정";
+    if (fGate) { $("fTitle").innerHTML = `<i class="lg"></i>Plait`; fStep(1); }
+    if (fView === "code") {
+      tabs.innerHTML = "";
+      body.innerHTML = `<p class="fnote" style="color:var(--fg);font-weight:700;margin-top:10px">복구 코드를 꼭 저장해 두세요</p>
+        <div class="fcode" id="fCodeV">${esc(fCode)}</div>
+        <div class="sbtns"><button type="button" class="sbtn" id="fCopy">복사</button></div>
+        <p class="fnote warn">비밀번호를 잊었을 때 이 코드로만 되찾을 수 있어요. 이 화면을 닫으면 다시 볼 수 없어요.</p>
+        <button type="button" class="fbtn" id="fSaved">저장했어요</button>`;
+      $("fCopy").onclick = () => { copyText(fCode); $("fCopy").textContent = "복사했어요 ✓"; };
+      $("fSaved").onclick = async () => {
+        const after = fAfter; fCode = ""; fAfter = ""; fView = "login";
+        if (after === "reset" && fReset) {
+          const r = await bClient().auth.signInWithPassword({ email: idMail(fReset.id), password: fReset.pw }); fReset = null;
+          if (r.error) { fMsg("새 비밀번호로 로그인해 주세요."); fAuth("login"); return; }
+        }
+        fMsg(""); fSync(); fRender();
+      };
+      if (fGate) fStep(1);
+      report(); return;
+    }
+    tabs.innerHTML = fView === "finish" ? "" : [["login", "로그인"], ["signup", "새로 가입"]].map(([k, t]) => `<button type="button" role="tab" aria-selected="${k === fView || (k === "login" && fView === "reset")}" data-fv="${k}">${t}</button>`).join("");
+    tabs.querySelectorAll("[data-fv]").forEach(b => b.onclick = () => { fMsg(""); fAuth(b.dataset.fv); });
+    const pw = (id, ph, ac) => `<input class="fin" id="${id}" type="password" autocomplete="${ac}" placeholder="${ph}">`;
+    if (fView === "login") {
+      body.innerHTML = `<p class="fnote" style="margin-top:10px">${fGate ? "Plait 계정으로 시작해요. 친구와 공유 칩, 여러 캘린더 연결이 이 계정에 묶여요." : "친구와 캘린더를 함께 쓰려면 Plait 계정이 필요해요."}</p>
+        <label class="fl" for="fId">아이디</label><input class="fin" id="fId" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <label class="fl" for="fPw">비밀번호</label>${pw("fPw", "", "current-password")}
+        <button type="submit" class="fbtn" id="fGo">로그인</button>
+        <button type="button" class="flink" id="fToReset">비밀번호를 잊었어요</button>`;
+      $("fToReset").onclick = () => { fMsg(""); fAuth("reset"); };
+      fSubmit = async () => fLogin($("fId").value, $("fPw").value);
+    } else if (fView === "signup") {
+      body.innerHTML = `<label class="fl" for="fId">아이디 <span style="font-weight:500">· 영문 소문자·숫자·_ 4~20자, 친구가 이 아이디로 찾아요</span></label><input class="fin" id="fId" autocomplete="username" autocapitalize="off" spellcheck="false" maxlength="20">
+        <label class="fl" for="fName">이름 <span style="font-weight:500">· 친구에게 보이는 이름</span></label><input class="fin" id="fName" maxlength="20" autocomplete="nickname">
+        <label class="fl" for="fPw">비밀번호 <span style="font-weight:500">· 8자 이상</span></label>${pw("fPw", "", "new-password")}
+        <label class="fl" for="fPw2">비밀번호 확인</label>${pw("fPw2", "", "new-password")}
+        <button type="submit" class="fbtn" id="fGo">가입하기</button>`;
+      fSubmit = async () => fSignup($("fId").value, $("fName").value, $("fPw").value, $("fPw2").value);
+    } else if (fView === "reset") {
+      body.innerHTML = `<p class="fnote" style="margin-top:10px">가입할 때 받은 복구 코드로 새 비밀번호를 만들어요.</p>
+        <label class="fl" for="fId">아이디</label><input class="fin" id="fId" autocomplete="username" autocapitalize="off" spellcheck="false">
+        <label class="fl" for="fCode">복구 코드</label><input class="fin" id="fCode" placeholder="XXXX-XXXX-XXXX" autocapitalize="characters" spellcheck="false" style="font-family:ui-monospace,Consolas,monospace">
+        <label class="fl" for="fPw">새 비밀번호 <span style="font-weight:500">· 8자 이상</span></label>${pw("fPw", "", "new-password")}
+        <label class="fl" for="fPw2">새 비밀번호 확인</label>${pw("fPw2", "", "new-password")}
+        <button type="submit" class="fbtn" id="fGo">새 비밀번호 만들기</button>
+        <button type="button" class="flink" id="fToLogin">로그인으로 돌아가기</button>`;
+      $("fToLogin").onclick = () => { fMsg(""); fAuth("login"); };
+      fSubmit = async () => fDoReset($("fId").value, $("fCode").value, $("fPw").value, $("fPw2").value);
+    } else if (fView === "finish") {
+      body.innerHTML = `<p class="fnote" style="margin-top:10px">가입을 마무리할게요. 친구에게 보일 이름을 정해 주세요.</p>
+        <label class="fl" for="fName">이름</label><input class="fin" id="fName" maxlength="20">
+        <button type="submit" class="fbtn" id="fGo">가입 마치기</button>
+        <button type="button" class="flink" id="fOut">다른 아이디로 로그인</button>`;
+      $("fOut").onclick = async () => { await bClient().auth.signOut(); fSync(); fAuth("login"); };
+      fSubmit = async () => { const s = (await bClient().auth.getSession()).data.session; const id = s ? s.user.email.split("@")[0] : ""; return fFinish(id, $("fName").value); };
+    }
+    const first = body.querySelector("input"); if (first) setTimeout(() => first.focus(), 0);
+    report();
+  }
+  let fSubmit = null;
+  $("fForm").addEventListener("submit", async ev => {
+    ev.preventDefault();
+    if (!fSubmit || $("fsheet").hidden) return;
+    const b = $("fGo"); if (b) b.disabled = true;
+    try { await fSubmit(); } catch (e) { fMsg("문제가 생겼어요. 잠시 후 다시 시도해 주세요.", true); }
+    finally { const b2 = $("fGo"); if (b2) b2.disabled = false; }
+  });
+  async function fLogin(id, pw) {
+    id = String(id || "").trim().toLowerCase();
+    if (!ID_RE.test(id)) { fMsg("아이디를 확인해 주세요.", true); return; }
+    if (!pw) { fMsg("비밀번호를 입력해 주세요.", true); return; }
+    fMsg("로그인하는 중…");
+    const { error } = await bClient().auth.signInWithPassword({ email: idMail(id), password: pw });
+    if (error) { fMsg(/invalid/i.test(error.message) ? "아이디 또는 비밀번호가 맞지 않아요." : "로그인하지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+    fMsg(""); fSubmit = null; fSync(); fRender();
+  }
+  async function fSignup(id, name, pw, pw2) {
+    const sb = bClient();
+    id = String(id || "").trim().toLowerCase(); name = String(name || "").trim();
+    if (!ID_RE.test(id)) { fMsg("아이디는 영문 소문자·숫자·_ 로 4~20자로 만들어 주세요.", true); return; }
+    if (!name) { fMsg("이름을 입력해 주세요.", true); return; }
+    if ((pw || "").length < 8) { fMsg("비밀번호는 8자 이상으로 해 주세요.", true); return; }
+    if (pw !== pw2) { fMsg("비밀번호 확인이 달라요.", true); return; }
+    fMsg("가입하는 중…");
+    const t = await sb.rpc("username_taken", { p_username: id });
+    if (t.data === true) { fMsg("이미 쓰고 있는 아이디예요.", true); return; }
+    const { data, error } = await sb.auth.signUp({ email: idMail(id), password: pw });
+    if (error) { fMsg(/registered|exists/i.test(error.message) ? "이미 쓰고 있는 아이디예요." : "가입하지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+    if (!data.session) {
+      const r = await sb.auth.signInWithPassword({ email: idMail(id), password: pw });
+      if (r.error) { fMsg("가입은 됐지만 로그인하지 못했어요. 로그인 탭에서 다시 시도해 주세요.", true); return; }
+    }
+    return fFinish(id, name);
+  }
+  async function fFinish(id, name) {
+    name = String(name || "").trim();
+    if (!name) { fMsg("이름을 입력해 주세요.", true); return; }
+    const code = genCode();
+    const { error } = await bClient().rpc("finish_signup", { p_username: id, p_display: name, p_code: code });
+    if (error) { fMsg(/duplicate|unique/i.test(error.message) ? "이미 쓰고 있는 아이디예요." : "가입을 마치지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+    fCode = code; fAfter = "signup"; fSubmit = null; fMsg(""); fAuth("code"); fSync();
+  }
+  async function fDoReset(id, code, pw, pw2) {
+    id = String(id || "").trim().toLowerCase(); code = String(code || "").trim().toUpperCase();
+    if (!ID_RE.test(id)) { fMsg("아이디를 확인해 주세요.", true); return; }
+    if (!/^[A-Z0-9]{4}-?[A-Z0-9]{4}-?[A-Z0-9]{4}$/.test(code)) { fMsg("복구 코드를 확인해 주세요.", true); return; }
+    if ((pw || "").length < 8) { fMsg("비밀번호는 8자 이상으로 해 주세요.", true); return; }
+    if (pw !== pw2) { fMsg("비밀번호 확인이 달라요.", true); return; }
+    if (!code.includes("-")) code = `${code.slice(0, 4)}-${code.slice(4, 8)}-${code.slice(8)}`;
+    fMsg("확인하는 중…");
+    const nc = genCode();
+    const { data, error } = await bClient().rpc("reset_with_code", { p_username: id, p_code: code, p_new_password: pw, p_new_code: nc });
+    if (error) { fMsg("새 비밀번호를 만들지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+    if (data !== true) { fMsg("아이디 또는 복구 코드가 맞지 않아요.", true); return; }
+    fCode = nc; fAfter = "reset"; fReset = { id, pw }; fSubmit = null; fMsg("새 비밀번호를 만들었어요. 복구 코드도 새로 바뀌었어요."); fAuth("code");
+  }
+  // --- 친구 탭 ---
+  async function fLoadFriends(sb) {
+    const me = bUser.id;
+    const { data: fs, error } = await sb.from("friendships").select("id,requester,addressee,status");
+    if (error) throw error;
+    const ids = [...new Set((fs || []).flatMap(f => [f.requester, f.addressee]).filter(x => x !== me))];
+    const ps = ids.length ? ((await sb.from("profiles").select("id,username,display_name").in("id", ids)).data || []) : [];
+    const P = Object.fromEntries(ps.map(p => [p.id, p]));
+    const other = f => f.requester === me ? f.addressee : f.requester;
+    const prof = id => P[id] || { id, username: "", display_name: "(알 수 없음)" };
+    fCache = { fs: fs || [], P, other, prof, friends: (fs || []).filter(f => f.status === "accepted").map(f => prof(other(f))).sort((a, b) => a.display_name.localeCompare(b.display_name, "ko")) };
+    return fCache;
+  }
+  async function fFriends(sb) {
+    const me = bUser.id, { fs, other, prof, friends } = await fLoadFriends(sb);
+    const inc = fs.filter(f => f.status === "pending" && f.addressee === me), out = fs.filter(f => f.status === "pending" && f.requester === me);
+    const row = (p, btns) => `<div class="frow">${av(p)}<div class="ft">${esc(p.display_name)}<small>@${esc(p.username)}</small></div>${btns}</div>`;
+    let h = `<div class="fme">${av(bProfile)}<div class="ft"><b>${esc(bProfile.display_name)}</b><small>내 아이디 · @${esc(bProfile.username)}</small></div><button type="button" class="sbtn" id="fCopyId">아이디 복사</button></div>
+      <div class="fadd"><input class="fin" id="fAddId" placeholder="친구 아이디로 요청" autocapitalize="off" spellcheck="false" maxlength="20" aria-label="친구 아이디"><button type="button" class="sbtn pri" id="fAddBtn" style="height:36px">요청</button></div>`;
+    if (inc.length) h += `<div class="sgrp">받은 요청 ${inc.length}</div>` + inc.map(f => row(prof(f.requester), `<button type="button" class="sbtn pri" data-acc="${f.id}">수락</button><button type="button" class="sbtn" data-rm="${f.id}">거절</button>`)).join("");
+    h += `<div class="sgrp">친구 ${friends.length}</div>` + (friends.length ? fs.filter(f => f.status === "accepted").map(f => prof(other(f))).sort((a, b) => a.display_name.localeCompare(b.display_name, "ko")).map(p => {
+      const f = fs.find(x => x.status === "accepted" && other(x) === p.id);
+      return row(p, `<button type="button" class="sbtn" data-rm="${f.id}" data-ask="1" aria-label="${esc(p.display_name)} 친구 끊기">끊기</button>`);
+    }).join("") : `<p class="fnote">아직 친구가 없어요. 친구의 Plait 아이디로 요청을 보내 보세요.</p>`);
+    if (out.length) h += `<div class="sgrp">보낸 요청 ${out.length}</div>` + out.map(f => row(prof(f.addressee), `<span class="fnote" style="margin:0 4px 0 0">대기 중</span><button type="button" class="sbtn" data-rm="${f.id}">취소</button>`)).join("");
+    const body = $("fBody"); body.innerHTML = h;
+    $("fCopyId").onclick = () => { copyText(bProfile.username); $("fCopyId").textContent = "복사했어요 ✓"; };
+    const add = async () => fAddFriend(sb, $("fAddId").value);
+    $("fAddBtn").onclick = add;
+    $("fAddId").onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); add(); } };
+    body.querySelectorAll("[data-acc]").forEach(b => b.onclick = async () => {
+      b.disabled = true;
+      const { error } = await sb.from("friendships").update({ status: "accepted" }).eq("id", +b.dataset.acc);
+      fMsg(error ? "수락하지 못했어요." : "친구가 됐어요.", !!error); fSync(); fRender();
+    });
+    body.querySelectorAll("[data-rm]").forEach(b => b.onclick = async () => {
+      if (b.dataset.ask && !b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 끊기"; setTimeout(() => { if (b.isConnected) { b.classList.remove("arm"); b.textContent = "끊기"; } }, 3000); return; }
+      b.disabled = true;
+      const { error } = await sb.from("friendships").delete().eq("id", +b.dataset.rm);
+      fMsg(error ? "처리하지 못했어요." : "", !!error); fSync(); fRender();
+    });
+  }
+  async function fAddFriend(sb, id) {
+    id = String(id || "").trim().toLowerCase().replace(/^@/, "");
+    if (!id) return;
+    if (!ID_RE.test(id)) { fMsg("아이디를 확인해 주세요.", true); return; }
+    if (id === bProfile.username) { fMsg("내 아이디예요.", true); return; }
+    const { data: p } = await sb.from("profiles").select("id,username,display_name").eq("username", id).maybeSingle();
+    if (!p) { fMsg("그 아이디를 찾지 못했어요.", true); return; }
+    const ex = (fCache.fs || []).find(f => f.requester === p.id || f.addressee === p.id);
+    if (ex && ex.status === "accepted") { fMsg(`${p.display_name}님과 이미 친구예요.`); return; }
+    if (ex && ex.requester === bUser.id) { fMsg(`${p.display_name}님에게 이미 요청을 보냈어요.`); return; }
+    if (ex && ex.addressee === bUser.id) {
+      const { error } = await sb.from("friendships").update({ status: "accepted" }).eq("id", ex.id);
+      fMsg(error ? "수락하지 못했어요." : `${p.display_name}님이 먼저 요청을 보냈었어요. 친구가 됐어요.`, !!error); fSync(); fRender(); return;
+    }
+    const { error } = await sb.from("friendships").insert({ requester: bUser.id, addressee: p.id });
+    fMsg(error ? "요청을 보내지 못했어요." : `${p.display_name}님에게 친구 요청을 보냈어요.`, !!error); fSync(); fRender();
+  }
+  // --- 공유 칩 탭 ---
+  // --- 공유 칩 ↔ 내 캘린더 연결 고르기 (만들 때 · 초대를 수락할 때 · 칩 카드에서) ---
+  async function fSetLink(sb, calId, on, prov) {
+    prov = prov || "google";
+    const me = bUser.id, k = q => q.eq("user_id", me).eq("provider", prov).eq("cal_id", calId);
+    const ex = (await k(sb.from("mirror_cals").select("cal_id,mirror_cal_id")).maybeSingle()).data;
+    if (on) return ex ? k(sb.from("mirror_cals").update({ sync_token: null, mirror_cal_id: prov === "naver" && !ex.mirror_cal_id ? "" : ex.mirror_cal_id, updated_at: new Date().toISOString() }))
+      : sb.from("mirror_cals").insert({ user_id: me, cal_id: calId, provider: prov, account: "", mirror_cal_id: "" });
+    if (!ex) return { error: null };
+    return ex.mirror_cal_id ? k(sb.from("mirror_cals").update({ sync_token: "off" })) : k(sb.from("mirror_cals").delete());   // 사본 지우기는 위젯이
+  }
+  const LG = `<span class="plo g">${G_LOGO}</span>`;
+  const soonOpt = (c, l, t) => `<div class="fcon dis"><span class="plo" style="--c:${c}">${l}</span><div class="ft"><b>${t}</b><small>다음 업데이트에서</small></div><span class="soon">준비 중</span></div>`;
+  function fLinkView(sb) {
+    const L = fLink, body = $("fBody"), join = L.mode === "join";
+    const head = join ? `<div class="finv"><b>${esc(L.by)}</b>님이 <b>${esc(L.name)}</b>에 초대했어요 · ${ROLE[L.role] || ""}</div>`
+      : `<div class="fmade" style="--c:${esc(L.color)}"><span class="fdot"></span>${esc(L.name)} · 만들었어요</div>`;
+    const draw = () => {
+      body.innerHTML = head + `<h3 class="fq">어디에 연결할까요?</h3>
+        <p class="fnote" style="margin-top:0">${join ? "지금 안 골라도 공유 칩은 위젯에 보여요. 나중에 공유 칩 카드에서 바꿀 수 있어요." : `고른 캘린더에 ‘${esc(L.name)}’ 캘린더가 생기고, 거기서 넣고 고친 일정도 함께 쓰는 사람들에게 반영돼요.`}</p>
+        <button type="button" class="fcon" role="checkbox" aria-checked="${L.g}" id="flG">${LG}<div class="ft"><b>Google 캘린더</b><small>${fG.gOn ? esc(fG.gMail || "연결됨") : L.g ? "고르면 구글 로그인 창이 열려요" : "연결 안 됨"}</small></div>${fG.gOn || L.g ? `<span class="fck" aria-hidden="true"></span>` : `<span class="sbtn" aria-hidden="true">구글 연결</span>`}</button>`
+        + (fG.nvOn ? `<button type="button" class="fcon" role="checkbox" aria-checked="${!!L.n}" id="flN"><span class="plo" style="--c:#03c75a">N</span><div class="ft"><b>네이버 캘린더</b><small>${esc(fG.nvId)}</small></div><span class="fck" aria-hidden="true"></span></button>`
+          : `<div class="fcon dis"><span class="plo" style="--c:#03c75a">N</span><div class="ft"><b>네이버 캘린더</b><small>설정 › 연동에서 먼저 연결해 주세요</small></div><span class="soon">연결 안 됨</span></div>`)
+        + soonOpt("#0f6cbd", "O", "Outlook")
+        + `<button type="button" class="fbtn" id="flGo">${join ? (L.g || L.n ? "수락하고 연결하기" : "수락하기") : (L.g || L.n ? "연결하기" : "완료")}</button>
+        <div style="text-align:center"><button type="button" class="flink" id="flSkip">${join ? "수락만 할게요" : "Plait에만 둘게요"}</button></div>`;
+      $("flG").onclick = () => { L.g = !L.g; draw(); };
+      if ($("flN")) $("flN").onclick = () => { L.n = !L.n; draw(); };
+      $("flGo").onclick = () => go(L.g || L.n); $("flSkip").onclick = () => go(false);
+      report();
+    };
+    const go = async link => {
+      $("flGo").disabled = true; $("flSkip").disabled = true;
+      if (join) {
+        const { error } = await sb.from("shared_members").update({ status: "joined" }).eq("cal_id", L.cal).eq("user_id", bUser.id);
+        if (error) { fMsg("참여하지 못했어요.", true); $("flGo").disabled = false; $("flSkip").disabled = false; return; }
+      }
+      let err = null;
+      if (link && L.g) err = (await fSetLink(sb, L.cal, true, "google")).error;
+      if (link && L.n && !err) err = (await fSetLink(sb, L.cal, true, "naver")).error;
+      fLink = null; fOpen = L.cal;
+      const where = [L.g && "구글", L.n && "네이버"].filter(Boolean).join("·");
+      fMsg(err ? "공유 칩은 됐지만 연결을 저장하지 못했어요. 칩 카드에서 다시 켜 주세요." : link ? (L.g && !fG.gOn ? "구글에 로그인하면 바로 만들어져요." : `${where}에 ‘${L.name}’ 캘린더를 만들고 있어요.`) : (join ? "공유 칩에 참여했어요." : L.msg || ""), !!err);
+      fSync();
+      if (link && L.g && !fG.gOn && !err) { host({ cmd: "glogin" }); return; }
+      fRender();
+    };
+    $("fTitle").textContent = "Plait 친구";
+    draw();
+  }
+  async function fChips(sb) {
+    if (fLink) return fLinkView(sb);
+    const me = bUser.id;
+    const [{ data: mine, error }, fc, mr] = await Promise.all([
+      sb.from("shared_members").select("cal_id,role,status,invited_by,shared_cals(id,name,color,owner)").eq("user_id", me),
+      fLoadFriends(sb), sb.from("mirror_cals").select("cal_id,provider,mirror_cal_id,sync_token,updated_at").eq("user_id", me)]);
+    const mrs = ((mr && mr.data) || []).filter(x => x.sync_token !== "off");
+    const mrow = new Map(mrs.filter(x => x.provider === "google").map(x => [x.cal_id, x])), nrow = new Map(mrs.filter(x => x.provider === "naver").map(x => [x.cal_id, x]));
+    if (error) throw error;
+    const rows = (mine || []).filter(r => r.shared_cals);
+    const ids = rows.filter(r => r.status === "joined").map(r => r.cal_id);
+    const { data: allm } = ids.length ? await sb.from("shared_members").select("cal_id,user_id,role,status").in("cal_id", ids) : { data: [] };
+    const need = [...new Set([...(allm || []).map(m => m.user_id), ...rows.map(r => r.invited_by)].filter(x => x && x !== me && !fc.P[x]))];
+    if (need.length) for (const p of ((await sb.from("profiles").select("id,username,display_name").in("id", need)).data || [])) fc.P[p.id] = p;
+    const prof = id => id === me ? bProfile : (fc.P[id] || { id, username: "", display_name: "(알 수 없음)" });
+    const inv = rows.filter(r => r.status === "invited"), joined = rows.filter(r => r.status === "joined");
+    let h = "";
+    if (inv.length) h += `<div class="sgrp">받은 초대 ${inv.length}</div>` + inv.map(r => `<div class="frow"><span class="fdot" style="--c:${esc(r.shared_cals.color)}"></span><div class="ft">${esc(r.shared_cals.name)}<small>${esc(prof(r.invited_by).display_name)}님이 초대 · ${ROLE[r.role]}</small></div><button type="button" class="sbtn pri" data-join="${r.cal_id}">참여</button><button type="button" class="sbtn" data-leave="${r.cal_id}">거절</button></div>`).join("");
+    h += `<div class="sgrp">내 공유 칩 ${joined.length}</div>`;
+    if (!joined.length) h += `<p class="fnote">공유 칩은 친구와 함께 쓰는 캘린더예요. 구글·네이버 등 쓰는 캘린더가 달라도 같은 칩이 보여요.</p>`;
+    for (const r of joined) {
+      const c = r.shared_cals, ms = (allm || []).filter(m => m.cal_id === r.cal_id), isOwner = r.role === "owner", open = fOpen === r.cal_id;
+      h += `<div class="fcard" style="--c:${esc(c.color)}"><div class="fh" data-open="${r.cal_id}" role="button" tabindex="0" aria-expanded="${open}"><span class="fdot"></span>${esc(c.name)}<small>${ROLE[r.role]} · ${ms.filter(m => m.status === "joined").length}명</small></div>`;
+      if (open) {
+        const lk = mrow.get(r.cal_id);
+        const gsub = !lk ? "연결 안 함" : lk.mirror_cal_id ? `양방향 · 마지막 ${fmtHM(new Date(lk.updated_at), true)}` : fG.gOn ? "곧 만들어져요" : "구글을 연결하면 만들어져요";
+        h += `<div class="fx"><div class="fsub">내 캘린더에 연결</div>
+          <div class="frow"><span class="plo g sm">${G_LOGO}</span><div class="ft" id="lk_${r.cal_id}">Google<small>${gsub}</small></div><button type="button" class="ssw" role="switch" aria-checked="${!!lk}" aria-labelledby="lk_${r.cal_id}" data-lsw="${r.cal_id}"></button></div>
+          ${(() => { const n = nrow.get(r.cal_id);
+            if (!fG.nvOn && !n) return `<div class="frow" style="opacity:.55"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft">네이버<small>설정 › 연동에서 먼저 연결</small></div></div>`;
+            const sub = !n ? "연결 안 함" : n.sync_token === "pick" ? "네이버가 새 캘린더 만들기를 막았어요. 연결할 캘린더를 골라 주세요 (빈 캘린더 추천)" : n.mirror_cal_id ? `양방향 · 마지막 ${fmtHM(new Date(n.updated_at), true)}` : fG.nvOn ? "곧 만들어져요" : "네이버를 연결하면 만들어져요";
+            return `<div class="frow"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft" id="nk_${r.cal_id}" style="white-space:normal">네이버<small>${sub}</small></div><button type="button" class="ssw" role="switch" aria-checked="${!!n}" aria-labelledby="nk_${r.cal_id}" data-nsw="${r.cal_id}"></button></div>`
+              + (n && n.sync_token === "pick" ? `<div class="frow"><select class="fsel" style="max-width:none;flex:1" data-npick="${r.cal_id}"><option value="">네이버 캘린더 고르기…</option>${(fG.nvCals || []).map(x => `<option value="${esc(x.href)}">${esc(x.name)}</option>`).join("")}</select></div>` : "");
+          })()}
+          <div class="frow" style="opacity:.55"><span class="plo sm" style="--c:#0f6cbd">O</span><div class="ft">Outlook</div><span class="soon">준비 중</span></div>
+          <div class="fsub">멤버</div>` + ms.sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0)).map(m => {
+          const p = prof(m.user_id), wait = m.status === "invited" ? " · 수락 대기" : "";
+          const ctl = isOwner && m.role !== "owner"
+            ? `<select class="fsel" data-role="${r.cal_id}|${m.user_id}" aria-label="${esc(p.display_name)} 권한"><option value="editor"${m.role === "editor" ? " selected" : ""}>편집 가능</option><option value="viewer"${m.role === "viewer" ? " selected" : ""}>보기만</option></select><button type="button" class="sbtn" data-kick="${r.cal_id}|${m.user_id}" aria-label="${esc(p.display_name)} 내보내기">빼기</button>`
+            : `<small style="color:var(--muted);font-size:11px">${ROLE[m.role]}</small>`;
+          return `<div class="frow">${av(p)}<div class="ft">${esc(p.display_name)}${m.user_id === me ? " (나)" : ""}<small>@${esc(p.username)}${wait}</small></div>${ctl}</div>`;
+        }).join("");
+        if (isOwner) {
+          const cand = fc.friends.filter(p => !ms.some(m => m.user_id === p.id));
+          h += cand.length ? `<div class="sgrp">친구 초대</div>` + cand.map(p => `<div class="frow"><input type="checkbox" class="fchk" data-inv="${p.id}" id="inv_${p.id}"><label for="inv_${p.id}" class="ft" style="display:flex;align-items:center;gap:8px">${av(p)}${esc(p.display_name)}</label><select class="fsel" data-invrole="${p.id}"><option value="editor">편집 가능</option><option value="viewer">보기만</option></select></div>`).join("")
+            + `<div class="sbtns"><button type="button" class="sbtn pri" data-send="${r.cal_id}">초대 보내기</button></div>` : `<p class="fnote">초대할 친구가 더 없어요.</p>`;
+          h += `<div class="sbtns" style="justify-content:flex-end"><button type="button" class="sbtn dng" data-del="${r.cal_id}">공유 칩 삭제</button></div>`;
+        } else h += `<div class="sbtns" style="justify-content:flex-end"><button type="button" class="sbtn dng" data-leave="${r.cal_id}" data-ask="1">나가기</button></div>`;
+        h += `</div>`;
+      }
+      h += `</div>`;
+    }
+    // 새 공유 칩
+    if (fNew) {
+      h += `<div class="fcard" style="--c:${fNew.color}"><div class="fh" style="cursor:default"><span class="fdot"></span>새 공유 칩</div><div class="fx">
+        <label class="fl" for="fnName">이름</label><input class="fin" id="fnName" maxlength="30" value="${esc(fNew.name)}" placeholder="예: 세종 현장">
+        <label class="fl">색상</label><div class="fcols" role="radiogroup" aria-label="색상">${CAL_COLORS.slice(0, 11).map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-col="${k}" aria-label="${n}" aria-checked="${k === fNew.color}"></button>`).join("")}</div>
+        <div class="sgrp">함께할 친구</div>` + (fc.friends.length ? fc.friends.map(p => `<div class="frow"><input type="checkbox" class="fchk" data-nf="${p.id}" id="nf_${p.id}"><label for="nf_${p.id}" class="ft" style="display:flex;align-items:center;gap:8px">${av(p)}${esc(p.display_name)}</label><select class="fsel" data-nfrole="${p.id}"><option value="editor">편집 가능</option><option value="viewer">보기만</option></select></div>`).join("") : `<p class="fnote">아직 친구가 없어요. 혼자 만들고 나중에 초대해도 돼요.</p>`)
+        + `<div class="sbtns" style="justify-content:flex-end"><button type="button" class="sbtn" id="fnCancel">취소</button><button type="button" class="sbtn pri" id="fnMake">만들기</button></div></div></div>`;
+    } else h += `<button type="button" class="fbtn" id="fNewBtn" style="margin-top:10px">+ 새 공유 칩</button>`;
+    const body = $("fBody"); body.innerHTML = h;
+    const done = (msg, err) => { fMsg(msg, err); fSync(); fRender(); };
+    body.querySelectorAll("[data-open]").forEach(el => { const go = () => { fOpen = fOpen === el.dataset.open ? "" : el.dataset.open; fRender(); }; el.onclick = go; el.onkeydown = e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); go(); } }; });
+    body.querySelectorAll("[data-join]").forEach(b => b.onclick = () => {
+      const r = inv.find(x => x.cal_id === b.dataset.join); if (!r) return;
+      fLink = { mode: "join", cal: r.cal_id, name: r.shared_cals.name, color: r.shared_cals.color, role: r.role, by: prof(r.invited_by).display_name, g: fG.gOn, n: false };
+      fMsg(""); fRender();
+    });
+    body.querySelectorAll("[data-nsw]").forEach(b => b.onclick = async () => {
+      const on = b.getAttribute("aria-checked") !== "true", cid = b.dataset.nsw, nm = (joined.find(x => x.cal_id === cid) || {}).shared_cals.name;
+      if (on && !fG.nvOn) { fMsg("설정 › 연동에서 네이버를 먼저 연결해 주세요.", true); return; }
+      b.disabled = true; const { error } = await fSetLink(sb, cid, on, "naver");
+      if (error) { b.disabled = false; fMsg("바꾸지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+      done(on ? `네이버에 ‘${nm}’ 캘린더를 만들고 있어요.` : `네이버의 ‘${nm}’ 연동을 끊을게요. 공유 칩은 그대로예요.`);
+    });
+    body.querySelectorAll("[data-npick]").forEach(s => s.onchange = async () => {
+      if (!s.value) return;
+      const { error } = await sb.from("mirror_cals").update({ mirror_cal_id: s.value, sync_token: null, account: fG.nvId }).eq("user_id", me).eq("provider", "naver").eq("cal_id", s.dataset.npick);
+      done(error ? "바꾸지 못했어요." : "그 네이버 캘린더와 맞출게요. 그 캘린더에 있던 일정도 공유 칩에 들어가요.", !!error);
+    });
+    body.querySelectorAll("[data-lsw]").forEach(b => b.onclick = async () => {
+      const on = b.getAttribute("aria-checked") !== "true", cid = b.dataset.lsw, nm = (joined.find(x => x.cal_id === cid) || {}).shared_cals.name;
+      b.disabled = true; const { error } = await fSetLink(sb, cid, on);
+      if (error) { b.disabled = false; fMsg("바꾸지 못했어요. 잠시 후 다시 시도해 주세요.", true); return; }
+      if (on && !fG.gOn) { fMsg("구글에 로그인하면 바로 만들어져요."); fSync(); host({ cmd: "glogin" }); return; }
+      done(on ? `구글에 ‘${nm}’ 캘린더를 만들고 있어요.` : `구글의 ‘${nm}’ 사본 캘린더를 지울게요. 공유 칩은 그대로예요.`);
+    });
+    body.querySelectorAll("[data-leave]").forEach(b => b.onclick = async () => {
+      if (b.dataset.ask && !b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 나가기"; return; }
+      b.disabled = true; const { error } = await sb.from("shared_members").delete().eq("cal_id", b.dataset.leave).eq("user_id", me);
+      done(error ? "처리하지 못했어요." : "", !!error);
+    });
+    body.querySelectorAll("[data-role]").forEach(s => s.onchange = async () => {
+      const [cid, uid] = s.dataset.role.split("|");
+      const { error } = await sb.from("shared_members").update({ role: s.value }).eq("cal_id", cid).eq("user_id", uid);
+      done(error ? "권한을 바꾸지 못했어요." : "권한을 바꿨어요.", !!error);
+    });
+    body.querySelectorAll("[data-kick]").forEach(b => b.onclick = async () => {
+      if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 빼기"; return; }
+      const [cid, uid] = b.dataset.kick.split("|"); b.disabled = true;
+      const { error } = await sb.from("shared_members").delete().eq("cal_id", cid).eq("user_id", uid);
+      done(error ? "처리하지 못했어요." : "", !!error);
+    });
+    body.querySelectorAll("[data-send]").forEach(b => b.onclick = async () => {
+      const cid = b.dataset.send;
+      const sel = [...body.querySelectorAll("[data-inv]")].filter(x => x.checked).map(x => ({ cal_id: cid, user_id: x.dataset.inv, role: body.querySelector(`[data-invrole="${x.dataset.inv}"]`).value, status: "invited", invited_by: me }));
+      if (!sel.length) { fMsg("초대할 친구를 골라 주세요.", true); return; }
+      b.disabled = true; const { error } = await sb.from("shared_members").insert(sel);
+      done(error ? "초대하지 못했어요." : `${sel.length}명에게 초대를 보냈어요.`, !!error);
+    });
+    body.querySelectorAll("[data-del]").forEach(b => b.onclick = async () => {
+      if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "모든 일정까지 삭제"; return; }
+      b.disabled = true; const { error } = await sb.from("shared_cals").delete().eq("id", b.dataset.del);
+      fOpen = ""; done(error ? "삭제하지 못했어요." : "공유 칩을 삭제했어요.", !!error);
+    });
+    if ($("fNewBtn")) $("fNewBtn").onclick = () => { fNew = { name: "", color: "#039be5" }; fMsg(""); fRender(); };
+    if (fNew) {
+      $("fnName").oninput = () => { fNew.name = $("fnName").value; };
+      setTimeout(() => $("fnName").focus(), 0);
+      body.querySelectorAll("[data-col]").forEach(b => b.onclick = () => { fNew.color = b.dataset.col; body.querySelectorAll("[data-col]").forEach(x => x.setAttribute("aria-checked", x === b ? "true" : "false")); b.closest(".fcard").style.setProperty("--c", fNew.color); });
+      $("fnCancel").onclick = () => { fNew = null; fMsg(""); fRender(); };
+      $("fnMake").onclick = async () => {
+        const name = $("fnName").value.trim();
+        if (!name) { fMsg("공유 칩 이름을 입력해 주세요.", true); $("fnName").focus(); return; }
+        $("fnMake").disabled = true;
+        const { data: c, error } = await sb.from("shared_cals").insert({ owner: me, name, color: fNew.color }).select("id").single();
+        if (error || !c) { $("fnMake").disabled = false; fMsg("공유 칩을 만들지 못했어요.", true); return; }
+        const sel = [...body.querySelectorAll("[data-nf]")].filter(x => x.checked).map(x => ({ cal_id: c.id, user_id: x.dataset.nf, role: body.querySelector(`[data-nfrole="${x.dataset.nf}"]`).value, status: "invited", invited_by: me }));
+        let err = null; if (sel.length) err = (await sb.from("shared_members").insert(sel)).error;
+        const color = fNew.color; fNew = null; fOpen = c.id;
+        if (err) { done("공유 칩은 만들었지만 초대를 보내지 못했어요.", true); return; }
+        fLink = { mode: "new", cal: c.id, name, color, g: fG.gOn, n: fG.nvOn, msg: sel.length ? `${sel.length}명에게 초대를 보냈어요.` : "" };
+        fMsg(sel.length ? `${sel.length}명에게 초대를 보냈어요.` : ""); fSync(); fRender();
+      };
+    }
+  }
+  // --- 내 계정 탭 ---
+  function fMe(sb) {
+    const body = $("fBody");
+    body.innerHTML = `<div class="fme">${av(bProfile)}<div class="ft"><b>${esc(bProfile.display_name)}</b><small>@${esc(bProfile.username)}</small></div></div>
+      <label class="fl" for="fmName">이름 바꾸기</label><div class="fadd" style="margin-top:0"><input class="fin" id="fmName" maxlength="20" value="${esc(bProfile.display_name)}"><button type="button" class="sbtn" id="fmNameBtn" style="height:36px">저장</button></div>
+      <label class="fl" for="fmPw">비밀번호 바꾸기 <span style="font-weight:500">· 8자 이상</span></label><div class="fadd" style="margin-top:0"><input class="fin" id="fmPw" type="password" autocomplete="new-password"><button type="button" class="sbtn" id="fmPwBtn" style="height:36px">바꾸기</button></div>
+      <p class="fnote">아이디는 바꿀 수 없어요. 비밀번호를 잊으면 가입할 때 받은 복구 코드로 되찾아요.</p>
+      <div class="sbtns" style="justify-content:flex-end;margin-top:14px"><button type="button" class="sbtn dng" id="fmOut">로그아웃</button></div>`;
+    $("fmNameBtn").onclick = async () => {
+      const n = $("fmName").value.trim(); if (!n) { fMsg("이름을 입력해 주세요.", true); return; }
+      const { error } = await sb.from("profiles").update({ display_name: n }).eq("id", bUser.id);
+      fMsg(error ? "이름을 바꾸지 못했어요." : "이름을 바꿨어요.", !!error); if (!error) { bProfile.display_name = n; fSync(); fRender(); }
+    };
+    $("fmPwBtn").onclick = async () => {
+      const p = $("fmPw").value; if (p.length < 8) { fMsg("비밀번호는 8자 이상으로 해 주세요.", true); return; }
+      const { error } = await sb.auth.updateUser({ password: p });
+      $("fmPw").value = ""; fMsg(error ? "비밀번호를 바꾸지 못했어요." : "비밀번호를 바꿨어요.", !!error);
+    };
+    $("fmOut").onclick = async () => { await sb.auth.signOut(); bUser = null; bProfile = null; fView = "login"; fTab = "friends"; fMsg("로그아웃했어요."); fSync(); fRender(); };
+  }
+  // ======================= 칩 더블클릭: 연동 · 함께 쓰는 사람 · 색상 (Beta) =======================
+  async function bAdopt(c, kind) {   // 구글·네이버의 원래 캘린더를 공유 칩으로 (원래 캘린더는 그대로, 연동만)
+    const sb = bClient(), me = bUser.id, prim = gCals.find(x => x.primary);
+    const color = /^#[0-9a-f]{6}$/i.test(c.color || "") ? c.color : "#2f6fdb";
+    const { data: cal, error } = await sb.from("shared_cals").insert({ owner: me, name: String(c.name).replace(/ \(기본\)$/, "").slice(0, 30) || "내 캘린더", color }).select("id").single();
+    if (error || !cal) throw new Error("공유 칩을 만들지 못했어요.");
+    const prov = kind === "g" ? "google" : "naver", mid = kind === "g" ? c.id : c.href;
+    const w = await sb.from("mirror_cals").insert({ user_id: me, cal_id: cal.id, provider: prov, account: kind === "g" ? (prim ? prim.id : "") : nv.id, mirror_cal_id: mid, origin: "own" });
+    if (w.error) { await sb.from("shared_cals").delete().eq("id", cal.id); throw new Error(/origin/.test(w.error.message || "") ? "서버 준비가 덜 됐어요 (0.4.0 SQL을 실행해 주세요)." : "연동을 저장하지 못했어요."); }
+    (kind === "g" ? bMir : bMirNv).add(mid); bMirSave();
+    return cal.id;
+  }
+  async function bReloadFor(calId) { for (let i = 0; i < 6; i++) { await bLoad(); if (bCals.some(c => c.raw === calId)) return true; await new Promise(r => setTimeout(r, 500)); } return false; }
+  async function openChipPop(id) {
+    closeInvite();
+    const c = gCals.find(x => x.id === id), chip = $("calChips").querySelector(`[data-cal="${CSS.escape(id)}"]`);
+    if (!c || !chip) return;
+    const kind = isTC(id) ? "tc" : c.nv ? "nv" : "g", sb = bClient(), me = bUser ? bUser.id : "";
+    const gOn = gmode === "google" && !!gToken, prim = gCals.find(x => x.primary);
+    const writable = kind === "tc" ? c.role !== "viewer" : kind === "nv" ? true : gWritable.some(w => w.id === id);
+    const d = document.createElement("div");
+    d.className = "ipop cpop"; d.setAttribute("role", "dialog"); d.setAttribute("aria-label", `${c.name} 설정`);
+    d.style.setProperty("--c", c.color || "var(--accent)");
+    const r0 = chip.getBoundingClientRect(); d.style.top = (r0.bottom + window.scrollY + 8) + "px";
+    document.body.appendChild(d);
+    let S = { links: new Map(), members: [], P: {}, friends: [], owner: kind !== "tc" || c.role === "owner", ask: null, busy: false, msg: "", err: false };
+    const load = async () => {
+      if (!sb || !me) return;
+      try {
+        if (kind === "tc") {
+          const [mr, ms, fc] = await Promise.all([
+            sb.from("mirror_cals").select("*").eq("user_id", me).eq("cal_id", c.raw),
+            sb.from("shared_members").select("user_id,role,status").eq("cal_id", c.raw),
+            fLoadFriends(sb)]);
+          S.links = new Map(((mr.data) || []).filter(x => x.sync_token !== "off").map(x => [x.provider, x]));
+          S.members = ms.data || []; S.friends = fc.friends; S.P = Object.assign({}, fc.P);
+          const need = S.members.map(m => m.user_id).filter(u => u !== me && !S.P[u]);
+          if (need.length) for (const p of ((await sb.from("profiles").select("id,username,display_name").in("id", need)).data || [])) S.P[p.id] = p;
+        } else { const fc = await fLoadFriends(sb); S.friends = fc.friends; }
+      } catch (e) { S.msg = "불러오지 못했어요."; S.err = true; }
+    };
+    const prof = u => u === me ? (bProfile || { display_name: "나", username: "" }) : (S.P[u] || { display_name: "(알 수 없음)", username: "" });
+    const sw = (key, on, dis) => `<button type="button" class="ssw" role="switch" aria-checked="${!!on}" data-lk="${key}"${dis ? " disabled" : ""}></button>`;
+    const draw = () => {
+      const L = S.links, gl = L.get("google"), nl = L.get("naver");
+      const gRow = kind === "g" ? `<span class="porig">원래 캘린더</span>` : sw("google", !!gl, !writable && kind !== "tc");
+      const nRow = kind === "nv" ? `<span class="porig">원래 캘린더</span>` : sw("naver", !!nl, !writable && kind !== "tc");
+      const gSub = kind === "g" ? esc(prim ? prim.id : "") : !gOn ? "설정 › 연동에서 먼저 연결해 주세요" : gl && gl.origin === "own" ? "원래 캘린더 · " + esc(prim ? prim.id : "") : gl ? (gl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(prim ? prim.id : "");
+      const nSub = kind === "nv" ? esc(nv.id) : !nv.on ? "설정 › 연동에서 먼저 연결해 주세요" : nl && nl.origin === "own" ? "원래 캘린더 · " + esc(nv.id) : nl ? (nl.sync_token === "pick" ? "연결 대기 중 · 아래에서 직접 골라도 돼요" : nl.mirror_cal_id ? `‘${esc(c.name)}’ 사본` : "곧 만들어져요") : esc(nv.id);
+      let h = `<div class="ih"><i></i><span>${esc(c.name)}</span><button class="x" type="button" aria-label="닫기"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>`;
+      if (!writable && kind === "g") h += `<p class="cpn">보기 전용 구글 캘린더라 연동·초대는 할 수 없어요.</p>`;
+      else {
+        h += `<div class="il">연동 · 양방향</div>
+          <div class="frow"><span class="plo g sm">${G_LOGO}</span><div class="ft">Google<small>${gSub}</small></div>${gRow}</div>
+          <div class="frow"><span class="plo sm" style="--c:#03c75a">N</span><div class="ft" style="white-space:normal">네이버<small>${nSub}</small></div>${nRow}</div>
+          ${nl && nl.sync_token === "pick" ? `<div class="cpneed"><b>네이버 캘린더가 필요해요</b><span>네이버가 앱이 캘린더를 만드는 걸 막아요. 네이버에서 <b>‘${esc(c.name)}’</b> 이름으로 캘린더를 하나 만들어 주세요. 만들면 자동으로 이어져요.</span><div class="cpwb"><button type="button" class="sbtn" id="cpNvOpen">네이버 캘린더 열기 ↗</button><button type="button" class="sbtn pri" id="cpNvChk">만들었어요 · 확인</button></div></div>` : ""}
+          ${nl && nl.sync_token === "pick" ? `<div class="frow"><select class="fsel" style="max-width:none;flex:1" id="cpPick"><option value="">연결할 네이버 캘린더 고르기…</option>${nvAll.filter(x => !bMirNv.has(x.href)).map(x => `<option value="${esc(x.href)}">${esc(x.name)}</option>`).join("")}</select></div>` : ""}
+          ${nl && nv.err ? `<p class="cpn" style="color:var(--err)">${esc(nv.err)}</p>` : ""}
+          <div class="frow" style="opacity:.55"><span class="plo sm" style="--c:#0f6cbd">O</span><div class="ft">Outlook</div><span class="soon">준비 중</span></div>`;
+        const mem = kind === "tc" ? S.members.slice().sort((a, b) => (a.role === "owner" ? -1 : b.role === "owner" ? 1 : 0)) : [{ user_id: me, role: "owner", status: "joined" }];
+        h += `<div class="il">함께 쓰는 사람 ${mem.filter(m => m.status === "joined").length}</div>` + mem.map(m => {
+          const p = prof(m.user_id), wait = m.status === "invited" ? " · 수락 대기" : "";
+          const ctl = S.owner && kind === "tc" && m.role !== "owner"
+            ? `<select class="fsel" data-role="${m.user_id}" aria-label="${esc(p.display_name)} 권한"><option value="editor"${m.role === "editor" ? " selected" : ""}>편집 가능</option><option value="viewer"${m.role === "viewer" ? " selected" : ""}>보기만</option></select><button type="button" class="sbtn" data-kick="${m.user_id}" title="내보내기" aria-label="${esc(p.display_name)} 내보내기">빼기</button>`
+            : `<small style="color:var(--muted);font-size:11px">${kind === "tc" ? ROLE[m.role] : "나만 써요"}</small>`;
+          return `<div class="frow">${av(p)}<div class="ft">${esc(p.display_name)}${m.user_id === me ? " (나)" : ""}<small>${p.username ? "@" + esc(p.username) : ""}${wait}</small></div>${ctl}</div>`;
+        }).join("");
+        if (S.owner) {
+          const cand = S.friends.filter(p => !mem.some(m => m.user_id === p.id));
+          h += cand.length ? `<div class="cpadd"><select class="fsel" id="cpWho" aria-label="초대할 친구"><option value="">친구 고르기…</option>${cand.map(p => `<option value="${p.id}">${esc(p.display_name)} @${esc(p.username)}</option>`).join("")}</select><select class="fsel" id="cpRole" aria-label="권한"><option value="editor">편집 가능</option><option value="viewer">보기만</option></select><button type="button" class="sbtn pri" id="cpInv">초대</button></div>`
+            : `<p class="cpn">초대할 친구가 없어요. <button type="button" class="plink" id="cpFr">친구 추가 ›</button></p>`;
+        }
+      }
+      if (S.ask) h += `<div class="cpwarn"><b>${esc(c.name)}을(를) 함께 쓰는 캘린더로 바꿀게요.</b><br>연동하거나 친구와 나누려면 이 캘린더의 일정이 Plait 서버에도 저장돼요. ${kind === "g" ? "구글" : "네이버"}의 원래 캘린더는 그대로 두고 양방향으로 맞춰요. 반복 일정과 두 달 이전 일정은 옮기지 않아요.
+        <div class="cpwb"><button type="button" class="sbtn" id="cpNo">취소</button><button type="button" class="sbtn pri" id="cpYes">바꾸고 ${S.ask.kind === "invite" ? "초대" : "연동"}</button></div></div>`;
+      if (kind === "g" && !c.extra) h += `<div class="il">색상 <span style="opacity:.75">· 나에게만 적용</span></div><div class="cl" role="radiogroup" aria-label="캘린더 색상">${CAL_COLORS.map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-k="${k}" aria-label="${n}" title="${n}" aria-checked="${sameColor(k, c.color)}"></button>`).join("")}</div>`;
+      if (kind === "tc" && S.owner) h += `<div class="il">색상 <span style="opacity:.75">· 함께 쓰는 사람 모두에게</span></div><div class="cl" role="radiogroup" aria-label="칩 색상">${CAL_COLORS.slice(0, 11).map(([k, n]) => `<button type="button" role="radio" style="--k:${k}" data-tk="${k}" aria-label="${n}" title="${n}" aria-checked="${sameColor(k, c.color)}"></button>`).join("")}</div>`;
+      if (kind === "tc" && S.del) {
+        const own = S.del.owner, opts = S.del.opts;
+        h += `<div class="cpdel"><b>‘${esc(c.name)}’ ${own ? "캘린더를 삭제할까요?" : "캘린더에서 나갈까요?"}</b><span>${own ? "함께 쓰는 사람 모두에게서 사라지고 일정도 지워져요. 되돌릴 수 없어요." : "나만 빠지고, 다른 사람들은 그대로 써요."}</span>`
+          + (opts.length ? `<div class="cpdq">연동된 캘린더도 지울까요?</div>` + opts.map((o, i) => `<label class="pchk cpck"><input type="checkbox" data-dopt="${i}"${o.on ? " checked" : ""}${o.dis ? " disabled" : ""}><em class="pt">${o.label}${o.sub ? `<span> · ${o.sub}</span>` : ""}</em></label>`).join("")
+            + `<span class="cpdn">체크하지 않은 캘린더는 일정과 함께 그대로 남고, 연동만 끊겨요.${own ? " 함께 쓰는 사람들의 연동 캘린더는 각자 위젯에서 정리돼요." : ""}</span>` : "")
+          + `<div class="cpwb"><button type="button" class="sbtn" id="cpDelNo">취소</button><button type="button" class="sbtn dngf" id="cpDelGo">${own ? "삭제" : "나가기"}</button></div></div>`;
+      }
+      if (kind === "tc") h += `<div class="cpft">${S.owner ? `<button type="button" class="sbtn dng" id="cpDel">캘린더 삭제</button>` : `<button type="button" class="sbtn dng" id="cpLeave">나가기</button>`}</div>`;
+      h += `<p class="cm${S.err ? " err" : ""}" aria-live="polite">${esc(S.msg)}</p>`;
+      d.innerHTML = h; bind(); report();
+    };
+    const say = (t, err) => { S.msg = t || ""; S.err = !!err; };
+    const after = async (msg) => { say(msg); fSync && host({ cmd: "bsync" }); await bLoad(); bSyncSoon(1500, true); await load(); draw(); };
+    const doAction = async (act, calRaw) => {   // act: {kind:"link", prov, on} | {kind:"invite", uid, role}
+      if (act.kind === "link") {
+        const { error } = await fSetLink(sb, calRaw, act.on, act.prov);
+        if (error) throw new Error("연동을 바꾸지 못했어요.");
+        return act.on ? `${act.prov === "google" ? "구글" : "네이버"}에 맞추는 중이에요.` : `${act.prov === "google" ? "구글" : "네이버"} 연동을 껐어요. Plait의 칩은 그대로예요.`;
+      }
+      const { error } = await sb.from("shared_members").insert({ cal_id: calRaw, user_id: act.uid, role: act.role, status: "invited", invited_by: me });
+      if (error) throw new Error("초대하지 못했어요.");
+      return `${prof(act.uid).display_name}님에게 초대를 보냈어요.`;
+    };
+    const run = async act => {
+      if (S.busy) return;
+      if (kind !== "tc") { S.ask = act; draw(); return; }   // 원래 캘린더 → 공유 칩으로 바꿀지 먼저 묻는다
+      S.busy = true;
+      try { await after(await doAction(act, c.raw)); } catch (e) { say(e.message, true); draw(); } finally { S.busy = false; }
+    };
+    const bind = () => {
+      d.querySelector(".x").onclick = () => { closeInvite(); chip.focus(); };
+      d.querySelectorAll("[data-lk]").forEach(b => b.onclick = () => {
+        const prov = b.dataset.lk, on = b.getAttribute("aria-checked") !== "true";
+        if (on && prov === "google" && !gOn) { openSettings("연동"); return; }
+        if (on && prov === "naver" && !nv.on) { openSettings("네이버"); return; }
+        run({ kind: "link", prov, on });
+      });
+      const inv = d.querySelector("#cpInv");
+      if (inv) inv.onclick = () => { const u = d.querySelector("#cpWho").value; if (!u) { say("초대할 친구를 골라 주세요.", true); draw(); return; } run({ kind: "invite", uid: u, role: d.querySelector("#cpRole").value }); };
+      const no2 = d.querySelector("#cpNvOpen"); if (no2) no2.onclick = () => host({ cmd: "open", url: "https://calendar.naver.com/" });
+      const ck = d.querySelector("#cpNvChk");
+      if (ck) ck.onclick = async () => {
+        ck.disabled = true; ck.textContent = "확인 중…";
+        await nvLoad(); bSyncSoon(0, true);
+        await new Promise(r => setTimeout(r, 400));
+        for (let i = 0; i < 40 && bSyncBusy; i++) await new Promise(r => setTimeout(r, 300));
+        await load(); const n2 = S.links.get("naver");
+        say(n2 && n2.sync_token !== "pick" ? "네이버 캘린더와 이었어요." : `아직 못 찾았어요. 네이버에서 이름을 ‘${c.name}’로 똑같이 만들었는지 확인해 주세요.`, !(n2 && n2.sync_token !== "pick")); draw();
+      };
+      const pk = d.querySelector("#cpPick");
+      if (pk) pk.onchange = async () => {
+        if (!pk.value) return;
+        const { error } = await sb.from("mirror_cals").update({ mirror_cal_id: pk.value, sync_token: null, account: nv.id }).eq("user_id", me).eq("provider", "naver").eq("cal_id", c.raw);
+        await after(error ? "바꾸지 못했어요." : "그 네이버 캘린더와 맞출게요. 그 캘린더에 있던 일정도 공유 칩에 들어가요.");
+      };
+      const fr = d.querySelector("#cpFr"); if (fr) fr.onclick = () => { closeInvite(); openFriends("friends"); };
+      const no = d.querySelector("#cpNo"); if (no) no.onclick = () => { S.ask = null; draw(); };
+      const yes = d.querySelector("#cpYes");
+      if (yes) yes.onclick = async () => {
+        const act = S.ask; yes.disabled = true; say("공유 칩으로 바꾸는 중…"); 
+        try {
+          const calId = await bAdopt(c, kind);
+          const m = await doAction(act, calId);
+          host({ cmd: "bsync" });
+          await bReloadFor(calId); bSyncSoon(500, true); renderAll();
+          closeInvite(); openChipPop("tc:" + calId);
+          toast(`‘${c.name}’을 함께 쓰는 캘린더로 바꿨어요. ${m}`);
+        } catch (e) { S.ask = null; say(e.message || "바꾸지 못했어요.", true); draw(); }
+      };
+      d.querySelectorAll("[data-role]").forEach(s => s.onchange = async () => {
+        const { error } = await sb.from("shared_members").update({ role: s.value }).eq("cal_id", c.raw).eq("user_id", s.dataset.role);
+        await after(error ? "권한을 바꾸지 못했어요." : "권한을 바꿨어요."); if (error) { S.err = true; draw(); }
+      });
+      d.querySelectorAll("[data-kick]").forEach(b => b.onclick = async () => {
+        if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 빼기"; return; }
+        const { error } = await sb.from("shared_members").delete().eq("cal_id", c.raw).eq("user_id", b.dataset.kick);
+        await after(error ? "내보내지 못했어요." : "내보냈어요.");
+      });
+      d.querySelectorAll("[data-k]").forEach(b => b.onclick = () => setCalColor(c, b.dataset.k, d, d.querySelector(".cm")));
+      d.querySelectorAll("[data-tk]").forEach(b => b.onclick = async () => {
+        const { error } = await sb.from("shared_cals").update({ color: b.dataset.tk }).eq("id", c.raw);
+        if (!error) { c.color = b.dataset.tk; d.style.setProperty("--c", c.color); }
+        await after(error ? "색을 바꾸지 못했어요." : "색을 바꿨어요. 함께 쓰는 사람 화면에도 바뀌어요.");
+      });
+      const askDel = () => {   // 지울 때 연동된 캘린더도 지울지 하나씩 묻는다
+        const opts = [], gl = S.links.get("google"), nl = S.links.get("naver");
+        if (gl && gl.mirror_cal_id) {
+          const isPrim = gl.mirror_cal_id === (prim ? prim.id : "");
+          opts.push({ prov: "google", id: gl.mirror_cal_id, own: gl.origin === "own", on: gl.origin !== "own", dis: isPrim || !gOn,
+            label: gl.origin === "own" ? "구글의 원래 캘린더도 삭제" : `구글 캘린더 ‘${esc(c.name)}’도 삭제`,
+            sub: isPrim ? "기본 캘린더는 지울 수 없어요" : !gOn ? "구글 연결이 필요해요" : gl.origin === "own" ? "원래 쓰던 캘린더예요" : "" });
+        }
+        if (nl && nl.mirror_cal_id) {
+          const mine = /\/teamcal-[^/]+\/$/.test(nl.mirror_cal_id);
+          opts.push({ prov: "naver", id: nl.mirror_cal_id, own: nl.origin === "own", on: nl.origin !== "own", dis: !nv.on,
+            label: nl.origin === "own" ? "네이버의 원래 캘린더도 삭제" : `네이버 캘린더 ‘${esc(c.name)}’도 삭제`,
+            sub: !nv.on ? "네이버 연결이 필요해요" : nl.origin === "own" ? "원래 쓰던 캘린더예요" : mine ? "" : "직접 만든 캘린더예요" });
+        }
+        S.del = { owner: S.owner, opts }; say(""); draw();
+        const box = d.querySelector(".cpdel"); if (box) box.scrollIntoView({ block: "nearest" });
+      };
+      const dl = d.querySelector("#cpDel"); if (dl) dl.onclick = askDel;
+      const lv = d.querySelector("#cpLeave"); if (lv) lv.onclick = askDel;
+      const dn = d.querySelector("#cpDelNo"); if (dn) dn.onclick = () => { S.del = null; draw(); };
+      d.querySelectorAll("[data-dopt]").forEach(x => x.onchange = () => { S.del.opts[+x.dataset.dopt].on = x.checked; });
+      const dg = d.querySelector("#cpDelGo");
+      if (dg) dg.onclick = async () => {
+        dg.disabled = true; dg.textContent = "지우는 중…";
+        const left = [];
+        for (const o of S.del.opts) {   // 1) 고른 연동 캘린더 지우기
+          if (!o.on || o.dis) continue;
+          try {
+            if (o.prov === "google") await gj("DELETE", `${GAPI}/calendars/${enc(o.id)}`);
+            else { const r = await nvDo("DELETE", o.id); if (r.status >= 400 && r.status !== 404 && r.status !== 410) throw Object.assign(new Error(""), { status: r.status }); }
+            (o.prov === "google" ? bMir : bMirNv).delete(o.id);
+          } catch (e) { if (e.status !== 404 && e.status !== 410) left.push(o.prov === "google" ? "구글" : "네이버"); }
+        }
+        // 2) 내 연동 기록을 먼저 지운다 (안 고른 캘린더는 그대로 남고 다시 보인다)
+        await sb.from("mirror_links").delete().eq("user_id", me).eq("cal_id", c.raw);
+        await sb.from("mirror_cals").delete().eq("user_id", me).eq("cal_id", c.raw);
+        for (const o of S.del.opts) if (!o.on || o.dis) (o.prov === "google" ? bMir : bMirNv).delete(o.id);
+        bMirSave();
+        // 3) 칩 삭제 / 나가기
+        const { error } = S.del.owner ? await sb.from("shared_cals").delete().eq("id", c.raw) : await sb.from("shared_members").delete().eq("cal_id", c.raw).eq("user_id", me);
+        if (error) { S.del = null; say(S.owner ? "삭제하지 못했어요." : "나가지 못했어요.", true); draw(); return; }
+        closeInvite(); host({ cmd: "bsync" }); await bLoad(); if (gToken) gRequest(); nvLoad(); bSyncSoon(800, true);
+        toast(`‘${c.name}’ ${S.del.owner ? "캘린더를 삭제했어요" : "캘린더에서 나왔어요"}.` + (left.length ? ` ${left.join("·")} 캘린더는 지우지 못했어요. ${left.join("·")}에서 직접 지워 주세요.` : ""));
+        if (left.includes("네이버")) host({ cmd: "open", url: "https://calendar.naver.com/" });
+      };
+    };
+    d.innerHTML = `<div class="ih"><i></i><span>${esc(c.name)}</span></div><p class="cpn">불러오는 중…</p>`;
+    d.addEventListener("keydown", e => { if (e.key === "Escape") { closeInvite(); chip.focus(); } });
+    setTimeout(() => document.addEventListener("mousedown", inviteOutside, true), 0);
+    await load(); if (!document.body.contains(d)) return; draw();
+  }
   // ======================= 설정 창 =======================
   const PRIVACY_URL = EXT ? "https://none-hongcheol.github.io/TeamCal/external/privacy.html" : "https://none-hongcheol.github.io/TeamCal/privacy.html";
   const HOME_URL = EXT ? "https://none-hongcheol.github.io/TeamCal/external/" : "https://none-hongcheol.github.io/TeamCal/";
-  function openSettings() {
+  function openSettings(tab) {
     const prim = gCals.find(c => c.primary);
-    const ui = {
+    const ui = { tab: typeof tab === "string" ? tab : "",
+      bSync: BETA ? { on: !!bUser, err: bSyncErr, at: bSyncAt, cals: bCals.map(c => ({ name: c.name, color: c.color, role: c.role, provs: [...(bLinked.get(c.raw) || [])] })) } : null,
+      nv: BETA ? { on: nv.on, id: nv.id, works: !!nv.works, err: nv.err, at: nv.at } : null,
+      acct: BETA ? { on: !!(bUser && bProfile), name: bProfile ? bProfile.display_name : "", username: bProfile ? bProfile.username : "" } : null,
       gEmail: prim ? prim.id : "", teamName: me && members ? (members[me.id] || "") : "", teamOn: !!me,
       showAll, hasTeam: Array.isArray(teamSel), hint: lsGet("tlw.hintOff") !== "1",
       ntOn: lsGet("tlw.ntOn") !== "0", ntWin: lsGet("tlw.ntWin") !== "0",
@@ -2241,11 +3659,13 @@ body.popup .rz{display:none}
     if (inHost && !POPUP) { host({ cmd: "popup", kind: "settings", data: ui }); return; }
     showSettings(ui, {});
   }
-  let setUi = {}, setHost = {}, setTab = "일반";
-  const SET_TABS = ["일반", "캘린더", "팀 휴가", "알림", "정보"];
+  let setUi = {}, setHost = {}, setTab = "일반", nvForm = false, acView = "", acMsg = "", acErr = false, acCode = "", conSel = "", nvWorks = false, nvWorksHand = false, nvMsg = "", nvBusyF = false, nvTyped = "", nvPwV = "", nvClipOk = false, nvManual = false, nvClipT = null, nvBad = "";
+  const SET_TABS = BETA ? ["일반", "연동", "계정", "팀 휴가", "알림", "정보"] : ["일반", "캘린더", "팀 휴가", "알림", "정보"];
   function showSettings(ui, hs) {
     setUi = ui || {}; setHost = hs || {};
-    $("setVer").textContent = setHost.version ? (EXT ? "Plait " : "TeamCal ") + setHost.version : "";
+    if (setUi.tab === "네이버") { setTab = "연동"; conSel = "naver"; nvMsg = ""; }
+    else if (setUi.tab && SET_TABS.includes(setUi.tab)) setTab = setUi.tab;
+    $("setVer").textContent = setHost.version ? (BETA ? "Plait " : EXT ? "TEAM CAL(외부용) " : "Plait ") + setHost.version : "";
     renderSettings(); $("setsheet").hidden = false; report();
   }
   function sset(key, value) { host({ cmd: "set", key, value }); }
@@ -2269,6 +3689,51 @@ body.popup .rz{display:none}
         + seg("clock", U.clock === "24" ? "24" : "12", [["12", "12시간"], ["24", "24시간"]], "시간 표시")
         + `<div class="sgrp">시작 · 위치</div>` + sw("autostart", H.autostart, "Windows 시작 시 자동 실행")
         + btn("위젯 위치와 크기", "화면 밖으로 사라졌을 때", "resetPos", "처음 위치로");
+    } else if (setTab === "계정" && BETA) {
+      const A = U.acct || {};
+      if (!A.on) h += `<div class="sgrp">Plait 계정</div><p class="pnote">로그인하지 않았어요. 위젯을 다시 켜면 로그인 화면이 나와요.</p>`;
+      else {
+        h += `<div class="acc">${av({ username: A.username, display_name: A.name })}<div><b>${esc(A.name)}</b><small>@${esc(A.username)} · Plait 아이디</small></div></div>`;
+        if (acView === "name") h += `<div class="ppanel"><b class="ph">이름 바꾸기</b><div class="prow2"><input class="fin" id="acName" maxlength="20" value="${esc(A.name)}"><button type="button" class="pgo" id="acGo">저장</button></div></div>`;
+        else if (acView === "pw") h += `<div class="ppanel"><b class="ph">비밀번호 바꾸기</b><input class="fin" id="acPw" type="password" autocomplete="new-password" placeholder="새 비밀번호 (8자 이상)"><div class="prow2"><input class="fin" id="acPw2" type="password" autocomplete="new-password" placeholder="한 번 더"><button type="button" class="pgo" id="acGo">바꾸기</button></div></div>`;
+        else if (acView === "code") h += `<div class="ppanel"><b class="ph">새 복구 코드</b><div class="fcode">${esc(acCode)}</div><div class="sbtns"><button type="button" class="sbtn" id="acCopy">복사</button></div><p class="pnote" style="color:var(--err)">예전 코드는 이제 쓸 수 없어요. 이 코드를 꼭 저장해 두세요. 이 화면을 닫으면 다시 볼 수 없어요.</p></div>`;
+        else if (acView === "del") h += `<div class="ppanel"><b class="ph" style="color:var(--err)">계정을 삭제할까요?</b><p class="pnote" style="margin-top:0">친구, 내가 만든 공유 칩과 그 일정, 연동 기록이 모두 지워지고 되돌릴 수 없어요. 구글·네이버의 원래 캘린더는 그대로예요.</p><div class="prow2"><input class="fin" id="acDelId" placeholder="확인을 위해 아이디 ${esc(A.username)} 입력"><button type="button" class="pgo" id="acGo" style="background:var(--err)">삭제</button></div></div>`;
+        if (acMsg) h += `<p class="pmsg${acErr ? " err" : ""}">${esc(acMsg)}</p>`;
+        const r = (t, sub, act, txt, cls) => `<div class="srow"><div class="st">${t}<small>${sub}</small></div><button type="button" class="sbtn ${cls || ""}" data-acc="${act}">${txt}</button></div>`;
+        h += `<div class="sgrp">계정 정보</div>` + r("이름", "친구에게 보이는 이름", "name", "바꾸기") + r("비밀번호", "8자 이상", "pw", "바꾸기")
+          + r("복구 코드", "비밀번호를 잊었을 때 쓰는 코드", "code", "새로 만들기")
+          + r("연동된 계정", [(U.nv && U.nv.on) && (U.nv.works ? "네이버웍스" : "네이버"), H.gmode === "google" && "Google"].filter(Boolean).join(" · ") || "없음", "tolink", "연동 ›")
+          + r("로그아웃", "이 PC에서만", "out", "로그아웃")
+          + `<div class="sgrp">위험</div>` + r("계정 삭제", "공유 칩 · 친구가 모두 지워져요", "del", "삭제…", "dng");
+      }
+    } else if (setTab === "연동") {
+      const B = U.bSync || {}, N = U.nv || {}, gOn = H.gmode === "google";
+      if (!conSel) conSel = !gOn ? "google" : !N.on ? "naver" : "";
+      const T = [["ms", "Microsoft", MS_LOGO, 0], ["google", "Google", G_LOGO, 1], ["apple", "Apple", APPLE_LOGO, 0], ["naver", "네이버", `<span class="plo" style="--c:#03c75a">N</span>`, 1], ["notion", "Notion", `<span class="plo" style="--c:#111">N</span>`, 0], ["url", "URL 구독", LINK_LOGO, 0]];
+      h += `<div class="sgrp">캘린더 계정 추가</div><div class="ptiles" role="tablist">` + T.map(([k, n, ic, ok]) => `<button type="button" class="ptile${conSel === k ? " on" : ""}${ok ? "" : " soon"}" role="tab" aria-selected="${conSel === k}" data-tile="${k}"><span class="pic">${ic}</span><span>${n}</span>${(k === "google" && gOn) || (k === "naver" && N.on) ? `<i class="pok" aria-label="연결됨">✓</i>` : ""}</button>`).join("") + `</div>`;
+      if (conSel === "naver") {
+        if (N.on) h += `<div class="ppanel"><b class="ph">네이버 캘린더 연결됨</b><div class="prow"><div class="st">${esc(N.id)}${N.works ? " · 네이버웍스" : ""}<small${N.err ? ' style="color:var(--err)"' : ""}>${esc(N.err || (N.at ? "마지막 동기화 " + fmtHM(new Date(N.at), true) : "연결됐어요"))}</small></div><button type="button" class="sbtn" data-nvoff="1">연결 해제</button></div></div>`;
+        else h += `<div class="ppanel"><b class="ph">네이버 캘린더 연결</b>
+          <input class="fin" id="nvId" autocomplete="off" autocapitalize="off" spellcheck="false" placeholder="${nvWorks ? "네이버웍스 아이디 (이메일)" : "네이버 아이디"}" value="${esc(nvTyped)}">
+          <div class="prow2"><input class="fin" id="nvPw" type="password" autocomplete="off" spellcheck="false" placeholder="${nvWorks ? "외부 앱 비밀번호" : "애플리케이션 비밀번호"}"><button type="button" class="pgo" id="nvGo"${nvBusyF ? " disabled" : ""}>${nvBusyF ? "확인 중…" : "연결"}</button></div>
+          <label class="pchk"><input type="checkbox" id="nvWorks"${nvWorks ? " checked" : ""}><em class="pt">네이버웍스(기업용) 계정입니다 <span>· 아이디가 이메일이면 자동 체크</span></em></label>
+          ${nvMsg ? `<p class="pmsg${nvBusyF || nvClipOk ? "" : " err"}">${esc(nvMsg)}</p>` : ""}
+          <p class="pnote">${nvWorks ? "네이버웍스 › 보안 › <b>‘외부 앱 비밀번호’</b>로 캘린더를 연동합니다. 일반 로그인 비밀번호가 아닙니다." : "네이버 2단계 인증의 <b>‘애플리케이션 비밀번호’</b>로 캘린더를 연동합니다. 일반 로그인 비밀번호가 아닙니다."} <button type="button" class="plink" data-act="${nvWorks ? "nvworkshelp" : "nvhelp"}">앱 비밀번호 만들기 ↗</button><br><span>복사하면 비밀번호 칸에 자동으로 들어가요 · 이 PC에만 암호화해서 저장해요</span></p></div>`;
+      } else if (conSel === "google") {
+        h += gOn ? `<div class="ppanel"><b class="ph">구글 캘린더 연결됨</b><div class="prow"><div class="st">${esc(U.gEmail || "")}<small>내 일정 + 공유 칩 양방향</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>${sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")}</div>`
+          : `<div class="ppanel"><b class="ph">구글 캘린더 연결</b><button type="button" class="gbtn" data-act="glogin" style="width:100%;justify-content:center">${G_LOGO}Google 계정으로 로그인</button><p class="pnote">브라우저에서 로그인하면 바로 연결돼요.</p>${sw("autoLogin", H.autoLogin, "자동 로그인", "위젯을 다시 켜도 바로 연결")}</div>`;
+      } else if (conSel) h += `<div class="ppanel"><b class="ph">${esc((T.find(t => t[0] === conSel) || [])[1] || "")}</b><p class="pnote" style="margin:4px 0 0">준비 중이에요. 다음 업데이트에서 붙일게요.</p></div>`;
+      if (gOn || N.on) h += `<div class="sgrp">연결됨</div>` + (gOn ? `<div class="srow"><div class="st"><span class="pic sm">${G_LOGO}</span>Google<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>` : "")
+        + (N.on ? `<div class="srow"><div class="st"><span class="pic sm"><span class="plo sm" style="--c:#03c75a">N</span></span>${N.works ? "네이버웍스" : "네이버"}<small>${esc(N.id)}</small></div><button type="button" class="sbtn" data-nvoff="1">연결 해제</button></div>` : "");
+      h += `<div class="sgrp">공유 칩 양방향 사본</div>`;
+      if (H.gmode !== "google" && !(U.nv && U.nv.on)) h += `<p class="pnote" style="margin:2px 0 8px">구글이나 네이버를 연결하면 연결하기로 고른 공유 칩마다 그 캘린더에 칩과 같은 이름의 캘린더가 생겨요. 거기서 넣고 고친 일정도 Plait과 함께 쓰는 사람들에게 반영돼요.</p>`;
+      else {
+        h += (B.cals || []).length ? B.cals.map(c => { const pv = c.provs || [], t = [pv.includes("google") && "Google ✓", pv.includes("naver") && "네이버 ✓", pv.includes("naver:pick") && "네이버 (캘린더 고르기 필요)"].filter(Boolean).join(" · ");
+          return `<div class="srow"><div class="st"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${esc(c.color || "var(--accent)")};margin-right:6px"></span>${esc(c.name)}<small>${!t ? "연결 안 함 · 친구 창 › 공유 칩에서 켤 수 있어요" : t + (c.role === "viewer" ? " · 보기만이라 고쳐도 원래대로 돌아가요" : " · 양방향")}</small></div></div>`; }).join("")
+          : `<p class="pnote" style="margin:2px 0 8px">아직 공유 칩이 없어요. 친구 창에서 공유 칩을 만들 때 구글에 연결할지 고를 수 있어요.</p>`;
+        h += `<p class="pnote" style="margin:2px 0 8px">${B.err ? `<span style="color:var(--err)">${esc(B.err)}</span>` : B.at ? `마지막 동기화 ${fmtHM(new Date(B.at), true)} · 위젯이 켜져 있는 동안 1분마다 맞춰요.` : "곧 첫 동기화를 해요."}</p>`
+          + btn("지금 맞추기", "", "bsyncNow", "동기화");
+      }
     } else if (setTab === "캘린더") {
       h += `<div class="sgrp">구글 계정</div>`;
       if (H.gmode === "google") h += `<div class="sacct"><div class="av">G</div><div class="st">구글 캘린더 연결됨<small>${esc(U.gEmail || "")}</small></div><button type="button" class="sbtn" data-act="glogout">연결 해제</button></div>`;
@@ -2304,10 +3769,10 @@ body.popup .rz{display:none}
         + sw("ntWin", U.ntWin, "Windows 알림도 띄우기", "위젯을 숨겨 두거나 다른 창을 쓸 때")
         + `<div class="sgrp">업데이트</div>` + btn("새 버전 확인", "켤 때 · 30분마다 자동으로 확인해요", "update", "지금 확인");
     } else {
-      h += `<div class="sgrp">${EXT ? "Plait" : "TeamCal"}</div><div class="srow"><div class="st">버전<small>팀 휴가 + 내 일정 위젯</small></div><span style="font-size:12.5px;font-weight:600">${esc(H.version || "")}</span></div>`
+      h += `<div class="sgrp">${BETA ? "Plait" : EXT ? "TEAM CAL(외부용)" : "Plait"}</div><div class="srow"><div class="st">버전<small>팀 휴가 + 내 일정 위젯</small></div><span style="font-size:12.5px;font-weight:600">${esc(H.version || "")}</span></div>`
         + btn("업데이트", "", "update", "확인")
         + btn("홈페이지", "", "home", "열기 ↗") + btn("개인정보처리방침", "", "privacy", "열기 ↗")
-        + `<div class="sgrp">제거</div>` + btn(EXT ? "Plait 제거" : "TeamCal 제거", "설정·로그인 정보가 지워져요", "uninstall", "제거…", "dng");
+        + `<div class="sgrp">제거</div>` + btn(BETA ? "Plait 제거" : EXT ? "TEAM CAL(외부용) 제거" : "Plait 제거", "설정·로그인 정보가 지워져요", "uninstall", "제거…", "dng");
     }
     const body = $("setBody"); body.innerHTML = h;
     body.querySelectorAll("[data-sw]").forEach(b => b.onclick = () => {
@@ -2334,11 +3799,87 @@ body.popup .rz{display:none}
     if (ex) ex.onchange = () => uiset("extraNames", ex.value.split(/[,，]/).map(x => x.trim().replace(/\s+/g, "")).filter(Boolean).join(","));
     const op = body.querySelector("#setOp");
     if (op) { op.oninput = () => { $("setOpV").textContent = op.value + "%"; op.style.setProperty("--f", (op.value - 50) / 50); }; op.onchange = () => { setHost.opacity = +op.value / 100; sset("opacity", +op.value / 100); }; }
+    body.querySelectorAll("[data-con]").forEach(b => b.onclick = () => {
+      if (b.dataset.con === "naver") { conSel = "naver"; nvMsg = ""; renderSettings(); return; }
+      host({ cmd: "set", key: "act", value: "glogin" }); });
+    body.querySelectorAll("[data-nvoff]").forEach(b => b.onclick = () => {
+      if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 해제"; return; }
+      host({ cmd: "nvclear" }); });
+    body.querySelectorAll("[data-tile]").forEach(b => b.onclick = () => { conSel = b.dataset.tile; nvMsg = ""; renderSettings(); });
+    // --- 계정 탭 ---
+    const acSay = (t, e) => { acMsg = t || ""; acErr = !!e; };
+    const acUid = async sb => { try { const x = (await sb.auth.getSession()).data.session; return x ? x.user.id : ""; } catch (e) { return ""; } };
+    body.querySelectorAll("[data-acc]").forEach(b => b.onclick = async () => {
+      const a = b.dataset.acc, sb = bClient(); acSay("");
+      if (a === "tolink") { setTab = "연동"; acView = ""; renderSettings(); return; }
+      if (a === "out") {
+        if (!b.classList.contains("arm")) { b.classList.add("arm"); b.textContent = "정말 로그아웃"; return; }
+        try { await sb.auth.signOut(); } catch (e) {}
+        setUi.acct = { on: false }; acView = ""; host({ cmd: "bsync" }); renderSettings(); return;
+      }
+      if (a === "code") {
+        const code = genCode(); b.disabled = true;
+        const { error } = await sb.rpc("new_recovery_code", { p_code: code });
+        if (error) { acView = ""; acSay(/function|schema/i.test(error.message || "") ? "서버 준비가 덜 됐어요 (0.4.0 SQL을 실행해 주세요)." : "복구 코드를 만들지 못했어요.", true); }
+        else { acView = "code"; acCode = code; }
+        renderSettings(); return;
+      }
+      acView = acView === a ? "" : a; renderSettings();
+      const f = $("setBody").querySelector("#acName, #acPw, #acDelId"); if (f) setTimeout(() => f.focus(), 0);
+    });
+    if ($("acCopy")) $("acCopy").onclick = () => { copyText(acCode); $("acCopy").textContent = "복사했어요 ✓"; };
+    if ($("acGo")) {
+      const go = async () => {
+        const sb = bClient(), uid = await acUid(sb), btn = $("acGo"); if (!uid) { acSay("로그인이 풀렸어요.", true); renderSettings(); return; }
+        btn.disabled = true;
+        if (acView === "name") {
+          const n = $("acName").value.trim(); if (!n) { acSay("이름을 입력해 주세요.", true); renderSettings(); return; }
+          const { error } = await sb.from("profiles").update({ display_name: n }).eq("id", uid);
+          if (error) acSay("이름을 바꾸지 못했어요.", true); else { setUi.acct.name = n; acView = ""; acSay("이름을 바꿨어요."); host({ cmd: "bsync" }); }
+        } else if (acView === "pw") {
+          const p1 = $("acPw").value, p2 = $("acPw2").value;
+          if (p1.length < 8) { acSay("비밀번호는 8자 이상으로 해 주세요.", true); renderSettings(); return; }
+          if (p1 !== p2) { acSay("두 비밀번호가 달라요.", true); renderSettings(); return; }
+          const { error } = await sb.auth.updateUser({ password: p1 });
+          if (error) acSay("비밀번호를 바꾸지 못했어요.", true); else { acView = ""; acSay("비밀번호를 바꿨어요."); }
+        } else if (acView === "del") {
+          if ($("acDelId").value.trim().toLowerCase() !== String(setUi.acct.username || "").toLowerCase()) { acSay("아이디가 달라요.", true); renderSettings(); return; }
+          const { error } = await sb.rpc("delete_my_account");
+          if (error) acSay(/function|schema/i.test(error.message || "") ? "서버 준비가 덜 됐어요 (0.4.0 SQL을 실행해 주세요)." : "계정을 삭제하지 못했어요.", true);
+          else { try { await sb.auth.signOut(); } catch (e) {} setUi.acct = { on: false }; acView = ""; acSay("계정을 삭제했어요."); host({ cmd: "bsync" }); }
+        }
+        renderSettings();
+      };
+      $("acGo").onclick = go;
+      $("setBody").querySelectorAll("#acName, #acPw2, #acDelId").forEach(i => i.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); go(); } });
+    }
+    if ($("nvGo")) {
+      const pwI = $("nvPw"), idI = $("nvId"), wk = $("nvWorks");
+      pwI.value = nvPwV; pwI.oninput = () => { nvPwV = pwI.value; };
+      idI.oninput = () => {
+        nvTyped = idI.value;
+        const auto = /@/.test(nvTyped) && !/@naver\.com$/i.test(nvTyped.trim());   // 이메일 아이디면 네이버웍스로
+        if (auto !== nvWorks && !nvWorksHand) { nvWorks = auto; wk.checked = auto; idI.placeholder = auto ? "네이버웍스 아이디 (이메일)" : "네이버 아이디"; pwI.placeholder = auto ? "외부 앱 비밀번호" : "애플리케이션 비밀번호"; }
+      };
+      wk.onchange = () => { nvWorks = wk.checked; nvWorksHand = true; renderSettings(); };
+      const go = () => {
+        const id = idI.value.trim(), pw = (nvPwV || pwI.value).replace(/\s/g, "");
+        if (!id) { nvMsg = nvWorks ? "네이버웍스 아이디(이메일)를 적어 주세요." : "네이버 아이디를 적어 주세요."; renderSettings(); return; }
+        if (!pw) { nvMsg = "앱 비밀번호를 넣어 주세요. 만든 비밀번호를 복사하면 자동으로 들어가요."; renderSettings(); return; }
+        nvTyped = id; nvPwV = pw; nvBusyF = true; nvMsg = "확인하는 중…"; renderSettings(); host({ cmd: "nvsave", id, pw, works: nvWorks });
+      };
+      $("nvGo").onclick = go;
+      pwI.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); go(); } };
+      idI.onkeydown = e => { if (e.key === "Enter") { e.preventDefault(); pwI.focus(); } };
+      clearInterval(nvClipT);
+      if (!nvPwV && !nvBusyF) nvClipT = setInterval(() => { if (conSel !== "naver" || $("setsheet").hidden || !$("nvPw") || nvPwV) { clearInterval(nvClipT); return; } host({ cmd: "nvclip" }); }, 1200);
+    } else clearInterval(nvClipT);
     body.querySelectorAll("[data-act]").forEach(b => b.onclick = () => {
       const a = b.dataset.act;
-      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP };
+      const urls = { gweb: "https://calendar.google.com/calendar/r", home: HOME_URL, privacy: PRIVACY_URL, group: TEAM_GROUP, nvhelp: "https://nid.naver.com/user2/help/myInfoV2?m=viewSecurity&lang=ko_KR", nvworkshelp: "https://help.worksmobile.com/ko/use-guides/settings/security/3rd-party-app-password/" };
       if (urls[a]) { host({ cmd: "open", url: urls[a] }); return; }
       if (a === "lcInvite") { copyText(extInvite(setUi.leaveCal)); b.textContent = "복사했어요 ✓"; setTimeout(() => { b.textContent = "링크 복사"; }, 1800); return; }
+      if (a === "bsyncNow") { host({ cmd: "bsync" }); b.textContent = "맞추는 중…"; b.disabled = true; return; }
       if (a === "glogout") { setHost.gmode = ""; renderSettings(); }
       if (a === "teamLogout") { setUi.teamOn = false; renderSettings(); }
       host({ cmd: "set", key: "act", value: a });
@@ -2357,6 +3898,17 @@ body.popup .rz{display:none}
       else if (m.type === "theme") { applyTheme(m.theme); if (!$("setsheet").hidden) { setHost.theme = m.theme; renderSettings(); } }
       else if (m.type === "settings" && !$("setsheet").hidden) { setHost = m.host || setHost; if (m.ui) setUi = Object.assign(setUi, m.ui); renderSettings(); }
       else if (m.type === "gtoken" && m.token) { gToken = m.token; if (gPendingSave) { const f = gPendingSave; gPendingSave = null; f(); } }
+      else if (m.type === "nvclip" && BETA && conSel === "naver" && $("nvPw") && !$("setsheet").hidden && !nvBusyF) {
+        if (nvPwV || m.v === nvBad) return;   // 이미 넣었거나 방금 틀린 값이면 다시 쓰지 않는다
+        nvPwV = String(m.v || ""); nvClipOk = true;
+        if ((nvTyped || "").trim()) { renderSettings(); $("nvGo").click(); }
+        else { nvMsg = "복사한 비밀번호를 넣었어요. 아이디를 적고 [연결]을 눌러 주세요."; renderSettings(); $("nvId").focus(); }
+      }
+      else if (m.type === "nv" && BETA && !$("setsheet").hidden) {
+        nvBusyF = false; if (!m.error) setUi.nv = Object.assign(setUi.nv || {}, { on: !!m.on, id: m.id || "", err: "" });
+        if (m.error) { nvMsg = m.error; nvBad = nvPwV; nvClipOk = false; nvPwV = ""; } else { nvMsg = ""; nvPwV = ""; nvClipOk = false; setUi.nv.works = !!m.works; }
+        renderSettings();
+      }
       return;
     }
     switch (m.type) {
@@ -2385,7 +3937,11 @@ body.popup .rz{display:none}
         if (m.kind === "team") { applyTeam(Array.isArray(m.ids) ? m.ids : (m.ids ? [m.ids] : [])); break; }
         if (m.kind === "leave") { if (m.date) { selected = m.date; const sd = parse(m.date); view = new Date(sd.getFullYear(), sd.getMonth(), 1); } reload(); }
         else { if (m.kind === "gevent") selfFrom(Array.isArray(m.ids) ? m.ids : (m.ids ? [m.ids] : [])); gRequest(); }
+        if (BETA) bLoad();
         break;
+      case "bsync": if (BETA) { bLoad(); bSyncSoon(3000, true); } break;
+      case "nv": if (BETA) onNvState(m); break;
+      case "nvres": { const f = nvWait.get(String(m.rid)); if (f) { nvWait.delete(String(m.rid)); f(m); } break; }
       case "config":
         applyTheme(m.theme);
         document.body.classList.toggle("fixed", !!m.fixed); if (m.maxH) maxPhys = +m.maxH; lastH = 0; report();
@@ -2432,7 +3988,7 @@ body.popup .rz{display:none}
   });
   function report() {
     if (POPUP) {
-      const f = !$("sheet").hidden ? $("sForm") : (!$("gsheet").hidden ? $("gForm") : (!$("tsheet").hidden ? $("tForm") : (!$("setsheet").hidden ? $("setForm") : null)));
+      const f = !$("sheet").hidden ? $("sForm") : (!$("gsheet").hidden ? $("gForm") : (!$("tsheet").hidden ? $("tForm") : (!$("setsheet").hidden ? $("setForm") : (!$("fsheet").hidden ? $("fForm") : null))));
       if (!f) return;
       const h = Math.ceil(f.getBoundingClientRect().height * window.devicePixelRatio);
       if (h !== lastH) { lastH = h; host({ cmd: "size", h }); }
@@ -2477,8 +4033,9 @@ body.popup .rz{display:none}
   }
 
   if (POPUP) { document.body.classList.add("popup"); new ResizeObserver(report).observe($("sForm")); new ResizeObserver(report).observe($("gForm")); new ResizeObserver(report).observe($("tForm")); }
-  else { renderHeader(); renderG(); if (EXT) initExt(); else initSupabase(); }
+  else { renderHeader(); renderG(); if (EXT) initExt(); else initSupabase(); if (BETA) { $("bFriends").hidden = false; $("bFriends").onclick = () => openFriends(); if (!lsGet("tcb-auth")) bGate(true); bLoad(); host({ cmd: "nvstate" }); setInterval(bLoad, 120000); setInterval(() => bSyncSoon(0, true), 60000); } }
   host({ cmd: "ready" });
+  if (BETA) window.__tlwB = { bSyncSoon, bLoad, openSettings, nvLoad, nvState: () => nv };
   window.__tlw = { applyTheme, loadIcs, onToken, openGSheet, initPopup, readGForm, openInvite, setTeamCal, setG: g => { gmode = g; renderG(); }, state: () => ({ gEvents, leaves, members }) };
 })();
 </script>
@@ -2575,7 +4132,7 @@ $IconFile   = Join-Path $AppDir 'Plait.ico'
 $NoAutoFlag = Join-Path $AppDir 'noautostart.flag'
 $UninstKey  = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\TeamCalExternal'
 
-# 앱 아이콘 (Plait 로고: 엮인 두 코랄 띠 + 31). 1.1.0 부터 그림을 직접 담아 둔다
+# 앱 아이콘 (Plait 로고: 엮인 두 코랄 띠 + 31). 그림을 직접 담아 둔다
 $AppIconIco = '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'
 $AppIconPng = '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'
 function New-AppBitmap([int]$n) {
@@ -2870,6 +4427,24 @@ public static class TLW {
     var b = await r.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
     return ((int)r.StatusCode).ToString() + "\n" + Encoding.UTF8.GetString(b);
   }
+  // 네이버 CalDAV (리디렉션은 위젯이 직접 따라간다)
+  public static readonly HttpClient Dav = new HttpClient(new HttpClientHandler() { AllowAutoRedirect = false }) { Timeout = TimeSpan.FromSeconds(40) };
+  public static async Task<string> DavSend(string method, string url, string user, string pass, string depth, string ctype, string body, string ifMatch) {
+    var req = new HttpRequestMessage(new HttpMethod(method), url);
+    req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Basic", Convert.ToBase64String(Encoding.UTF8.GetBytes(user + ":" + pass)));
+    if (!string.IsNullOrEmpty(depth)) req.Headers.TryAddWithoutValidation("Depth", depth);
+    if (!string.IsNullOrEmpty(ifMatch)) req.Headers.TryAddWithoutValidation(ifMatch == "*" ? "If-None-Match" : "If-Match", ifMatch);
+    if (body != null) {
+      req.Content = new ByteArrayContent(Encoding.UTF8.GetBytes(body));
+      req.Content.Headers.TryAddWithoutValidation("Content-Type", (string.IsNullOrEmpty(ctype) ? "application/xml" : ctype) + "; charset=utf-8");
+    }
+    var r = await Dav.SendAsync(req).ConfigureAwait(false);
+    var b = await r.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+    string etag = ""; IEnumerable<string> ev;
+    if (r.Headers.TryGetValues("ETag", out ev)) foreach (var x in ev) { etag = x; break; }
+    string loc = r.Headers.Location != null ? r.Headers.Location.ToString() : "";
+    return ((int)r.StatusCode).ToString() + "\n" + etag.Replace("\n", "") + "\n" + loc.Replace("\n", "") + "\n" + Encoding.UTF8.GetString(b);
+  }
   public static async Task<string> GetText(string url) {
     var r = await Http.GetAsync(url).ConfigureAwait(false);
     var b = await r.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
@@ -3054,6 +4629,57 @@ public static class TLWPin {
     function Split-Resp([string]$s) { $i = $s.IndexOf("`n"); @{ Code = [int]$s.Substring(0, $i); Body = $s.Substring($i + 1) } }
     function Task-Error($t) { if ($t.Exception) { $t.Exception.GetBaseException().Message } else { '시간 초과' } }
 
+    # ---- 네이버 캘린더 (CalDAV) : 비밀번호는 이 PC에만 DPAPI로 저장, 위젯에는 주지 않는다 ----
+    $script:NvBase = 'https://caldav.calendar.naver.com'
+    $script:NvWorks = 'https://caldav.worksmobile.com'      # 네이버웍스(기업용)
+    $script:nv = $null
+    function Read-Naver {
+        if ($script:nv) { return $script:nv }
+        if (-not (Test-Path $NvFile)) { return $null }
+        try {
+            $sec = ConvertTo-SecureString (Get-Content $NvFile -Raw).Trim()
+            $b = [Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec)
+            try { $t = [Runtime.InteropServices.Marshal]::PtrToStringBSTR($b) } finally { [Runtime.InteropServices.Marshal]::ZeroFreeBSTR($b) }
+            $p = $t.Split("`n"); if ($p.Count -lt 2 -or -not $p[0]) { return $null }
+            $base = $script:NvBase; if ($p.Count -ge 3 -and $p[2] -eq 'works') { $base = $script:NvWorks }
+            $script:nv = @{ Id = $p[0]; Pw = $p[1]; Base = $base; Works = ($base -eq $script:NvWorks) }; return $script:nv
+        } catch { return $null }
+    }
+    function Send-NvState([string]$err) { $c = Read-Naver; Send-UI @{ type = 'nv'; on = [bool]$c; id = $(if ($c) { $c.Id } else { '' }); base = $(if ($c) { $c.Base } else { '' }); works = [bool]($c -and $c.Works); error = $err } }
+    function Save-Naver([string]$id, [string]$pw, [bool]$works) {
+        $id = $id.Trim(); $pw = ($pw -replace '\s', '')
+        if (-not $id -or -not $pw) { Send-NvState '아이디와 애플리케이션 비밀번호를 입력해 주세요.'; return }
+        if (-not $works -and $id -match '@naver\.com$') { $id = $id.Split('@')[0] }
+        $base = $(if ($works) { $script:NvWorks } else { $script:NvBase })
+        $body = '<?xml version="1.0" encoding="utf-8"?><d:propfind xmlns:d="DAV:"><d:prop><d:current-user-principal/></d:prop></d:propfind>'
+        Add-Job ([TLW]::DavSend('PROPFIND', "$base/", $id, $pw, '0', 'application/xml', $body, '')) {
+            param($t, $c)
+            if ($t.IsFaulted -or $t.IsCanceled) { Send-NvState "네이버에 연결하지 못했어요. 인터넷 연결을 확인해 주세요. ($(Task-Error $t))"; return }
+            $code = [int]$t.Result.Substring(0, $t.Result.IndexOf("`n"))
+            if ($code -eq 401 -or $code -eq 403) { Send-NvState $(if ($c.Works) { '아이디(이메일)나 외부 앱 비밀번호가 맞지 않아요. 네이버웍스 › 보안 › 외부 앱 비밀번호로 만든 것을 넣어 주세요.' } else { '아이디나 애플리케이션 비밀번호가 맞지 않아요. 로그인 비밀번호가 아니라 2단계 인증에서 만든 16자리를 넣어 주세요.' }); return }
+            if ($code -ge 500) { Send-NvState "네이버 캘린더 서버가 응답하지 않아요 ($code). 잠시 후 다시 시도해 주세요."; return }
+            $sec = ConvertTo-SecureString ("$($c.Id)`n$($c.Pw)`n$(if ($c.Works) { 'works' } else { 'naver' })") -AsPlainText -Force
+            Set-Content -LiteralPath $NvFile -Value (ConvertFrom-SecureString $sec) -Encoding ASCII
+            $script:nv = @{ Id = $c.Id; Pw = $c.Pw; Base = $c.Base; Works = $c.Works }
+            Send-NvState ''
+        } @{ Id = $id; Pw = $pw; Base = $base; Works = $works }
+    }
+    function Clear-Naver { Remove-Item $NvFile -ErrorAction SilentlyContinue; $script:nv = $null; Send-NvState '' }
+    function Naver-Request($m) {
+        $rid = [string]$m.rid; $c = Read-Naver; $u = [string]$m.url
+        if (-not $c) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'nocred' }; return }
+        if (-not $u.StartsWith("$($c.Base)/") -or $u.Contains('..')) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'url' }; return }
+        $meth = [string]$m.method
+        if (@('PROPFIND', 'REPORT', 'GET', 'PUT', 'DELETE', 'MKCALENDAR', 'PROPPATCH') -notcontains $meth) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = 'method' }; return }
+        $body = $null; if ($null -ne $m.body) { $body = [string]$m.body }
+        Add-Job ([TLW]::DavSend($meth, $u, $c.Id, $c.Pw, [string]$m.depth, [string]$m.ctype, $body, [string]$m.ifmatch)) {
+            param($t, $rid)
+            if ($t.IsFaulted -or $t.IsCanceled) { Send-Main @{ type = 'nvres'; rid = $rid; status = 0; error = (Task-Error $t) }; return }
+            $p = $t.Result.Split("`n", 4)
+            Send-Main @{ type = 'nvres'; rid = $rid; status = [int]$p[0]; etag = $p[1]; loc = $p[2]; body = $p[3] }
+        } $rid
+    }
+
     # 투명도
     function Apply-Opacity {
         $o = [double]$script:state.Opacity
@@ -3090,8 +4716,10 @@ public static class TLWPin {
     # ---------------- 구글 로그인 (OAuth, 브라우저 + 로컬 리디렉션) ----------------
     function Get-GClient {
         if (-not (Test-Path $GClientFile)) {
-            $old = Join-Path $env:LOCALAPPDATA 'TeamLeaveWidget\google_client.json'
-            if (Test-Path -LiteralPath $old) { try { New-Item -ItemType Directory -Force -Path $AppDir | Out-Null; Copy-Item -LiteralPath $old -Destination $GClientFile -Force } catch { } }
+            foreach ($od in @('TeamLeaveWidget', 'TeamCalExternal', 'TeamCalBeta')) {
+                $old = Join-Path $env:LOCALAPPDATA ($od + '\google_client.json')
+                if ((Test-Path -LiteralPath $old) -and -not (Test-Path $GClientFile)) { try { New-Item -ItemType Directory -Force -Path $AppDir | Out-Null; Copy-Item -LiteralPath $old -Destination $GClientFile -Force } catch { } }
+            }
         }
         if (-not (Test-Path $GClientFile)) { return $null }
         try {
@@ -3101,7 +4729,7 @@ public static class TLWPin {
             return @{ Id = [string]$c.client_id; Secret = [string]$c.client_secret }
         } catch { return $null }
     }
-    # 설정 파일이 없으면 TeamCal 사이트에서 자동으로 받아 온다 (올려 둔 경우에만)
+    # 설정 파일이 없으면 Plait 사이트에서 자동으로 받아 온다 (올려 둔 경우에만)
     $GClientUrl = ($UpdateUrl -replace 'version\.json$', 'google_client.json')
     function Save-GClientText([string]$txt) {
         try {
@@ -3378,14 +5006,14 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
         try { $p.F.Dispose() } catch { }
     }
     function Open-Popup([string]$kind, $data) {
-        if (@('leave', 'gevent', 'team', 'settings') -notcontains $kind) { return }
+        if (@('leave', 'gevent', 'team', 'settings', 'friends') -notcontains $kind) { return }
         if (-not $script:wvEnv) { return }
         Close-Popup
         $f = New-Object System.Windows.Forms.Form
         $f.FormBorderStyle = 'None'; $f.ShowInTaskbar = $false; $f.StartPosition = 'Manual'
         $f.TopMost = $true; $f.MaximizeBox = $false; $f.MinimizeBox = $false
         $f.Icon = $icon
-        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } 'settings' { 'Plait 설정' } default { '일정 추가' } }
+        $f.Text = switch ($kind) { 'leave' { '휴가 등록' } 'team' { '내 팀원' } 'settings' { 'Plait 설정' } 'friends' { 'Plait 친구' } default { '일정 추가' } }
         $f.BackColor = $form.BackColor
         $w = [int][Math]::Round(360 * $scale * [double]$script:state.Size)
         $h = [int](520 * $scale)
@@ -3503,6 +5131,15 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             }
             'drag'   { [TLW]::ReleaseCapture() | Out-Null; [TLW]::SendMessage($p.F.Handle, 0xA1, 2, 0) | Out-Null; Save-PopPos $p }
             'close'  { Close-Popup }
+            'bsync'  { Send-Main @{ type = 'bsync' } }
+            'nvclip' {   # 네이버 연결 창이 떠 있을 때만: 클립보드에 16자리 애플리케이션 비밀번호가 있으면 채워 준다
+                $t = ''; try { $t = [System.Windows.Forms.Clipboard]::GetText() } catch { }
+                $t = ($t -replace '\s', '')
+                if ($t -match '^[A-Za-z0-9]{16}$') { Send-Pop @{ type = 'nvclip'; v = $t } }
+            }
+            'nvstate' { Send-NvState '' }
+            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) ([bool]$m.works) }
+            'nvclear' { Clear-Naver }
             'done'   { Send-Main @{ type = 'popupDone'; kind = $p.Kind; msg = [string]$m.msg; date = [string]$m.date; ids = @($m.ids) }; Close-Popup }
             'gtoken' { Request-GToken ([bool]$m.force) }
             'glogin' { Close-Popup; Start-GoogleLogin }
@@ -3624,6 +5261,10 @@ sh.Run "wscript.exe """ & sh.ExpandEnvironmentStrings("%LOCALAPPDATA%") & "\Team
             'gguide'  { Start-Process notepad.exe -ArgumentList "`"$GuideFile`"" }
             'popup'   { Open-Popup ([string]$m.kind) $m.data }
             'glogout' { Disconnect-Google }
+            'nvstate' { Send-NvState '' }
+            'nvsave'  { Save-Naver ([string]$m.id) ([string]$m.pw) ([bool]$m.works) }
+            'nvclear' { Clear-Naver }
+            'nvreq'   { Naver-Request $m }
             'gauto'   { Set-AutoLogin ([bool]$m.on) }
             'update'  { if ($script:upd) { Do-Update } else { Check-Update $true } }
             'copy'    { try { [System.Windows.Forms.Clipboard]::SetText([string]$m.text) } catch { } }
