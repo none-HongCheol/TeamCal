@@ -5,388 +5,621 @@
 <meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Plait 플레잇 — 흩어진 캘린더를 하나로 엮어 바탕화면에</title>
 <meta name="description" content="Plait(플레잇)은 구글·네이버 캘린더와 친구와 함께 쓰는 캘린더를 하나로 엮어 Windows 바탕화면에 보여 주는 캘린더 위젯입니다.">
-<meta name="theme-color" content="#faf8f5">
+<meta name="theme-color" content="#fbfaf7">
 <link rel="icon" type="image/png" href="assets/plait_favicon.png">
 <link rel="apple-touch-icon" href="assets/plait_icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
+<script>
+(() => { let t = null; try { t = localStorage.getItem("tc-theme"); } catch (e) {}
+  document.documentElement.dataset.theme = t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"); })();
+</script>
 <style>
-:root{--bg:#faf8f5;--bg2:#f3f0ea;--card:#fff;--fg:#1b1b1d;--fg2:#3a3a3f;--muted:#6f6e73;--line:#e8e3da;--accent:#e0592a;--accent-soft:#fbe6dc;--blue:#2f6fdb;--green:#33b679;--shadow:0 1px 2px rgba(20,18,14,.05),0 12px 40px -12px rgba(20,18,14,.18)}
-[data-theme="dark"]{--bg:#121214;--bg2:#18181b;--card:#1d1d21;--fg:#f1efea;--fg2:#d4d2cc;--muted:#9a9893;--line:#2c2c31;--accent:#ef6a3a;--accent-soft:#3a2219;--shadow:0 1px 2px rgba(0,0,0,.3),0 12px 40px -12px rgba(0,0,0,.6)}
+:root{
+  --bg:#fbfaf7;--bg2:#f4f1eb;--surface:#fff;--fg:#1b1b1d;--fg2:#45444a;--muted:#6c6a70;--line:#e7e2d9;--line2:#d9d3c8;
+  --accent:#e0592a;--accent-ink:#a93a20;--btn:#c4462a;--accent-soft:#fbe7dd;--coral:#f4835f;
+  --g:#2f6fdb;--n:#03a94e;--s:#e0592a;
+  --wall-a:#f9d9c7;--wall-b:#f4a07f;--wall-c:#e86f45;
+  --shadow-s:0 1px 2px rgba(27,22,16,.06),0 2px 8px -2px rgba(27,22,16,.08);
+  --shadow-l:0 2px 4px rgba(27,22,16,.05),0 24px 60px -18px rgba(60,30,14,.35);
+  --r:12px;--ease:cubic-bezier(.16,1,.3,1);
+  color-scheme:light;
+}
+[data-theme="dark"]{
+  --bg:#121214;--bg2:#17171a;--surface:#1c1c20;--fg:#f2f0eb;--fg2:#cfccc5;--muted:#9c9993;--line:#2a2a2f;--line2:#38383e;
+  --accent:#ff8a4c;--accent-ink:#ff8a4c;--btn:#ff8a4c;--accent-soft:#3a2318;
+  --g:#6b9cf0;--n:#2fcf7a;--s:#ff8a4c;
+  --wall-a:#3b2219;--wall-b:#6a3020;--wall-c:#a5452a;
+  --shadow-s:0 1px 2px rgba(0,0,0,.4),0 2px 8px -2px rgba(0,0,0,.4);
+  --shadow-l:0 2px 4px rgba(0,0,0,.3),0 24px 60px -18px rgba(0,0,0,.7);
+  color-scheme:dark;
+}
 *{box-sizing:border-box}
-html{scroll-behavior:smooth;-webkit-text-size-adjust:100%}
-body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "Pretendard Variable",Pretendard,"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;letter-spacing:-.01em;word-break:keep-all;transition:background .2s,color .2s}
-a{color:inherit}
+html{scroll-behavior:smooth;-webkit-text-size-adjust:100%;scroll-padding-top:76px;scrollbar-color:var(--line2) var(--bg)}
+body{margin:0;background:var(--bg);color:var(--fg);font:16px/1.7 "Pretendard Variable",Pretendard,"Malgun Gothic","Apple SD Gothic Neo",system-ui,sans-serif;letter-spacing:-.011em;word-break:keep-all;font-feature-settings:"tnum" 0}
+::selection{background:var(--accent-soft);color:var(--fg)}
+a{color:inherit;text-underline-offset:3px;text-decoration-thickness:1px}
 img{max-width:100%;height:auto;display:block}
+svg.i{width:20px;height:20px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+:focus-visible{outline:2px solid var(--accent);outline-offset:3px;border-radius:6px}
+.num{font-variant-numeric:tabular-nums}
+.wrap{width:min(1120px,100% - 48px);margin:0 auto}
 .skip{position:absolute;left:-999px;top:8px;background:var(--fg);color:var(--bg);padding:8px 14px;border-radius:8px;z-index:99}.skip:focus{left:12px}
-.wrap{max-width:1080px;margin:0 auto;padding:0 24px}
 
-/* 공지 띠 */
+/* notice + header */
 .notice{background:var(--fg);color:var(--bg);font-size:13.5px}
-.notice .wrap{display:flex;align-items:center;justify-content:center;gap:10px;min-height:40px;flex-wrap:wrap;text-align:center}
-.notice b{font-weight:700}.notice a{color:inherit;font-weight:600;text-underline-offset:3px}
-.notice .tag{background:var(--accent);color:#fff;border-radius:999px;padding:1px 9px;font-size:12px;font-weight:700}
-
-/* 헤더 */
-header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(12px);border-bottom:1px solid transparent;transition:border-color .2s}
+.notice .wrap{display:flex;gap:10px;justify-content:center;align-items:center;min-height:38px;padding:6px 0;text-align:center}
+.notice a{color:inherit;font-weight:600}
+.notice .dot{width:6px;height:6px;border-radius:50%;background:var(--coral);flex:none}
+header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 86%,transparent);backdrop-filter:saturate(1.4) blur(14px);-webkit-backdrop-filter:saturate(1.4) blur(14px);border-bottom:1px solid transparent;transition:border-color .2s}
 header.scrolled{border-bottom-color:var(--line)}
-header .wrap{display:flex;align-items:center;gap:28px;height:64px}
-.logo{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:19px;letter-spacing:-.02em}
-.mark{width:28px;height:28px;flex:none;display:block}
-nav{display:flex;gap:22px;margin-left:auto;font-size:14.5px;font-weight:500}
-nav a{text-decoration:none;color:var(--fg2)}nav a:hover{color:var(--fg)}
-.icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--fg);display:grid;place-items:center;cursor:pointer}
-.icon-btn svg{width:18px;height:18px}
+header .wrap{display:flex;align-items:center;gap:8px;height:64px}
+.logo{display:flex;align-items:center;gap:9px;font-weight:800;font-size:19px;letter-spacing:-.03em;text-decoration:none}
+.logo img{width:28px;height:28px}
+nav{display:flex;gap:2px;margin-left:auto}
+nav a{font-size:14.5px;color:var(--fg2);text-decoration:none;padding:7px 11px;border-radius:8px}
+nav a:hover{background:var(--bg2);color:var(--fg)}
+.icon-btn{width:38px;height:38px;border-radius:10px;border:1px solid var(--line);background:var(--surface);color:var(--fg);display:grid;place-items:center;cursor:pointer}
+.icon-btn:hover{border-color:var(--line2)}
 .menu-btn{display:none}
+.hd-cta{margin-left:4px}
 
-/* 버튼 */
-.btn{display:inline-flex;align-items:center;gap:8px;height:50px;padding:0 24px;border-radius:999px;font:inherit;font-weight:700;font-size:16px;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .15s,background .15s}
-.btn:hover{transform:translateY(-1px)}
-.btn.primary{background:var(--fg);color:var(--bg)}
-.btn.ghost{background:transparent;border-color:var(--line);color:var(--fg)}
-.btn svg{width:18px;height:18px}
+/* buttons */
+.btn{display:inline-flex;align-items:center;gap:8px;height:48px;padding:0 22px;border-radius:12px;font:inherit;font-size:16px;font-weight:700;text-decoration:none;border:1px solid transparent;cursor:pointer;transition:transform .15s var(--ease),background .15s,border-color .15s,box-shadow .15s}
+.btn:active{transform:translateY(1px)}
+.btn.ink{background:var(--fg);color:var(--bg)}
+.btn.ink:hover{box-shadow:0 8px 20px -8px rgba(27,22,16,.45)}
+.btn.line{background:var(--surface);border-color:var(--line2);color:var(--fg)}
+.btn.line:hover{border-color:var(--fg2)}
+.btn.coral{background:var(--btn);color:#fff}
+[data-theme="dark"] .btn.coral{color:#1b1b1d}
+.btn.coral:hover{box-shadow:0 10px 24px -10px var(--btn)}
+.btn.sm{height:38px;padding:0 14px;font-size:14px;border-radius:10px}
 
-/* 히어로 */
-.hero{padding:72px 0 40px}
-.hero .wrap{display:grid;grid-template-columns:1.05fr 1fr;gap:48px;align-items:center}
-.eyebrow{display:inline-flex;align-items:center;gap:8px;font-size:13.5px;font-weight:600;color:var(--muted);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:5px 12px 5px 8px}
-.eyebrow i{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
-h1{font-size:clamp(38px,5.6vw,62px);line-height:1.14;letter-spacing:-.04em;margin:20px 0 18px;font-weight:800}
-h1 em{font-style:normal;color:var(--accent)}
-.lead{font-size:18.5px;color:var(--fg2);margin:0 0 30px;max-width:30em}
-.cta{display:flex;gap:10px;flex-wrap:wrap}
-.cta-note{margin-top:14px;font-size:13.5px;color:var(--muted)}
-.desk{position:relative;border-radius:22px;aspect-ratio:4/4.3;overflow:hidden;background:linear-gradient(140deg,#f2c9a8 0%,#e8a68c 28%,#b8a7d6 62%,#8fb2dc 100%);box-shadow:var(--shadow)}
-[data-theme="dark"] .desk{background:linear-gradient(140deg,#3b2a40 0%,#2a2f4d 50%,#18324a 100%)}
-.desk::after{content:"";position:absolute;left:0;right:0;bottom:0;height:34px;background:color-mix(in srgb,#fff 55%,transparent);backdrop-filter:blur(10px)}
-[data-theme="dark"] .desk::after{background:rgba(20,20,24,.7)}
-.desk .w{position:absolute;right:7%;top:6%;width:47%;border-radius:12px;overflow:hidden;box-shadow:0 18px 50px -10px rgba(0,0,0,.35),0 0 0 1px rgba(0,0,0,.06)}
-.desk .w img{width:100%}
-.desk .note{position:absolute;left:7%;top:12%;width:36%;background:rgba(255,255,255,.88);border-radius:12px;padding:14px 14px 16px;font-size:12.5px;line-height:1.55;color:#2a2a2e;box-shadow:0 12px 30px -10px rgba(0,0,0,.25)}
-[data-theme="dark"] .desk .note{background:rgba(30,30,36,.9);color:#e8e6e1}
-.desk .note b{display:block;font-size:13.5px;margin-bottom:6px}
-.desk .note span{display:block;height:7px;border-radius:4px;background:currentColor;opacity:.12;margin-top:8px}
-.desk .note span:nth-child(3){width:80%}.desk .note span:nth-child(4){width:60%}
-.desk .tb{position:absolute;left:50%;bottom:7px;transform:translateX(-50%);display:flex;gap:8px;z-index:2}
-.desk .tb i{width:20px;height:20px;border-radius:6px;background:rgba(0,0,0,.18)}
-.desk .tb i.me{background:#1b1b1d;border-radius:50%;box-shadow:0 0 0 3px rgba(255,255,255,.7)}[data-theme="dark"] .desk .tb i.me{background:#f1efea;box-shadow:0 0 0 3px rgba(0,0,0,.4)}
-.only-dark{display:none!important}[data-theme="dark"] .only-dark{display:block!important}[data-theme="dark"] .only-light{display:none!important}
+/* hero */
+.hero{padding:76px 0 0;text-align:center}
+.hero h1{font-size:clamp(40px,6.4vw,76px);line-height:1.12;letter-spacing:-.04em;font-weight:800;margin:0 auto;max-width:14em;text-wrap:balance}
+.hero h1 em{font-style:normal;color:var(--accent)}
+.hero .lead{font-size:clamp(17px,1.6vw,19.5px);color:var(--fg2);max-width:36em;margin:24px auto 0;line-height:1.7;text-wrap:pretty}
+.hero .cta{display:flex;gap:10px;justify-content:center;flex-wrap:wrap;margin-top:34px}
+.hero .note{margin:14px 0 0;font-size:14px;color:var(--muted)}
 
-/* 섹션 공통 */
-section{padding:88px 0}
-.sec-k{font-size:14px;font-weight:700;color:var(--accent);letter-spacing:.02em;margin:0 0 10px}
-h2{font-size:clamp(30px,3.8vw,42px);line-height:1.22;letter-spacing:-.035em;margin:0 0 14px;font-weight:800}
-.sec-lead{color:var(--muted);font-size:17px;margin:0 0 44px;max-width:36em}
-.alt{background:var(--bg2)}
+.stage{position:relative;margin:56px auto 0;width:min(1200px,100% - 32px);height:640px;border-radius:20px 20px 0 0;overflow:hidden;
+  background:radial-gradient(120% 90% at 85% 10%,var(--wall-a) 0%,transparent 60%),linear-gradient(160deg,var(--wall-a) 0%,var(--wall-b) 55%,var(--wall-c) 100%);
+  box-shadow:inset 0 0 0 1px rgba(0,0,0,.04)}
+.stage::after{content:"";position:absolute;inset:0;background:radial-gradient(70% 60% at 30% 80%,rgba(255,255,255,.22),transparent 70%);pointer-events:none}
+.threads{position:absolute;inset:0;width:100%;height:100%}
+.threads path{fill:none;stroke-width:3;stroke-linecap:round}
+.src{position:absolute;left:7%;display:flex;align-items:center;gap:10px;background:var(--surface);color:var(--fg);border-radius:999px;padding:9px 16px 9px 12px;font-size:14.5px;font-weight:600;box-shadow:var(--shadow-s);z-index:2;white-space:nowrap}
+.src i{width:10px;height:10px;border-radius:50%;flex:none}
+.src small{color:var(--muted);font-weight:500;font-size:13px}
+.widget{position:absolute;right:8%;top:44px;width:340px;height:520px;border-radius:14px;overflow:hidden;box-shadow:var(--shadow-l);background:var(--surface);z-index:2}
+.widget img{width:100%;height:100%;object-fit:cover;object-position:top}
+.only-dark{display:none!important}
+[data-theme="dark"] .only-dark{display:block!important}
+[data-theme="dark"] .only-light{display:none!important}
+.taskbar{position:absolute;left:0;right:0;bottom:0;height:52px;display:flex;align-items:center;justify-content:center;gap:6px;z-index:3;
+  background:color-mix(in srgb,var(--surface) 72%,transparent);backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3);border-top:1px solid rgba(255,255,255,.35)}
+.taskbar span{width:38px;height:38px;border-radius:8px;display:grid;place-items:center;color:var(--fg2)}
+.taskbar span.on{background:color-mix(in srgb,var(--surface) 70%,transparent);position:relative}
+.taskbar span.on::after{content:"";position:absolute;bottom:2px;width:14px;height:3px;border-radius:2px;background:var(--accent)}
+.taskbar img{width:24px;height:24px}
+.taskbar .clock{position:absolute;right:18px;white-space:nowrap;width:auto;height:auto;display:block;font-size:12px;line-height:1.3;text-align:right;color:var(--fg2)}
+.stage .tag{position:absolute;left:16px;top:14px;font-size:12px;color:rgba(27,22,16,.55);z-index:2}
+[data-theme="dark"] .stage .tag{color:rgba(255,255,255,.5)}
 
-/* 기능 카드 */
-.cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
-.card{background:var(--card);border:1px solid var(--line);border-radius:20px;padding:28px 26px 30px}
-.num{font-size:13px;font-weight:800;color:var(--muted);letter-spacing:.06em}
-.card h3{font-size:21px;letter-spacing:-.025em;margin:14px 0 8px;line-height:1.35}
-.card p{margin:0;color:var(--fg2);font-size:15.5px}
-.card .vis{height:120px;margin:-6px -8px 18px;border-radius:14px;background:var(--bg2);display:flex;align-items:center;justify-content:center;gap:10px;overflow:hidden}
-.v-leave{flex-direction:column;align-items:stretch!important;padding:0 22px;gap:9px!important}
-.v-leave div{display:flex;align-items:center;gap:10px;font-size:13px;font-weight:600;color:var(--fg2)}
-.v-leave i{height:6px;border-radius:3px;background:#a49e94}.v-leave i.me{background:var(--accent)}
-.v-cal span{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
-.v-cal span i{width:9px;height:9px;border-radius:50%}
-.v-desk{position:relative}
-.v-sync{gap:8px!important}.v-sync b{font-size:18px;color:var(--muted);font-weight:700}
-.v-cal.col{flex-direction:column;gap:8px!important}
-.v-desk div{width:84px;height:92px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:12px}
-.v-desk div i{border-radius:3px;background:var(--line)}.v-desk div i.a{background:var(--accent)}.v-desk div i.b{background:var(--blue)}
+/* sections */
+section{padding:120px 0}
+section.tint{background:var(--bg2)}
+h2{font-size:clamp(30px,3.6vw,44px);line-height:1.25;letter-spacing:-.035em;font-weight:800;margin:0;text-wrap:balance}
+.sec-lead{font-size:18px;color:var(--fg2);margin:16px 0 0;max-width:38em;text-wrap:pretty}
+.sec-head{margin-bottom:64px}
 
-/* 스크린샷 */
-.shots{display:grid;grid-template-columns:1fr 1fr;gap:22px;align-items:start}
-figure{margin:0;background:var(--card);border:1px solid var(--line);border-radius:22px;padding:22px;display:flex;flex-direction:column;gap:16px}
-figure .frame{border-radius:14px;overflow:hidden;border:1px solid var(--line);max-height:520px;display:flex;justify-content:center;background:var(--bg2)}
-figure .frame img{width:100%;max-width:380px;object-fit:cover;object-position:top}
-figcaption b{display:block;font-size:18px;letter-spacing:-.02em;margin-bottom:4px}
-figcaption{color:var(--fg2);font-size:15px}
+/* feature rows */
+.row{display:grid;grid-template-columns:minmax(0,5fr) minmax(0,7fr);gap:64px;align-items:center}
+.row + .row{margin-top:112px}
+.row.flip{grid-template-columns:minmax(0,7fr) minmax(0,5fr)}
+.row.flip .copy{order:2}
+.copy h3{font-size:clamp(24px,2.4vw,30px);letter-spacing:-.03em;line-height:1.3;margin:0;font-weight:800}
+.copy p{color:var(--fg2);margin:14px 0 0;font-size:17px;max-width:30em}
+.copy ul{list-style:none;padding:0;margin:22px 0 0;display:grid;gap:10px;font-size:15.5px;color:var(--fg2)}
+.copy li{display:flex;gap:10px;align-items:flex-start}
+.copy li svg{color:var(--accent);margin-top:3px;width:18px;height:18px}
+.panel{background:var(--surface);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow-s);padding:22px}
+.ex{font-size:12px;color:var(--muted)}
 
-/* 더 많은 기능 */
-.mini{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
-.mini div{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px 20px 22px}
-.mini b{display:flex;align-items:center;gap:9px;font-size:16px;margin-bottom:4px;letter-spacing:-.02em}
-.mini b i{width:28px;height:28px;border-radius:9px;background:var(--accent-soft);color:var(--accent);display:grid;place-items:center;font-style:normal;font-size:14px}
-.mini p{margin:0;color:var(--muted);font-size:14.5px;line-height:1.6}
+/* demo month */
+.demo .bar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.demo .bar .m{font-weight:800;font-size:18px;letter-spacing:-.02em;margin-right:auto}
+.chip{display:inline-flex;align-items:center;gap:8px;height:34px;padding:0 13px 0 10px;border-radius:999px;border:1px solid var(--line2);background:var(--surface);font:inherit;font-size:13.5px;font-weight:600;color:var(--fg);cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+.chip .box{width:16px;height:16px;border-radius:5px;border:1.5px solid var(--c);display:grid;place-items:center;transition:background .2s}
+.chip .box svg{width:11px;height:11px;stroke:#fff;stroke-width:3;fill:none;opacity:0;transition:opacity .15s}
+.chip[aria-pressed="true"]{border-color:color-mix(in srgb,var(--c) 45%,var(--line2));background:color-mix(in srgb,var(--c) 8%,var(--surface))}
+.chip[aria-pressed="true"] .box{background:var(--c)}
+.chip[aria-pressed="true"] .box svg{opacity:1}
+.chip[aria-pressed="false"]{color:var(--muted)}
+.cal{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));border-top:1px solid var(--line);border-left:1px solid var(--line)}
+.cal .dw{font-size:12px;font-weight:600;color:var(--muted);padding:6px 8px;border-right:1px solid var(--line);border-bottom:1px solid var(--line)}
+.cal .dw.sun,.cal .d.sun .n{color:#d6453a}
+.cal .dw.sat,.cal .d.sat .n{color:#3d6fd1}
+.cal .d{min-height:82px;padding:5px 5px 6px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);display:flex;flex-direction:column;gap:3px;min-width:0}
+.cal .d.out{background:var(--bg2)}
+.cal .n{font-size:12.5px;font-weight:700;padding:0 3px;font-variant-numeric:tabular-nums}
+.cal .d.today .n{color:#fff;background:var(--btn);border-radius:999px;width:22px;height:22px;display:grid;place-items:center;padding:0}
+[data-theme="dark"] .cal .d.today .n{color:#1b1b1d}
+.ev{font-size:11.5px;line-height:1.35;padding:2px 6px;border-radius:5px;background:color-mix(in srgb,var(--c) 14%,var(--surface));color:var(--fg);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;align-items:center;gap:5px;
+  transform-origin:left center;transition:opacity .45s var(--ease),transform .55s var(--ease),filter .45s var(--ease),max-height .45s var(--ease);max-height:22px}
+.ev span{overflow:hidden;text-overflow:ellipsis}
+.ev::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--c);flex:none}
+.ev.off{opacity:0;transform:scaleX(.2) translateX(-12px);filter:blur(3px);max-height:0;padding-block:0;margin-top:-3px}
+.demo .foot{display:flex;justify-content:space-between;gap:12px;margin-top:12px;font-size:13px;color:var(--muted)}
+.demo .foot b{color:var(--fg);font-variant-numeric:tabular-nums}
 
-/* 시작하기 */
-.steps{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;counter-reset:s}
-.steps li{list-style:none;background:var(--card);border:1px solid var(--line);border-radius:18px;padding:24px 22px;position:relative}
-.steps li::before{counter-increment:s;content:"0" counter(s);display:block;font-size:13px;font-weight:800;color:var(--accent);margin-bottom:10px;letter-spacing:.06em}
-.steps b{display:block;font-size:17px;margin-bottom:6px;letter-spacing:-.02em}
-.steps p{margin:0;color:var(--muted);font-size:14.5px}
-ol.steps{padding:0;margin:0}
+/* share */
+.share .ttl{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.share .ttl i{width:12px;height:12px;border-radius:4px;background:var(--s)}
+.share .ttl small{margin-left:auto;font-weight:600;font-size:12.5px;color:var(--muted)}
+.ppl{list-style:none;margin:18px 0 0;padding:0;border-top:1px solid var(--line)}
+.ppl li{display:grid;grid-template-columns:36px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-bottom:1px solid var(--line)}
+.av{width:36px;height:36px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:14px}
+.ppl b{display:block;font-size:15px;line-height:1.3}
+.ppl span.app{font-size:12.5px;color:var(--muted)}
+.role{font-size:12.5px;font-weight:600;padding:4px 10px;border-radius:999px;background:var(--bg2);color:var(--fg2)}
+.role.own{background:var(--accent-soft);color:var(--accent-ink)}
+.share .inv{display:flex;gap:8px;margin-top:16px}
+.share .inv span{flex:1;height:40px;border:1px dashed var(--line2);border-radius:10px;display:flex;align-items:center;padding:0 12px;font-size:13.5px;color:var(--muted)}
 
-/* 다운로드 */
-.dl{display:grid;grid-template-columns:1.2fr 1fr;gap:22px}
-.dlcard{background:var(--card);border:1px solid var(--line);border-radius:22px;padding:32px}
-.dlcard .os{display:flex;align-items:center;gap:12px;font-size:22px;font-weight:800;letter-spacing:-.02em}
-.dlcard .os svg{width:28px;height:28px}
-.ver{display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 22px}
-.ver span{font-size:13.5px;font-weight:600;background:var(--bg2);border-radius:999px;padding:4px 12px;color:var(--fg2)}
-.req{margin:22px 0 0;padding:18px 0 0;border-top:1px solid var(--line);font-size:14px;color:var(--muted)}
-.req li{margin:3px 0}
-.req ul{margin:6px 0 0;padding-left:18px}
-.dlnote{font-size:13.5px;color:var(--muted);margin-top:14px}
-.dlcard.side h3{font-size:19px;margin:0 0 10px;letter-spacing:-.02em}
-.dlcard.side p{margin:0 0 10px;color:var(--fg2);font-size:15px}
+/* sync */
+.sync{display:grid;grid-template-columns:1fr auto 1fr;gap:18px;align-items:center}
+.evcard{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:16px;box-shadow:var(--shadow-s)}
+.evcard .who{display:flex;align-items:center;gap:8px;font-size:13px;font-weight:700;color:var(--fg2)}
+.evcard .who i{width:9px;height:9px;border-radius:50%;background:var(--c)}
+.evcard .e{margin-top:12px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--c) 12%,var(--surface))}
+.evcard .e b{display:block;font-size:15px}
+.evcard .e small{font-size:13px;color:var(--fg2)}
+.mid{display:grid;justify-items:center;gap:10px;color:var(--muted)}
+.mid img{width:44px;height:44px;border-radius:12px;box-shadow:var(--shadow-s)}
 
-/* 업데이트 노트 */
-.rels{max-width:780px;border-left:2px solid var(--line);margin-left:6px}
-.rel{position:relative;padding:0 0 30px 28px}
-.rel::before{content:"";position:absolute;left:-7px;top:6px;width:12px;height:12px;border-radius:50%;background:var(--card);border:2px solid var(--line)}
-.rel.new::before{background:var(--accent);border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-soft)}
-.rh{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--muted)}
-.rh b{color:var(--fg);font-size:15px}
-.rh .nb{background:var(--accent);color:#fff;border-radius:999px;padding:0 9px;font-size:12px;font-weight:700}
-.rh time{margin-left:auto}
-.rel h3{font-size:18px;letter-spacing:-.02em;margin:4px 0 6px}
-.rel ul{margin:0;padding-left:18px;color:var(--fg2);font-size:15px}
-.rel li{margin:2px 0}
-.rels.short .rel:nth-child(n+5){display:none}
-.more{margin:4px 0 0 34px;height:42px;font-size:14.5px}
 
-/* 기능 카드 그림 */
-.card .vis.fx{height:170px;padding:14px;gap:12px}
-.fx .mc{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);font-size:11px;color:var(--fg2)}
-.fx-month{width:100%;max-width:250px;padding:10px 12px}
-.fx-month .hd{display:flex;justify-content:space-between;font-weight:700;color:var(--fg);margin-bottom:6px}
-.fx-month .gr{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
-.fx-month .gr span{height:15px;border-radius:4px;background:var(--bg2);position:relative}
-.fx-month .gr span i{position:absolute;left:2px;right:2px;bottom:2px;height:4px;border-radius:2px}
-.fx-month .lg{display:flex;gap:10px;margin-top:8px;font-size:10.5px;font-weight:600}
-.fx-month .lg b{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
-.fx-share{width:100%;max-width:250px;padding:10px 12px}
-.fx-share .hd{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--fg);margin-bottom:8px;font-size:12px}
-.fx-share .hd i{width:9px;height:9px;border-radius:50%;background:var(--accent)}
-.fx-share .hd em{margin-left:auto;font-style:normal;font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
-.fx-share .p{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--line)}
-.fx-share .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:10px}
-.fx-share .p small{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
-.fx-sync{width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
-.fx-sync .ev{padding:8px 9px;width:92px}
-.fx-sync .ev b{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:600;margin-bottom:5px}
-.fx-sync .ev b i{width:7px;height:7px;border-radius:50%}
-.fx-sync .ev div{border-left:3px solid;border-radius:3px;padding:3px 6px;background:var(--bg2);font-weight:700;color:var(--fg);font-size:10.5px;line-height:1.35}
-.fx-sync .ev div small{display:block;font-weight:500;color:var(--muted);font-size:9.5px}
-.fx-sync .mid{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-weight:700;font-size:13px}
-.fx-sync .mid img{width:30px;height:30px;border-radius:8px;box-shadow:var(--shadow)}
 
-/* FAQ */
-.faq{max-width:780px}
-details{border-bottom:1px solid var(--line)}
-summary{list-style:none;cursor:pointer;padding:22px 40px 22px 0;font-size:17.5px;font-weight:700;letter-spacing:-.02em;position:relative}
-summary::-webkit-details-marker{display:none}
-summary::after{content:"";position:absolute;right:6px;top:50%;width:10px;height:10px;border-right:2px solid var(--muted);border-bottom:2px solid var(--muted);transform:translateY(-70%) rotate(45deg);transition:transform .2s}
-details[open] summary::after{transform:translateY(-30%) rotate(-135deg)}
-details .a{padding:0 0 24px;color:var(--fg2);font-size:15.5px}
-details .a p{margin:0 0 8px}
-details .a ol,details .a ul{margin:4px 0 8px;padding-left:20px}
+/* bridge */
+.bh{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.bh i{width:12px;height:12px;border-radius:4px;background:var(--s)}
+.bh small{margin-left:auto;font-weight:600;font-size:12.5px;color:var(--muted)}
+.bgrid{display:grid;grid-template-columns:1fr 92px 1fr;align-items:center;margin-top:18px}
+.pc{position:relative;border:1px solid color-mix(in srgb,var(--c) 35%,var(--line));border-radius:16px;padding:16px;background:var(--surface);box-shadow:var(--shadow-s)}
+.pw{display:flex;gap:10px;align-items:center}
+.pw b{display:block;font-size:15px;line-height:1.3}
+.pw small{display:flex;align-items:center;gap:6px;font-size:12.5px;color:var(--muted)}
+.plo.xs{width:18px;height:18px;border-radius:5px;font-size:10px;color:color-mix(in srgb,var(--c) 70%,var(--fg));background:color-mix(in srgb,var(--c) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 25%,var(--line))}
+.be{margin-top:12px;padding:10px 12px;border-radius:10px;background:color-mix(in srgb,var(--c) 12%,var(--surface));transition:box-shadow .5s var(--ease),background .5s var(--ease)}
+.be b{display:block;font-size:15px}
+.be small{font-size:13px;color:var(--fg2)}
+.be.flash{box-shadow:0 0 0 2px var(--c),0 8px 20px -8px var(--c)}
+.synced{position:absolute;right:12px;top:12px;font-size:11.5px;font-weight:700;color:var(--accent-ink);background:var(--accent-soft);padding:3px 8px;border-radius:999px;opacity:0;transform:translateY(4px);transition:opacity .4s var(--ease),transform .4s var(--ease)}
+.synced.show{opacity:1;transform:none}
+.bmid{display:flex;align-items:center;justify-content:center;gap:0}
+.bmid img{width:36px;height:36px;border-radius:10px;box-shadow:var(--shadow-s);position:relative;z-index:1}
+.bmid .ln{flex:1;height:0;border-top:2px dashed var(--line2);position:relative}
+.pulse{position:absolute;top:-5px;left:0;width:8px;height:8px;border-radius:50%;background:var(--accent);opacity:0}
+.bridge.go .ln:first-child .pulse{animation:run .45s var(--ease) forwards}
+.bridge.go .ln:last-child .pulse{animation:run .45s var(--ease) .4s forwards}
+@keyframes run{0%{left:0;opacity:1}90%{opacity:1}100%{left:calc(100% - 8px);opacity:0}}
+.bfoot{display:flex;align-items:center;gap:12px;margin-top:18px;flex-wrap:wrap}
 
-/* 푸터 */
-footer{border-top:1px solid var(--line);padding:44px 0 56px;font-size:14px;color:var(--muted)}
+/* chip link */
+.link{display:grid;gap:14px}
+.lpop{padding:20px 20px 8px}
+.lh{display:flex;align-items:center;gap:10px;font-weight:800;font-size:17px}
+.lh i{width:12px;height:12px;border-radius:4px;background:var(--s)}
+.lh small{margin-left:auto;font-weight:600;font-size:12.5px;color:var(--muted)}
+.lsub{margin:16px 0 4px;font-size:12.5px;font-weight:700;color:var(--muted)}
+.lrow{display:grid;grid-template-columns:32px 1fr auto;gap:12px;align-items:center;padding:12px 0;border-top:1px solid var(--line)}
+.plo{width:32px;height:32px;border-radius:9px;display:grid;place-items:center;font-weight:800;font-size:14px;color:color-mix(in srgb,var(--c) 70%,var(--fg));background:color-mix(in srgb,var(--c) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--c) 25%,var(--line))}
+.lt{font-weight:700;font-size:15px;line-height:1.35;min-width:0}
+.lt small{display:block;font-weight:500;font-size:13px;color:var(--muted)}
+.sw{width:44px;height:26px;border-radius:999px;border:0;background:var(--line2);position:relative;cursor:pointer;transition:background .25s var(--ease)}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .35s var(--ease)}
+.sw[aria-checked="true"]{background:var(--accent)}
+.sw[aria-checked="true"]::after{transform:translateX(18px)}
+.soon{opacity:.55}
+.tagsoon{font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--bg2);color:var(--muted)}
+.dest{display:grid;grid-template-columns:1fr auto 1fr;gap:14px;align-items:center}
+.dc{background:var(--surface);border:1px solid color-mix(in srgb,var(--c) 35%,var(--line));border-radius:14px;padding:14px 16px;box-shadow:var(--shadow-s);transition:opacity .45s var(--ease),filter .45s var(--ease),transform .45s var(--ease),border-color .3s}
+.dc b{display:block;font-size:13px;color:var(--fg2)}
+.dc span{display:flex;align-items:center;gap:8px;margin-top:8px;padding:8px 10px;border-radius:9px;background:color-mix(in srgb,var(--c) 12%,var(--surface));font-weight:700;font-size:14.5px}
+.dc span i{width:8px;height:8px;border-radius:50%;background:var(--c)}
+.dc small{display:block;margin-top:8px;font-size:12.5px;color:var(--muted)}
+.dc.off{opacity:.38;filter:grayscale(1) blur(.5px);transform:scale(.97);border-style:dashed;box-shadow:none}
+.dmid{display:grid;justify-items:center;gap:8px;color:var(--muted)}
+.dmid img{width:40px;height:40px;border-radius:11px;box-shadow:var(--shadow-s)}
+
+/* screens */
+.shots{display:grid;grid-template-columns:1fr 1fr;gap:28px;align-items:start}
+.shots figure{margin:0}
+.frame{background:var(--bg2);border:1px solid var(--line);border-radius:16px;padding:28px 28px 0;height:440px;overflow:hidden;display:flex;justify-content:center}
+.frame img{width:min(100%,340px);border-radius:12px 12px 0 0;box-shadow:var(--shadow-l)}
+figcaption{margin-top:18px}
+figcaption b{display:block;font-size:18px;letter-spacing:-.02em}
+figcaption span{display:block;color:var(--fg2);margin-top:6px;font-size:15.5px}
+
+/* more */
+.more{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:48px;border-top:1px solid var(--line)}
+.more div{padding:26px 0 28px;border-bottom:1px solid var(--line)}
+.more b{display:flex;align-items:center;gap:10px;font-size:16.5px;letter-spacing:-.02em}
+.more b svg{color:var(--accent)}
+.more p{margin:8px 0 0;color:var(--fg2);font-size:15px;line-height:1.65}
+
+/* steps */
+.steps{list-style:none;padding:0;margin:0;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:28px;counter-reset:s;position:relative}
+.steps::before{content:"";position:absolute;left:18px;right:18px;top:18px;height:1px;background:var(--line2)}
+.steps li{counter-increment:s;position:relative}
+.steps li::before{content:counter(s);width:36px;height:36px;border-radius:50%;display:grid;place-items:center;background:var(--bg);border:1px solid var(--line2);font-weight:800;font-size:15px;font-variant-numeric:tabular-nums;position:relative}
+.steps li:first-child::before{background:var(--fg);color:var(--bg);border-color:var(--fg)}
+.steps b{display:block;margin-top:18px;font-size:17px;letter-spacing:-.02em}
+.steps p{margin:6px 0 0;color:var(--fg2);font-size:15px}
+
+/* download */
+.dl{display:grid;grid-template-columns:minmax(0,7fr) minmax(0,5fr);gap:20px;align-items:stretch}
+.dlmain{background:var(--fg);color:var(--bg);border-radius:20px;padding:40px;display:flex;flex-direction:column}
+.dlmain .os{display:flex;align-items:center;gap:10px;font-weight:800;font-size:22px;letter-spacing:-.02em}
+.dlmain .os svg{width:22px;height:22px}
+.vers{display:flex;gap:6px;margin-top:12px;flex-wrap:wrap}
+.vers span{font-size:13px;font-weight:600;padding:4px 10px;border-radius:999px;background:color-mix(in srgb,var(--bg) 14%,transparent)}
+.dlmain .btn{margin-top:28px;align-self:flex-start}
+.dlmain p{margin:20px 0 0;font-size:14.5px;line-height:1.75;color:color-mix(in srgb,var(--bg) 78%,transparent);max-width:40em}
+.dlmain .req{margin-top:auto;padding-top:26px}
+.req b{font-size:14px}
+.req ul{margin:8px 0 0;padding-left:18px;font-size:14.5px;line-height:1.8}
+.dlmain .req ul{color:color-mix(in srgb,var(--bg) 82%,transparent)}
+.dlside{background:var(--surface);border:1px solid var(--line);border-radius:20px;padding:32px}
+.dlside h3{margin:0;font-size:19px;letter-spacing:-.02em}
+.dlside p{color:var(--fg2);font-size:15px;margin:12px 0 0}
+
+/* updates */
+.rels{display:grid;gap:0;border-top:1px solid var(--line)}
+.rel{display:grid;grid-template-columns:180px 1fr;gap:32px;padding:30px 0;border-bottom:1px solid var(--line)}
+.rel .rh{display:flex;flex-direction:column;gap:4px}
+.rel .rh b{font-size:20px;font-variant-numeric:tabular-nums;letter-spacing:-.02em}
+.rel .rh time{font-size:13.5px;color:var(--muted);font-variant-numeric:tabular-nums}
+.rel .nb{align-self:flex-start;font-size:12px;font-weight:700;padding:3px 9px;border-radius:999px;background:var(--accent-soft);color:var(--accent-ink);margin-top:4px}
+.rel h3{margin:0;font-size:18px;letter-spacing:-.02em}
+.rel ul{margin:10px 0 0;padding-left:18px;color:var(--fg2);font-size:15px;line-height:1.8}
+.rels.short .rel:nth-child(n+4){display:none}
+.morebtn{margin-top:28px}
+
+/* faq */
+.faqwrap{display:grid;grid-template-columns:minmax(0,4fr) minmax(0,8fr);gap:64px}
+.faq details{border-bottom:1px solid var(--line)}
+.faq details:first-child{border-top:1px solid var(--line)}
+.faq summary{list-style:none;cursor:pointer;display:flex;justify-content:space-between;gap:16px;align-items:center;padding:20px 0;font-weight:700;font-size:16.5px;letter-spacing:-.015em}
+.faq summary::-webkit-details-marker{display:none}
+.faq summary svg{transition:transform .3s var(--ease);color:var(--muted)}
+.faq details[open] summary svg{transform:rotate(180deg)}
+.faq .a{padding:0 0 22px;color:var(--fg2);font-size:15.5px}
+.faq .a p{margin:0 0 10px}
+.faq .a a{color:var(--accent-ink)}
+
+footer{border-top:1px solid var(--line);padding:48px 0 56px;font-size:14px;color:var(--muted)}
 footer .wrap{display:flex;justify-content:space-between;gap:24px;flex-wrap:wrap}
-footer .logo{font-size:17px;color:var(--fg);margin-bottom:8px}
-footer .links{display:flex;gap:18px;flex-wrap:wrap}
-footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
+footer .logo{color:var(--fg);margin-bottom:10px}
+footer .links{display:flex;gap:20px;align-items:flex-start;flex-wrap:wrap}
+footer .links a{text-decoration:none}
+footer .links a:hover{color:var(--fg);text-decoration:underline}
 
-/* 등장 효과 */
-.rv{opacity:0;transform:translateY(16px);transition:opacity .6s ease,transform .6s ease}.rv.in{opacity:1;transform:none}
-@media (prefers-reduced-motion:reduce){.rv{opacity:1;transform:none;transition:none}html{scroll-behavior:auto}.btn:hover{transform:none}}
-
-@media (max-width:900px){
-  .hero .wrap,.dl,.shots{grid-template-columns:1fr}
-  .cards,.mini{grid-template-columns:1fr 1fr}
-  .steps{grid-template-columns:1fr 1fr}
-  nav{display:none}.menu-btn{display:grid;margin-left:auto}
-  nav.open{display:flex;position:absolute;top:64px;left:0;right:0;flex-direction:column;gap:0;background:var(--bg);border-bottom:1px solid var(--line);padding:6px 24px 14px}
-  nav.open a{padding:10px 0}
+@media (max-width:980px){
+  nav{display:none;position:absolute;top:64px;left:0;right:0;flex-direction:column;background:var(--bg);border-bottom:1px solid var(--line);padding:8px 16px 16px}
+  nav.open{display:flex}
+  nav a{padding:12px 8px}
+  .menu-btn{display:grid;margin-left:auto}
+  .row,.row.flip{grid-template-columns:1fr;gap:36px}
+  .row.flip .copy{order:0}
+  .more{grid-template-columns:1fr 1fr}
+  .steps{grid-template-columns:1fr 1fr;row-gap:40px}
+  .steps::before{display:none}
+  .dl,.faqwrap{grid-template-columns:1fr}
+  .faqwrap{gap:28px}
+  .stage{height:600px}
+  .src{left:5%}
+  .widget{right:6%}
 }
-@media (max-width:600px){
-  .cards,.mini,.steps{grid-template-columns:1fr}
-  section{padding:64px 0}.hero{padding:44px 0 24px}
+@media (max-width:640px){
+  .hd-cta{display:none}
+  .hero{padding-top:52px}
+  .hero .btn{width:100%;justify-content:center}
+  section{padding:84px 0}
+  .stage{height:560px;width:calc(100% - 24px);margin-top:44px}
+  .threads,.src{display:none}
+  .widget{left:50%;right:auto;transform:translateX(-50%);width:min(320px,calc(100% - 40px));height:470px;top:40px}
+  .taskbar .clock{display:none}
+  .cal .d{min-height:58px}
+  .ev{font-size:0;padding:0;height:5px;border-radius:3px;max-height:5px}
+  .ev::before{display:none}
+  .ev{background:var(--c)}
+  .ev.off{height:0}
+  .dest{grid-template-columns:1fr 1fr}
+  .bgrid{grid-template-columns:1fr;row-gap:0}
+  .bmid{flex-direction:column;height:72px}
+  .bmid .ln{width:0;height:auto;flex:1;border-top:0;border-left:2px dashed var(--line2)}
+  .pulse{display:none}
+  .dmid{display:none}
+  .shots,.more{grid-template-columns:1fr}
+  .frame{height:380px}
+  .steps{grid-template-columns:1fr}
+  .rel{grid-template-columns:1fr;gap:10px}
+  .dlmain{padding:28px}
+  .dlmain .btn{width:100%;justify-content:center}
+  .rel .rh{flex-direction:row;align-items:baseline;gap:10px}
 }
+@media (prefers-reduced-motion:reduce){*{transition-duration:.01ms!important;scroll-behavior:auto!important}}
 </style>
 </head>
 <body>
 <a class="skip" href="#main">본문으로 건너뛰기</a>
 
 <div class="notice"><div class="wrap">
-  <span class="tag">업데이트</span>
+  <span class="dot" aria-hidden="true"></span>
   <span id="noticeText">새 버전이 나오면 위젯이 알아서 알려 줘요.</span>
   <a href="#updates">업데이트 노트 보기</a>
 </div></div>
 
 <header id="top"><div class="wrap">
-  <a class="logo" href="#top" aria-label="Plait 처음으로"><img class="mark" src="assets/plait_icon.png" alt="" width="28" height="28">Plait</a>
+  <a class="logo" href="#top" aria-label="Plait 처음으로"><img src="assets/plait_icon.png" alt="" width="28" height="28">Plait</a>
   <nav id="nav" aria-label="주요 메뉴">
     <a href="#features">기능</a>
+    <a href="#screens">화면</a>
     <a href="#start">시작하기</a>
-    <a href="#download">다운로드</a>
     <a href="#updates">업데이트 노트</a>
     <a href="#faq">자주 묻는 질문</a>
-    <a href="external/privacy.html">개인정보처리방침</a>
   </nav>
-  <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-  <button class="icon-btn" id="themeBtn" type="button" aria-label="어두운 화면으로 바꾸기"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8z"/></svg></button>
+  <button class="icon-btn menu-btn" id="menuBtn" type="button" aria-label="메뉴 열기" aria-expanded="false" aria-controls="nav"><svg class="i" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
+  <button class="icon-btn" id="themeBtn" type="button" aria-label="어두운 화면으로 바꾸기"></button>
+  <a class="btn coral sm hd-cta" href="#download">Plait 받기</a>
 </div></header>
 
 <main id="main">
-<section class="hero"><div class="wrap">
-  <div>
-    <span class="eyebrow"><i aria-hidden="true"></i>Windows 캘린더 위젯</span>
-    <h1>흩어진 캘린더를,<br><em>하나로 엮어</em> 바탕화면에.</h1>
-    <p class="lead">구글 캘린더, 네이버 캘린더, 친구와 함께 쓰는 캘린더를 위젯 하나에 모았어요. 어디서 고쳐도 양쪽이 같이 바뀌고, 팀 휴가까지 한눈에 보여요.</p>
+<section class="hero" aria-labelledby="h1">
+  <div class="wrap">
+    <h1 id="h1">흩어진 캘린더를, <em>하나로 엮어</em> 바탕화면에.</h1>
+    <p class="lead">구글 캘린더, 네이버 캘린더, 친구와 함께 쓰는 캘린더를 위젯 하나에 모았어요. 내 구글 캘린더와 친구의 네이버 캘린더도 하나로 이어지고, 팀 휴가까지 한눈에 보여요.</p>
     <div class="cta">
-      <a class="btn primary" href="#download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Plait 받기</a>
-      <a class="btn ghost" href="#features">기능 둘러보기</a>
+      <a class="btn ink" href="#features">기능 둘러보기<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14m0 0-6-6m6 6 6-6"/></svg></a>
+      <a class="btn line" href="#download"><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Windows용 받기</a>
     </div>
-    <p class="cta-note">무료 · Windows 10/11 · Plait 계정으로 시작</p>
+    <p class="note">무료 · Windows 10/11 PC에서 써요</p>
   </div>
-  <div class="desk" role="img" aria-label="바탕화면 오른쪽에 떠 있는 Plait 위젯 화면">
-    <div class="note" aria-hidden="true"><b>이번 주 할 일</b><span></span><span></span><span></span></div>
-    <div class="w"><img class="only-light" src="assets/widget_light.png" alt="" width="720" height="1918"><img class="only-dark" src="assets/widget_dark.png" alt="" width="720" height="1918"></div>
-    <div class="tb" aria-hidden="true"><i></i><i></i><i class="me"></i><i></i></div>
+  <div class="stage" role="img" aria-label="Windows 바탕화면 오른쪽에 떠 있는 Plait 위젯. 내 구글 캘린더, 친구의 네이버 캘린더, 함께 쓰는 캘린더가 위젯 하나로 모인다.">
+    <span class="tag">예시 화면</span>
+    <svg class="threads" viewBox="0 0 1200 640" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M262 150 C 480 150, 600 250, 860 250" stroke="var(--g)" opacity=".75"/>
+      <path d="M330 290 C 520 290, 600 300, 860 300" stroke="var(--n)" opacity=".75"/>
+      <path d="M310 430 C 540 430, 620 350, 860 350" stroke="#fff" opacity=".9"/>
+    </svg>
+    <div class="src" style="top:128px"><i style="background:var(--g)"></i>내 구글 캘린더<small>나</small></div>
+    <div class="src" style="top:268px"><i style="background:var(--n)"></i>친구의 네이버 캘린더<small>김설계</small></div>
+    <div class="src" style="top:408px"><i style="background:var(--s)"></i>함께 쓰는 캘린더<small>주말 등산 모임</small></div>
+    <div class="widget">
+      <img class="only-light" src="assets/widget_light.png" alt="" width="720" height="1918">
+      <img class="only-dark" src="assets/widget_dark.png" alt="" width="720" height="1918">
+    </div>
+    <div class="taskbar" aria-hidden="true">
+      <span><svg viewBox="0 0 24 24" width="20" height="20"><path fill="#2f7ad8" d="M3 5.5 10 4.5v7H3zm8-1.1L21 3v8.5H11zM3 12.5h7v7L3 18.5zm8 0h10V21l-10-1.4z"/></svg></span>
+      <span><svg class="i" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></span>
+      <span class="on"><img src="assets/plait_icon.png" alt=""></span>
+      <span class="clock num">오후 3:00<br>2026-11-23</span>
+    </div>
   </div>
-</div></section>
+</section>
 
-<section id="features" class="alt"><div class="wrap">
-  <p class="sec-k">기능</p>
-  <h2 class="rv">여러 캘린더를, 한 줄로 엮어요.</h2>
-  <p class="sec-lead rv">회사 일정은 구글에, 개인 일정은 네이버에, 친구와 잡은 약속은 메신저에. 흩어져 있던 일정을 Plait 하나에서 보고 고쳐요.</p>
-  <div class="cards">
-    <article class="card rv">
-      <div class="vis fx" aria-hidden="true"><div class="mc fx-month"><div class="hd"><span>11월</span><span style="color:var(--muted);font-weight:600">한 달력에 모두</span></div><div class="gr"><span></span><span></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span></span><span><i style="background:#7b61ff"></i></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span></span><span><i style="background:var(--blue)"></i></span><span><i style="background:#7b61ff"></i></span><span><i style="background:#7b61ff"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span><i style="background:#7b61ff"></i></span><span></span></div><div class="lg"><span><b style="background:var(--blue)"></b>구글</span><span><b style="background:#03c75a"></b>네이버</span><span><b style="background:#7b61ff"></b>네이버 웍스</span></div></div></div>
-      <span class="num">01</span>
-      <h3>캘린더를 한 화면에</h3>
-      <p>구글은 로그인 한 번, 네이버·네이버 웍스는 앱 비밀번호로 연결해요. 캘린더마다 색깔 그대로 한 달력에 겹쳐 보여요.</p>
-    </article>
-    <article class="card rv">
-      <div class="vis fx" aria-hidden="true"><div class="mc fx-share"><div class="hd"><i></i>주말 등산 모임<em>함께 쓰는 캘린더</em></div><div class="p"><span class="av" style="background:var(--accent)">나</span>나<small>주인</small></div><div class="p"><span class="av" style="background:#2f6fdb">김</span>김설계<small>편집 가능</small></div><div class="p"><span class="av" style="background:#8a8780">이</span>이구조<small>보기만</small></div></div></div>
-      <span class="num">02</span>
-      <h3>친구와 함께 쓰는 캘린더</h3>
-      <p>Plait 아이디로 친구를 추가하고 캘린더를 같이 써요. 사람마다 "편집 가능" 또는 "보기만" 권한을 정할 수 있어요.</p>
-    </article>
-    <article class="card rv">
-      <div class="vis fx" aria-hidden="true"><div class="fx-sync"><div class="mc ev"><b><i style="background:var(--blue)"></i>내 구글</b><div style="border-color:var(--blue)">팀 회의<small>오후 3:00</small></div></div><div class="mid">⇄<img src="assets/plait_icon.png" alt="">⇄</div><div class="mc ev"><b><i style="background:#03c75a"></i>친구 네이버</b><div style="border-color:#03c75a">팀 회의<small>오후 3:00</small></div></div></div></div>
-      <span class="num">03</span>
-      <h3>어디서 고쳐도 양쪽으로</h3>
-      <p>함께 쓰는 캘린더를 내 구글·네이버에 연동하면 같은 이름의 캘린더가 생겨요. 휴대폰 캘린더 앱에서 고친 일정도 위젯이 켜져 있으면 Plait과 친구에게 맞춰져요.</p>
-    </article>
-  </div>
-</div></section>
+<section id="features" class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>여러 캘린더를, 한 줄로 엮어요.</h2>
+      <p class="sec-lead">회사 일정은 구글에, 개인 일정은 네이버에, 친구와 잡은 약속은 메신저에. 흩어져 있던 일정을 Plait 하나에서 보고 고쳐요.</p>
+    </div>
 
-<section id="screens"><div class="wrap">
-  <p class="sec-k">화면</p>
-  <h2 class="rv">넣고, 고치고, 바로 끝.</h2>
-  <p class="sec-lead rv">작은 창에서 일정과 휴가를 다뤄요. 구글 캘린더 사이트를 열 일이 줄어들어요.</p>
-  <div class="shots">
-    <figure class="rv">
-      <div class="frame"><img src="assets/event.png" alt="일정 추가 창. 제목, 시작일과 종료일, 시간 휠, 캘린더 선택 칩이 보인다." width="760" height="1660" loading="lazy"></div>
-      <figcaption><b>일정 추가 · 수정</b>여러 날 일정도 시작일·종료일로 한 번에. 시간은 휠을 돌려 5분 단위로 고르고, 넣을 캘린더는 색깔 칩으로 골라요.</figcaption>
-    </figure>
-    <figure class="rv">
-      <div class="frame"><img src="assets/leave.png" alt="휴가 등록 창. 연차, 반차, 경조휴가 등 구분 칩과 날짜, 메모 칸이 보인다." width="760" height="964" loading="lazy"></div>
-      <figcaption><b>휴가 등록</b>구분과 날짜만 고르면 끝. 주말·공휴일을 뺀 차감 일수도 바로 계산해 보여 줘요.</figcaption>
-    </figure>
-  </div>
-</div></section>
-
-<section class="alt"><div class="wrap">
-  <p class="sec-k">더 보기</p>
-  <h2 class="rv">작지만 꼼꼼하게.</h2>
-  <p class="sec-lead rv">매일 쓰는 위젯이라 손이 덜 가는 쪽으로 다듬었어요.</p>
-  <div class="mini">
-    <div class="rv"><b><i>◉</i>칩 하나로 관리</b><p>캘린더 칩을 더블클릭하면 연동, 함께 쓰는 사람과 권한, 색상, 삭제를 한 창에서 다뤄요.</p></div>
-    <div class="rv"><b><i>↺</i>쓰던 캘린더 그대로</b><p>이미 쓰던 구글·네이버 캘린더를 그대로 친구와 함께 쓰는 캘린더로 바꿀 수 있어요.</p></div>
-    <div class="rv"><b><i>휴</i>팀 휴가 한눈에</b><p>팀 휴가 캘린더를 정하면 날짜마다 누가 쉬는지 보여요. 휴가 등록도 위젯에서 바로 해요.</p></div>
-    <div class="rv"><b><i>!</i>변경 알림</b><p>다른 사람이 함께 쓰는 캘린더의 일정을 바꾸면 알려 줘요.</p></div>
-    <div class="rv"><b><i>D</i>데드라인 D-day</b><p>캘린더마다 마지막 일정까지 남은 날과 진행 막대를 보여 줘요.</p></div>
-    <div class="rv"><b><i>↕</i>원하는 크기로</b><p>칸을 접고 달력 높이·투명도를 맞추고, 다른 창 위에 고정해 둘 수 있어요.</p></div>
-    <div class="rv"><b><i>◐</i>어두운 화면</b><p>밝게·어둡게·시스템 따라가기 중에 골라요. 12·24시간 표시도 골라요.</p></div>
-    <div class="rv"><b><i>↻</i>자동 업데이트</b><p>새 버전이 나오면 위젯에서 버튼 한 번으로 바꿔요. 설정은 그대로 남아요.</p></div>
-    <div class="rv"><b><i>⌁</i>안전하게</b><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해 두고, 서버에는 함께 쓰는 캘린더만 올라가요.</p></div>
-  </div>
-</div></section>
-
-<section id="start"><div class="wrap">
-  <p class="sec-k">시작하기</p>
-  <h2 class="rv">몇 분이면 준비 끝.</h2>
-  <p class="sec-lead rv">처음 한 번만 설정하면 그다음부터는 켜기만 하면 돼요.</p>
-  <ol class="steps">
-    <li class="rv"><b>설치</b><p>받은 설치 파일을 실행하고 [설치]를 눌러요. 바탕화면과 시작 프로그램에 바로가기가 생겨요.</p></li>
-    <li class="rv"><b>Plait 계정 만들기</b><p>아이디·이름·비밀번호로 가입해요. 이메일은 필요 없고, 가입할 때 받는 복구 코드는 꼭 보관해 두세요.</p></li>
-    <li class="rv"><b>캘린더 연결</b><p>구글은 로그인으로, 네이버는 앱 비밀번호로 연결해요. 나중에 설정 › 연동에서 해도 돼요.</p></li>
-    <li class="rv"><b>친구와 함께 쓰기</b><p>친구를 추가하고 캘린더를 만들어 초대해요. 팀 휴가는 설정 › 팀 휴가에서 골라요.</p></li>
-  </ol>
-</div></section>
-
-<section id="download" class="alt"><div class="wrap">
-  <p class="sec-k">다운로드</p>
-  <h2 class="rv">지금 버전</h2>
-  <p class="sec-lead rv">무료로 받아 바로 설치할 수 있어요. 한 번 설치하면 업데이트는 위젯이 알아서 챙겨요.</p>
-  <div class="dl">
-    <div class="dlcard rv">
-      <div class="os"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.5v7H3zm8 -1.1L21 3v8.5H11zM3 12.5h7v7L3 18.5zm8 0h10V21l-10-1.4z"/></svg>Windows</div>
-      <div class="ver" id="verChips"><span>최신 버전</span></div>
-      <a class="btn primary" id="dlBtn" href="external/Plait_setup.exe" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Windows용 받기 (.exe)</a>
-      <p class="dlnote">받은 <b>Plait_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 Plait 계정을 만들고 캘린더를 연결하면 돼요.</p>
-      <div class="req"><b>필요한 환경</b>
-        <ul><li>Windows 10 또는 11 (64비트)</li><li>Microsoft Edge WebView2 런타임 (대부분 이미 설치되어 있어요)</li><li>연결할 구글 또는 네이버 계정 (없어도 Plait 캘린더만으로 쓸 수 있어요)</li></ul>
+    <div class="row">
+      <div class="copy">
+        <h3>내 구글과 친구의 네이버가, 한 캘린더로</h3>
+        <p>Plait 아이디로 친구나 직장 동료를 초대해 캘린더를 함께 써요. 나는 내 구글에, 친구는 자기 네이버에 연동하면 누가 어디서 고쳐도 서로의 캘린더에 맞춰져요.</p>
+        <ul>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>각자 쓰던 캘린더 앱을 바꾸지 않아도 돼요</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>사람마다 "편집 가능" 또는 "보기만" 권한을 정해요</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>다른 사람이 일정을 바꾸면 알려 줘요</li>
+        </ul>
+      </div>
+      <div class="bridge" id="bridge">
+        <div class="bh"><i aria-hidden="true"></i>주말 등산 모임<small>함께 쓰는 캘린더 · 예시</small></div>
+        <div class="bgrid">
+          <div class="pc" style="--c:var(--g)" data-p="me">
+            <div class="pw"><span class="av" style="background:var(--accent)">나</span><span><b>나</b><small><span class="plo xs">G</span>구글 캘린더에 연동</small></span></div>
+            <div class="be"><b>도봉산 산행</b><small class="num" data-t>11월 28일 오전 9:00</small></div>
+          </div>
+          <div class="bmid" aria-hidden="true"><span class="ln"><i class="pulse"></i></span><img src="assets/plait_icon.png" alt=""><span class="ln"><i class="pulse"></i></span></div>
+          <div class="pc" style="--c:var(--n)" data-p="fr">
+            <div class="pw"><span class="av" style="background:#2f6fdb">김</span><span><b>김설계</b><small><span class="plo xs">N</span>네이버 캘린더에 연동</small></span></div>
+            <div class="be"><b>도봉산 산행</b><small class="num" data-t>11월 28일 오전 9:00</small></div>
+            <span class="synced" aria-hidden="true">방금 맞춰졌어요</span>
+          </div>
+        </div>
+        <div class="bfoot"><button type="button" class="btn line sm" id="bridgeBtn">내 구글에서 시간 바꿔 보기</button><span class="ex" id="bridgeMsg" aria-live="polite">버튼을 누르면 친구 쪽 캘린더도 바뀌어요.</span></div>
       </div>
     </div>
-    <div class="dlcard side rv">
-      <h3>팀 담당자라면</h3>
-      <p>팀 휴가를 같이 보려면 구글 캘린더에 팀 휴가 캘린더를 하나 만들어 팀원에게 "일정 변경" 권한으로 공유하면 준비 끝이에요. 팀 일정은 Plait에서 캘린더를 만들어 팀원을 초대하면 돼요.</p>
-      <p>받은 zip 폴더에 구글 설정 파일을 넣고 "exe 만들기.cmd"를 실행하면, 팀원은 설정 파일 없이 exe 하나로 설치할 수 있어요.</p>
-      <div class="req"><b>최근 업데이트</b><ul id="notes"><li>불러오는 중…</li></ul><p style="margin:8px 0 0"><a href="#updates" style="color:var(--accent);font-weight:600;text-decoration:none">업데이트 노트 전체 보기 →</a></p></div>
+    <div class="row flip">
+      <div class="copy">
+        <h3>캘린더를 한 화면에</h3>
+        <p>구글은 로그인 한 번, 네이버·네이버 웍스는 앱 비밀번호로 연결해요. 캘린더마다 색깔 그대로 한 달력에 겹쳐 보여요.</p>
+        <ul>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>캘린더 칩을 눌러 보고 싶은 것만 켜요</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>켜 둔 칩만 보이게 접을 수 있어요</li>
+        </ul>
+      </div>
+      <div class="panel demo" id="demo">
+        <div class="bar">
+          <span class="m num">2026년 11월</span>
+          <button class="chip" type="button" aria-pressed="true" data-src="g" style="--c:var(--g)"><span class="box"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>구글 · 회사</button>
+          <button class="chip" type="button" aria-pressed="true" data-src="n" style="--c:var(--n)"><span class="box"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>네이버 · 개인</button>
+          <button class="chip" type="button" aria-pressed="true" data-src="s" style="--c:var(--s)"><span class="box"><svg viewBox="0 0 24 24"><path d="M20 6 9 17l-5-5"/></svg></span>함께 · 등산 모임</button>
+        </div>
+        <div class="cal" id="cal" aria-label="예시 일정이 담긴 2026년 11월 달력"></div>
+        <div class="foot"><span class="ex">예시 일정이에요. 칩을 눌러 켜고 꺼 보세요.</span><span>이번 달 일정 <b id="cnt">0</b>개</span></div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div class="copy">
+        <h3>칩마다, 연동할 곳을 골라요</h3>
+        <p>캘린더 칩을 더블클릭하면 구글·네이버 연동을 하나씩 켜고 끌 수 있어요. 켜면 내 구글·네이버에 같은 이름의 캘린더가 생기고, 어디서 고쳐도 양쪽 일정이 맞춰져요.</p>
+        <ul>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>연동은 사람마다 각자 정해요. 나는 구글, 친구는 네이버로</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>휴대폰 캘린더 앱에서 고친 일정도 위젯이 켜져 있으면 맞춰져요</li>
+          <li><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 6 9 17l-5-5"/></svg>이미 쓰던 구글·네이버 캘린더도 칩으로 바꿔 그대로 써요</li>
+        </ul>
+      </div>
+      <div class="link" id="link">
+        <div class="panel lpop">
+          <div class="lh"><i aria-hidden="true"></i>주말 등산 모임<small>칩 설정 · 예시</small></div>
+          <div class="lsub">연동 · 양방향</div>
+          <div class="lrow"><span class="plo" style="--c:var(--g)">G</span><span class="lt">Google<small data-sub="g">‘주말 등산 모임’ 사본이 내 구글에 있어요</small></span><button type="button" class="sw" role="switch" aria-checked="true" data-lk="g" aria-label="Google 연동"></button></div>
+          <div class="lrow"><span class="plo" style="--c:var(--n)">N</span><span class="lt">네이버<small data-sub="n">켜면 내 네이버에 같은 이름으로 이어져요</small></span><button type="button" class="sw" role="switch" aria-checked="false" data-lk="n" aria-label="네이버 연동"></button></div>
+          <div class="lrow soon"><span class="plo" style="--c:#0f6cbd">O</span><span class="lt">Outlook</span><span class="tagsoon">준비 중</span></div>
+        </div>
+        <div class="dest" aria-live="polite">
+          <div class="dc" data-d="g" style="--c:var(--g)"><b>내 구글 캘린더</b><span><i></i>주말 등산 모임</span><small>휴대폰에서도 보여요</small></div>
+          <div class="dmid" aria-hidden="true"><svg class="i" viewBox="0 0 24 24"><path d="M8 3 4 7l4 4"/><path d="M4 7h16"/><path d="m16 21 4-4-4-4"/><path d="M20 17H4"/></svg><img src="assets/plait_icon.png" alt=""></div>
+          <div class="dc off" data-d="n" style="--c:var(--n)"><b>내 네이버 캘린더</b><span><i></i>주말 등산 모임</span><small>휴대폰에서도 보여요</small></div>
+        </div>
+      </div>
     </div>
   </div>
-</div></section>
+</section>
 
-<section id="updates"><div class="wrap">
-  <p class="sec-k">업데이트 노트</p>
-  <h2 class="rv">무엇이 바뀌었나요</h2>
-  <p class="sec-lead rv">새 버전이 나오면 위젯이 알려 주고, [업데이트]를 누르면 설정은 그대로 둔 채 바뀌어요.</p>
-  <div class="rels rv">
-    <article class="rel new"><div class="rh"><b>2.0.0</b><span class="nb">새 버전</span><time datetime="2026-11-23">2026.11.23</time></div><h3>계정·친구·네이버 연결이 들어왔어요</h3><ul><li>처음 켜면 Plait 계정을 만들어요. 친구를 추가하고 캘린더를 함께 쓸 수 있어요.</li><li>네이버 캘린더(네이버 웍스 포함)를 앱 비밀번호로 연결하고, 구글·네이버와 일정을 양쪽으로 맞춰요.</li><li>캘린더 칩을 더블클릭하면 연동, 함께 쓰는 사람과 권한, 색상, 삭제를 한 창에서 관리해요.</li><li>삭제하거나 나갈 때 연동된 구글·네이버 캘린더도 지울지 하나씩 고를 수 있어요.</li><li>설정에 [연동]·[계정] 탭이 생겼어요. 이름·비밀번호 변경, 복구 코드, 로그아웃, 계정 삭제를 여기서 해요.</li><li>구글 로그인과 팀 휴가 설정은 그대로예요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.1.0</b><time datetime="2026-11-23">2026.11.23</time></div><h3>이름이 Plait(플레잇)으로 바뀌었어요</h3><ul><li>앱 이름이 TEAM CAL(외부용)에서 Plait으로 바뀌고, 엮인 두 띠로 만든 새 아이콘이 생겼어요.</li><li>바로가기·트레이·설정 화면이 모두 새 이름으로 바뀌어요.</li><li>업데이트해도 설정과 구글 로그인은 그대로예요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.8</b><time datetime="2026-11-17">2026.11.17</time></div><h3>시간 휠 오전/오후 자동 전환</h3><ul><li>시간 휠에서 11시를 넘기면 오전/오후가 저절로 바뀌어요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.7</b><time datetime="2026-11-17">2026.11.17</time></div><h3>부드러운 시간 휠</h3><ul><li>시간 휠이 더 부드럽게 돌아가요.</li><li>12시간/24시간 표시를 설정에서 고를 수 있어요.</li><li>달력 높이를 조절할 수 있어요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.6</b><time datetime="2026-11-17">2026.11.17</time></div><h3>휴가 구분 추가 · 캘린더 색상</h3><ul><li>휴가 구분에 '초과근무 보상'이 생겼어요.</li><li>캘린더 칩을 더블클릭한 창에서 색상을 바꿀 수 있어요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.5</b><time datetime="2026-11-17">2026.11.17</time></div><h3>내 휴가 수정</h3><ul><li>내가 등록한 휴가를 직접 고칠 수 있어요. (본인 휴가만)</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.4</b><time datetime="2026-11-17">2026.11.17</time></div><h3>일정의 캘린더 바꾸기</h3><ul><li>일정을 고칠 때 다른 캘린더로 옮길 수 있어요.</li><li>캘린더 칩에 캘린더 색상이 보여요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.3</b><time datetime="2026-11-17">2026.11.17</time></div><h3>기간 일정</h3><ul><li>일정을 시작일~종료일 기간으로 추가·수정할 수 있어요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.2</b><time datetime="2026-11-13">2026.11.13</time></div><h3>작은 수정</h3><ul><li>작업 표시줄에 고정해도 로고가 그대로 보여요.</li><li>투명도 바가 끝까지 움직여요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.1</b><time datetime="2026-11-13">2026.11.13</time></div><h3>캘린더 칩 정리</h3><ul><li>켜 둔 캘린더 칩만 보이게 접을 수 있어요.</li></ul></article>
-    <article class="rel"><div class="rh"><b>1.0.0</b><time datetime="2026-11-13">2026.11.13</time></div><h3>첫 공개</h3><ul><li>팀 휴가 캘린더와 내 구글 일정을 바탕화면 위젯 하나로 보는 첫 버전이에요.</li></ul></article>
+<section id="screens">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>넣고, 고치고, 바로 끝.</h2>
+      <p class="sec-lead">작은 창에서 일정과 휴가를 다뤄요. 구글 캘린더 사이트를 열 일이 줄어들어요.</p>
+    </div>
+    <div class="shots">
+      <figure>
+        <div class="frame"><img src="assets/event.png" alt="일정 추가 창. 제목, 시작일과 종료일, 시간 휠, 캘린더 선택 칩이 보인다." width="760" height="1660" loading="lazy"></div>
+        <figcaption><b>일정 추가 · 수정</b><span>여러 날 일정도 시작일·종료일로 한 번에. 시간은 휠을 돌려 5분 단위로 고르고, 넣을 캘린더는 색깔 칩으로 골라요.</span></figcaption>
+      </figure>
+      <figure>
+        <div class="frame"><img src="assets/leave.png" alt="휴가 등록 창. 연차, 반차, 경조휴가 등 구분 칩과 날짜, 메모 칸이 보인다." width="760" height="964" loading="lazy"></div>
+        <figcaption><b>휴가 등록</b><span>구분과 날짜만 고르면 끝. 주말·공휴일을 뺀 차감 일수도 바로 계산해 보여 줘요.</span></figcaption>
+      </figure>
+    </div>
   </div>
-  <button type="button" class="btn ghost more" id="relMore">이전 버전 더 보기</button>
-</div></section>
+</section>
 
-<section id="faq" class="alt"><div class="wrap">
-  <p class="sec-k">자주 묻는 질문</p>
-  <h2 class="rv">궁금한 점</h2>
-  <div class="faq">
-    <details><summary>예전 TEAM CAL을 쓰고 있었어요.</summary><div class="a"><p>업데이트하면 이름과 아이콘이 Plait으로 바뀌어요. 구글 로그인과 팀 휴가 설정은 그대로예요.</p><p>업데이트 후 처음 켜면 Plait 계정을 만드는 화면이 나와요. 친구와 함께 쓰는 캘린더, 네이버 연결이 이 계정에 묶여요.</p></div></details>
-    <details><summary>Plait 계정이 꼭 있어야 하나요?</summary><div class="a"><p>네. 처음 켤 때 아이디·이름·비밀번호로 만들어요. 이메일은 받지 않아요.</p><p>비밀번호를 잊으면 가입할 때 받은 복구 코드로 새로 만들 수 있어요. 복구 코드는 설정 › 계정에서 다시 발급할 수 있어요.</p></div></details>
-    <details><summary>함께 쓰는 캘린더는 어떻게 동작하나요?</summary><div class="a"><p>원본은 Plait 서버에 있고, 초대받은 사람은 모두 같은 캘린더를 봐요. 권한은 "편집 가능"과 "보기만" 중에서 정해요.</p><p>칩을 더블클릭해 구글이나 네이버 연동을 켜면, 내 구글·네이버에 같은 이름의 캘린더가 생기고 양쪽 일정이 서로 맞춰져요. 휴대폰 캘린더 앱에서도 볼 수 있게 돼요.</p></div></details>
-    <details><summary>네이버 캘린더는 어떻게 연결하나요?</summary><div class="a"><p>설정 › 연동 › 네이버에서 네이버 아이디와 <b>애플리케이션 비밀번호</b>를 넣어요. 네이버 2단계 인증에서 만드는 비밀번호로, 같은 화면의 [앱 비밀번호 만들기 ↗]를 누르면 바로 갈 수 있어요. 네이버 웍스는 보안 메뉴의 <b>외부 앱 비밀번호</b>로 연결해요.</p><p>네이버는 다른 앱이 캘린더를 새로 만드는 걸 막아 두어서, 함께 쓰는 캘린더를 네이버에 처음 연동하면 칩에 빨간 <b>!</b>가 떠요. [네이버 캘린더 열기 ↗]로 같은 이름의 캘린더를 만들고 [만들었어요 · 확인]을 누르면 이어져요.</p></div></details>
-    <details><summary>로그인할 때 "Google에서 확인하지 않은 앱"이라고 나와요.</summary><div class="a"><p>Plait이 구글의 앱 검토를 받는 중이라 보이는 안내예요. [고급] › [Plait(으)로 이동]을 누르면 그대로 로그인돼요.</p></div></details>
-    <details><summary>내 캘린더 정보는 어디로 가나요?</summary><div class="a"><p>내 구글·네이버 일정은 내 PC의 위젯과 구글·네이버 사이에서만 오가요. Plait 서버에는 계정, 친구, 그리고 친구와 함께 쓰는 캘린더의 일정만 저장돼요.</p><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해서 보관하고 서버로 보내지 않아요. 자세한 내용은 <a href="external/privacy.html">개인정보처리방침</a>에 있어요.</p></div></details>
-    <details><summary>팀 휴가는 어떻게 정해지나요?</summary><div class="a"><p>팀에서 정한 구글 캘린더 하나에 있는 종일 일정 중 제목이 "이름 구분"인 것이 휴가로 보여요. 예: <b>김설계 연차</b>, <b>이구조 오후반차</b>. 위젯에서 휴가를 등록하면 이 형식으로 자동 저장돼요.</p><p>다른 사람 휴가는 고칠 수 없고, 내 이름으로 된 휴가만 고치고 지울 수 있어요.</p></div></details>
-    <details><summary>업데이트는 어떻게 하나요?</summary><div class="a"><p>새 버전이 나오면 위젯 위쪽에 알림이 떠요. [업데이트]를 누르면 알아서 바꾸고 다시 켜져요. 설정 › 알림 › [지금 확인]으로 바로 확인할 수도 있어요.</p></div></details>
-    <details><summary>Mac에서도 쓸 수 있나요?</summary><div class="a"><p>지금은 Windows 10/11만 지원해요.</p></div></details>
-    <details><summary>지우고 싶어요.</summary><div class="a"><p>설정 › 정보 › [제거] 또는 Windows 설정 › 앱에서 지울 수 있어요. 내 PC에 있던 설정과 로그인 정보가 함께 지워지고, 구글·네이버 캘린더의 일정은 그대로 남아요.</p><p>Plait 계정까지 없애려면 지우기 전에 설정 › 계정 › [계정 삭제]를 눌러 주세요. 구글 쪽 권한은 <a href="https://myaccount.google.com/permissions" rel="noopener">구글 계정 › 서드 파티 액세스</a>에서 지울 수 있어요.</p></div></details>
+<section class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>작지만 꼼꼼하게.</h2>
+      <p class="sec-lead">매일 쓰는 위젯이라 손이 덜 가는 쪽으로 다듬었어요.</p>
+    </div>
+    <div class="more">
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></svg>칩 하나로 관리</b><p>캘린더 칩을 더블클릭하면 연동, 함께 쓰는 사람과 권한, 색상, 삭제를 한 창에서 다뤄요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m17 2 4 4-4 4"/><path d="M3 11v-1a4 4 0 0 1 4-4h14"/><path d="m7 22-4-4 4-4"/><path d="M21 13v1a4 4 0 0 1-4 4H3"/></svg>쓰던 캘린더 그대로</b><p>이미 쓰던 구글·네이버 캘린더를 그대로 친구와 함께 쓰는 캘린더로 바꿀 수 있어요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>팀 휴가 한눈에</b><p>팀 휴가 캘린더를 정하면 날짜마다 누가 쉬는지 보여요. 휴가 등록도 위젯에서 바로 해요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/><path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/></svg>변경 알림</b><p>다른 사람이 함께 쓰는 캘린더의 일정을 바꾸면 알려 줘요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><path d="M4 22v-7"/></svg>데드라인 D-day</b><p>캘린더마다 마지막 일정까지 남은 날과 진행 막대를 보여 줘요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/></svg>원하는 크기로</b><p>칸을 접고 달력 높이·투명도를 맞추고, 다른 창 위에 고정해 둘 수 있어요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>어두운 화면</b><p>밝게·어둡게·시스템 따라가기 중에 골라요. 12·24시간 표시도 골라요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/><path d="M21 3v5h-5"/><path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/><path d="M8 16H3v5"/></svg>자동 업데이트</b><p>새 버전이 나오면 위젯에서 버튼 한 번으로 바꿔요. 설정은 그대로 남아요.</p></div>
+      <div><b><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/><path d="m9 12 2 2 4-4"/></svg>안전하게</b><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해 두고, 서버에는 함께 쓰는 캘린더만 올라가요.</p></div>
+    </div>
   </div>
-</div></section>
+</section>
+
+<section id="start">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>몇 분이면 준비 끝.</h2>
+      <p class="sec-lead">처음 한 번만 설정하면 그다음부터는 켜기만 하면 돼요.</p>
+    </div>
+    <ol class="steps">
+      <li><b>설치</b><p>받은 설치 파일을 실행하고 [설치]를 눌러요. 바탕화면과 시작 프로그램에 바로가기가 생겨요.</p></li>
+      <li><b>Plait 계정 만들기</b><p>아이디·이름·비밀번호로 가입해요. 이메일은 필요 없고, 가입할 때 받는 복구 코드는 꼭 보관해 두세요.</p></li>
+      <li><b>캘린더 연결</b><p>구글은 로그인으로, 네이버는 앱 비밀번호로 연결해요. 나중에 설정 › 연동에서 해도 돼요.</p></li>
+      <li><b>친구와 함께 쓰기</b><p>친구를 추가하고 캘린더를 만들어 초대해요. 팀 휴가는 설정 › 팀 휴가에서 골라요.</p></li>
+    </ol>
+  </div>
+</section>
+
+<section id="download" class="tint">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>지금 받아 보세요.</h2>
+      <p class="sec-lead">무료로 받아 바로 설치할 수 있어요. 한 번 설치하면 업데이트는 위젯이 알아서 챙겨요.</p>
+    </div>
+    <div class="dl">
+      <div class="dlmain">
+        <div class="os"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.5v7H3zm8-1.1L21 3v8.5H11zM3 12.5h7v7L3 18.5zm8 0h10V21l-10-1.4z"/></svg>Windows</div>
+        <div class="vers" id="verChips"><span>최신 버전</span><span>무료</span></div>
+        <a class="btn coral" id="dlBtn" href="external/Plait_setup.exe" download><svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><path d="m7 10 5 5 5-5"/><path d="M12 15V3"/></svg>Windows용 받기 (.exe)</a>
+        <p>받은 <b>Plait_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 Plait 계정을 만들고 캘린더를 연결하면 돼요.</p>
+        <div class="req"><b>필요한 환경</b>
+          <ul><li>Windows 10 또는 11 (64비트)</li><li>Microsoft Edge WebView2 런타임 (대부분 이미 설치되어 있어요)</li><li>연결할 구글 또는 네이버 계정 (없어도 Plait 캘린더만으로 쓸 수 있어요)</li></ul>
+        </div>
+      </div>
+      <div class="dlside">
+        <h3>팀 담당자라면</h3>
+        <p>팀 휴가를 같이 보려면 구글 캘린더에 팀 휴가 캘린더를 하나 만들어 팀원에게 "일정 변경" 권한으로 공유하면 준비 끝이에요. 팀 일정은 Plait에서 캘린더를 만들어 팀원을 초대하면 돼요.</p>
+        <p>받은 zip 폴더에 구글 설정 파일을 넣고 "exe 만들기.cmd"를 실행하면, 팀원은 설정 파일 없이 exe 하나로 설치할 수 있어요.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="updates">
+  <div class="wrap">
+    <div class="sec-head">
+      <h2>무엇이 바뀌었나요</h2>
+      <p class="sec-lead">새 버전이 나오면 위젯이 알려 주고, [업데이트]를 누르면 설정은 그대로 둔 채 바뀌어요.</p>
+    </div>
+    <div class="rels short" id="rels">
+      <article class="rel"><div class="rh"><b>2.0.0</b><time datetime="2026-11-23">2026.11.23</time><span class="nb">새 버전</span></div><div><h3>계정·친구·네이버 연결이 들어왔어요</h3><ul><li>처음 켜면 Plait 계정을 만들어요. 친구를 추가하고 캘린더를 함께 쓸 수 있어요.</li><li>네이버 캘린더(네이버 웍스 포함)를 앱 비밀번호로 연결하고, 구글·네이버와 일정을 양쪽으로 맞춰요.</li><li>캘린더 칩을 더블클릭하면 연동, 함께 쓰는 사람과 권한, 색상, 삭제를 한 창에서 관리해요.</li><li>삭제하거나 나갈 때 연동된 구글·네이버 캘린더도 지울지 하나씩 고를 수 있어요.</li><li>설정에 [연동]·[계정] 탭이 생겼어요. 이름·비밀번호 변경, 복구 코드, 로그아웃, 계정 삭제를 여기서 해요.</li><li>구글 로그인과 팀 휴가 설정은 그대로예요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.1.0</b><time datetime="2026-11-23">2026.11.23</time></div><div><h3>이름이 Plait(플레잇)으로 바뀌었어요</h3><ul><li>앱 이름이 TEAM CAL(외부용)에서 Plait으로 바뀌고, 엮인 두 띠로 만든 새 아이콘이 생겼어요.</li><li>바로가기·트레이·설정 화면이 모두 새 이름으로 바뀌어요.</li><li>업데이트해도 설정과 구글 로그인은 그대로예요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.8</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>시간 휠 오전/오후 자동 전환</h3><ul><li>시간 휠에서 11시를 넘기면 오전/오후가 저절로 바뀌어요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.7</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>부드러운 시간 휠</h3><ul><li>시간 휠이 더 부드럽게 돌아가요.</li><li>12시간/24시간 표시를 설정에서 고를 수 있어요.</li><li>달력 높이를 조절할 수 있어요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.6</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>휴가 구분 추가 · 캘린더 색상</h3><ul><li>휴가 구분에 '초과근무 보상'이 생겼어요.</li><li>캘린더 칩을 더블클릭한 창에서 색상을 바꿀 수 있어요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.5</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>내 휴가 수정</h3><ul><li>내가 등록한 휴가를 직접 고칠 수 있어요. (본인 휴가만)</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.4</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>일정의 캘린더 바꾸기</h3><ul><li>일정을 고칠 때 다른 캘린더로 옮길 수 있어요.</li><li>캘린더 칩에 캘린더 색상이 보여요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.3</b><time datetime="2026-11-17">2026.11.17</time></div><div><h3>기간 일정</h3><ul><li>일정을 시작일~종료일 기간으로 추가·수정할 수 있어요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.2</b><time datetime="2026-11-13">2026.11.13</time></div><div><h3>작은 수정</h3><ul><li>작업 표시줄에 고정해도 로고가 그대로 보여요.</li><li>투명도 바가 끝까지 움직여요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.1</b><time datetime="2026-11-13">2026.11.13</time></div><div><h3>캘린더 칩 정리</h3><ul><li>켜 둔 캘린더 칩만 보이게 접을 수 있어요.</li></ul></div></article>
+      <article class="rel"><div class="rh"><b>1.0.0</b><time datetime="2026-11-13">2026.11.13</time></div><div><h3>첫 공개</h3><ul><li>팀 휴가 캘린더와 내 구글 일정을 바탕화면 위젯 하나로 보는 첫 버전이에요.</li></ul></div></article>
+    </div>
+    <button type="button" class="btn line morebtn" id="relMore" aria-controls="rels" aria-expanded="false">이전 버전 더 보기</button>
+  </div>
+</section>
+
+<section id="faq" class="tint">
+  <div class="wrap faqwrap">
+    <div>
+      <h2>궁금한 점</h2>
+      <p class="sec-lead">찾는 답이 없으면 위젯의 설정 › 정보에서 버전을 확인해 주세요.</p>
+    </div>
+    <div class="faq">
+      <details><summary>예전 TEAM CAL을 쓰고 있었어요.<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>업데이트하면 이름과 아이콘이 Plait으로 바뀌어요. 구글 로그인과 팀 휴가 설정은 그대로예요.</p><p>업데이트 후 처음 켜면 Plait 계정을 만드는 화면이 나와요. 친구와 함께 쓰는 캘린더, 네이버 연결이 이 계정에 묶여요.</p></div></details>
+      <details><summary>Plait 계정이 꼭 있어야 하나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>네. 처음 켤 때 아이디·이름·비밀번호로 만들어요. 이메일은 받지 않아요.</p><p>비밀번호를 잊으면 가입할 때 받은 복구 코드로 새로 만들 수 있어요. 복구 코드는 설정 › 계정에서 다시 발급할 수 있어요.</p></div></details>
+      <details><summary>함께 쓰는 캘린더는 어떻게 동작하나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>원본은 Plait 서버에 있고, 초대받은 사람은 모두 같은 캘린더를 봐요. 권한은 "편집 가능"과 "보기만" 중에서 정해요.</p><p>칩을 더블클릭해 구글이나 네이버 연동을 켜면, 내 구글·네이버에 같은 이름의 캘린더가 생기고 양쪽 일정이 서로 맞춰져요. 휴대폰 캘린더 앱에서도 볼 수 있게 돼요.</p></div></details>
+      <details><summary>네이버 캘린더는 어떻게 연결하나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>설정 › 연동 › 네이버에서 네이버 아이디와 <b>애플리케이션 비밀번호</b>를 넣어요. 네이버 2단계 인증에서 만드는 비밀번호로, 같은 화면의 [앱 비밀번호 만들기 ↗]를 누르면 바로 갈 수 있어요. 네이버 웍스는 보안 메뉴의 <b>외부 앱 비밀번호</b>로 연결해요.</p><p>네이버는 다른 앱이 캘린더를 새로 만드는 걸 막아 두어서, 함께 쓰는 캘린더를 네이버에 처음 연동하면 칩에 빨간 <b>!</b>가 떠요. [네이버 캘린더 열기 ↗]로 같은 이름의 캘린더를 만들고 [만들었어요 · 확인]을 누르면 이어져요.</p></div></details>
+      <details><summary>로그인할 때 "Google에서 확인하지 않은 앱"이라고 나와요.<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>Plait이 구글의 앱 검토를 받는 중이라 보이는 안내예요. [고급] › [Plait(으)로 이동]을 누르면 그대로 로그인돼요.</p></div></details>
+      <details><summary>내 캘린더 정보는 어디로 가나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>내 구글·네이버 일정은 내 PC의 위젯과 구글·네이버 사이에서만 오가요. Plait 서버에는 계정, 친구, 그리고 친구와 함께 쓰는 캘린더의 일정만 저장돼요.</p><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해서 보관하고 서버로 보내지 않아요. 자세한 내용은 <a href="external/privacy.html">개인정보처리방침</a>에 있어요.</p></div></details>
+      <details><summary>팀 휴가는 어떻게 정해지나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>팀에서 정한 구글 캘린더 하나에 있는 종일 일정 중 제목이 "이름 구분"인 것이 휴가로 보여요. 예: <b>김설계 연차</b>, <b>이구조 오후반차</b>. 위젯에서 휴가를 등록하면 이 형식으로 자동 저장돼요.</p><p>다른 사람 휴가는 고칠 수 없고, 내 이름으로 된 휴가만 고치고 지울 수 있어요.</p></div></details>
+      <details><summary>업데이트는 어떻게 하나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>새 버전이 나오면 위젯 위쪽에 알림이 떠요. [업데이트]를 누르면 알아서 바꾸고 다시 켜져요. 설정 › 알림 › [지금 확인]으로 바로 확인할 수도 있어요.</p></div></details>
+      <details><summary>Mac에서도 쓸 수 있나요?<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>지금은 Windows 10/11만 지원해요.</p></div></details>
+      <details><summary>지우고 싶어요.<svg class="i" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg></summary><div class="a"><p>설정 › 정보 › [제거] 또는 Windows 설정 › 앱에서 지울 수 있어요. 내 PC에 있던 설정과 로그인 정보가 함께 지워지고, 구글·네이버 캘린더의 일정은 그대로 남아요.</p><p>Plait 계정까지 없애려면 지우기 전에 설정 › 계정 › [계정 삭제]를 눌러 주세요. 구글 쪽 권한은 <a href="https://myaccount.google.com/permissions" rel="noopener">구글 계정 › 서드 파티 액세스</a>에서 지울 수 있어요.</p></div></details>
+    </div>
+  </div>
+</section>
 </main>
 
 <footer><div class="wrap">
   <div>
-    <div class="logo"><img class="mark" src="assets/plait_icon.png" alt="" width="28" height="28">Plait</div>
+    <div class="logo"><img src="assets/plait_icon.png" alt="" width="28" height="28">Plait</div>
     <div>흩어진 캘린더를 하나로 엮는 Windows 캘린더 위젯</div>
     <div style="margin-top:6px">© 2026 Plait</div>
   </div>
@@ -400,44 +633,92 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 <script>
 (() => {
   const root = document.documentElement, btn = document.getElementById("themeBtn");
-  const sun = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
-  const moon = btn.innerHTML;
+  const sun = '<svg class="i" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4.5"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>';
+  const moon = '<svg class="i" viewBox="0 0 24 24"><path d="M12 3a6 6 0 0 0 9 9 9 9 0 1 1-9-9Z"/></svg>';
   function apply(t) {
     root.dataset.theme = t;
     btn.innerHTML = t === "dark" ? sun : moon;
     btn.setAttribute("aria-label", t === "dark" ? "밝은 화면으로 바꾸기" : "어두운 화면으로 바꾸기");
-    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#121214" : "#faf8f5";
+    document.querySelector('meta[name="theme-color"]').content = t === "dark" ? "#121214" : "#fbfaf7";
   }
-  let saved = null; try { saved = localStorage.getItem("tc-theme"); } catch (e) {}
-  apply(saved || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light"));
+  apply(root.dataset.theme);
   btn.onclick = () => { const t = root.dataset.theme === "dark" ? "light" : "dark"; apply(t); try { localStorage.setItem("tc-theme", t); } catch (e) {} };
 
   const nav = document.getElementById("nav"), mb = document.getElementById("menuBtn");
   mb.onclick = () => { const o = nav.classList.toggle("open"); mb.setAttribute("aria-expanded", o); };
   nav.addEventListener("click", e => { if (e.target.closest("a")) { nav.classList.remove("open"); mb.setAttribute("aria-expanded", false); } });
-
   const hd = document.querySelector("header");
   addEventListener("scroll", () => hd.classList.toggle("scrolled", scrollY > 8), { passive: true });
 
-  const io = "IntersectionObserver" in window ? new IntersectionObserver(es => es.forEach(e => { if (e.isIntersecting) { e.target.classList.add("in"); io.unobserve(e.target); } }), { rootMargin: "0px 0px -8% 0px" }) : null;
-  document.querySelectorAll(".rv").forEach(el => io ? io.observe(el) : el.classList.add("in"));
-
-  // 업데이트 노트: 처음엔 최근 4개만
-  const rels = document.querySelector(".rels"), more = document.getElementById("relMore");
-  if (rels && more) { rels.classList.add("short"); more.onclick = () => { rels.classList.remove("short"); more.remove(); }; }
-
-  // 지금 버전: 업데이트 정보 파일에서 읽어 온다
-  const chips = document.getElementById("verChips"), notes = document.getElementById("notes"), notice = document.getElementById("noticeText");
-  Promise.all([["버전", "external/version.json"]].map(([n, u]) =>
-    fetch(u, { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => ({ n, j }))))
-    .then(list => {
-      const ok = list.filter(x => x.j && x.j.version);
-      if (!ok.length) { notes.innerHTML = "<li>위젯에서 확인할 수 있어요.</li>"; return; }
-      chips.innerHTML = ok.map(x => `<span>버전 ${x.j.version}</span>`).join("") + "<span>무료</span>";
-      notes.innerHTML = ok.map(x => `<li><b>${x.j.version}</b> — ${(x.j.notes || "").replace(/[<>&]/g, "")}</li>`).join("");
-      const a = ok[0];
-      notice.innerHTML = `<b>Plait ${a.j.version}</b> · ${(a.j.notes || "새 버전").replace(/[<>&]/g, "")}`;
+  // 예시 달력 (2026년 11월, 일요일 시작)
+  const EV = [
+    [2,"g","주간 회의"],[3,"n","치과"],[4,"g","디자인 리뷰"],[6,"s","산행 코스 정하기"],[7,"n","친구 결혼식"],
+    [9,"g","주간 회의"],[10,"g","고객사 미팅"],[11,"n","필라테스"],[12,"g","분기 계획"],[14,"s","북한산 산행"],
+    [16,"g","주간 회의"],[17,"n","엄마 생신"],[18,"g","릴리스"],[18,"n","필라테스"],[20,"g","팀 점심"],[21,"s","장비 공동구매"],
+    [23,"g","팀 회의"],[23,"s","회비 정산"],[24,"g","예산 검토"],[25,"n","필라테스"],[27,"g","연말 회식 장소"],[28,"s","도봉산 산행"],[28,"n","전시 관람"],
+    [30,"g","주간 회의"]
+  ];
+  const cal = document.getElementById("cal"), cnt = document.getElementById("cnt");
+  const dws = ["일","월","화","수","목","금","토"];
+  let h = dws.map((d,i) => `<div class="dw${i===0?" sun":i===6?" sat":""}">${d}</div>`).join("");
+  for (let i = 0; i < 35; i++) {
+    const day = i + 1, out = day > 30, wd = i % 7;
+    const evs = out ? "" : EV.filter(e => e[0] === day).map(e => `<span class="ev" data-src="${e[1]}" style="--c:var(--${e[1]})"><span>${e[2]}</span></span>`).join("");
+    h += `<div class="d${out?" out":""}${wd===0?" sun":wd===6?" sat":""}${day===23?" today":""}"><span class="n">${out ? day-30 : day}</span>${evs}</div>`;
+  }
+  cal.innerHTML = h;
+  const count = () => cnt.textContent = cal.querySelectorAll(".ev:not(.off)").length;
+  count();
+  document.querySelectorAll("#demo .chip").forEach(c => c.addEventListener("click", () => {
+    const on = c.getAttribute("aria-pressed") !== "true";
+    c.setAttribute("aria-pressed", on);
+    cal.querySelectorAll(`.ev[data-src="${c.dataset.src}"]`).forEach((e, i) => {
+      e.style.transitionDelay = `${i * 28}ms`;
+      e.classList.toggle("off", !on);
     });
+    count();
+  }));
+
+
+
+  const br = document.getElementById("bridge"), bb = document.getElementById("bridgeBtn"), bm = document.getElementById("bridgeMsg");
+  let late = false, tm;
+  bb.onclick = () => {
+    late = !late; clearTimeout(tm);
+    const t = `11월 28일 ${late ? "오전 10:30" : "오전 9:00"}`;
+    const me = br.querySelector('[data-p="me"]'), fr = br.querySelector('[data-p="fr"]');
+    me.querySelector("[data-t]").textContent = t;
+    me.querySelector(".be").classList.add("flash"); fr.querySelector(".synced").classList.remove("show");
+    br.classList.remove("go"); void br.offsetWidth; br.classList.add("go");
+    bm.textContent = "내 구글 캘린더에서 바꿨어요…";
+    tm = setTimeout(() => {
+      fr.querySelector("[data-t]").textContent = t;
+      me.querySelector(".be").classList.remove("flash");
+      fr.querySelector(".be").classList.add("flash"); fr.querySelector(".synced").classList.add("show");
+      bm.textContent = "김설계의 네이버 캘린더에도 맞춰졌어요.";
+      tm = setTimeout(() => fr.querySelector(".be").classList.remove("flash"), 1200);
+    }, 850);
+    bb.textContent = late ? "다시 오전 9:00으로 바꾸기" : "내 구글에서 시간 바꿔 보기";
+  };
+
+  const SUB = { g: ["‘주말 등산 모임’ 사본이 내 구글에 있어요", "켜면 내 구글에 같은 이름으로 생겨요"], n: ["‘주말 등산 모임’ 사본이 내 네이버에 있어요", "켜면 내 네이버에 같은 이름으로 이어져요"] };
+  document.querySelectorAll("#link .sw").forEach(sw => sw.addEventListener("click", () => {
+    const on = sw.getAttribute("aria-checked") !== "true", k = sw.dataset.lk;
+    sw.setAttribute("aria-checked", on);
+    document.querySelector(`#link [data-sub="${k}"]`).textContent = SUB[k][on ? 0 : 1];
+    document.querySelector(`#link .dc[data-d="${k}"]`).classList.toggle("off", !on);
+  }));
+
+  const rels = document.getElementById("rels"), more = document.getElementById("relMore");
+  more.onclick = () => { rels.classList.remove("short"); more.remove(); };
+
+  const chips = document.getElementById("verChips"), notice = document.getElementById("noticeText");
+  fetch("external/version.json", { cache: "no-store" }).then(r => r.ok ? r.json() : null).catch(() => null).then(j => {
+    if (!j || !j.version) return;
+    const esc = s => String(s || "").replace(/[<>&]/g, "");
+    chips.innerHTML = `<span>버전 ${esc(j.version)}</span><span>무료</span>`;
+    notice.innerHTML = `<b>Plait ${esc(j.version)}</b> · ${esc(j.notes) || "새 버전"}`;
+  });
 })();
 </script>
 </body>
