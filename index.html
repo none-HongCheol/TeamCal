@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Plait 플레잇 — 팀 휴가와 내 일정을 바탕화면 한쪽에</title>
-<meta name="description" content="Plait(플레잇)은 팀 휴가와 내 구글 캘린더 일정을 Windows 바탕화면에서 한눈에 보는 데스크톱 위젯입니다.">
+<title>Plait 플레잇 — 흩어진 캘린더를 하나로 엮어 바탕화면에</title>
+<meta name="description" content="Plait(플레잇)은 구글·네이버 캘린더와 친구와 함께 쓰는 캘린더를 하나로 엮어 Windows 바탕화면에 보여 주는 캘린더 위젯입니다.">
 <meta name="theme-color" content="#faf8f5">
 <link rel="icon" type="image/png" href="assets/plait_favicon.png">
 <link rel="apple-touch-icon" href="assets/plait_icon.png">
@@ -91,6 +91,8 @@ h2{font-size:clamp(30px,3.8vw,42px);line-height:1.22;letter-spacing:-.035em;marg
 .v-cal span{display:inline-flex;align-items:center;gap:6px;font-size:13px;font-weight:600;background:var(--card);border:1px solid var(--line);border-radius:999px;padding:6px 12px}
 .v-cal span i{width:9px;height:9px;border-radius:50%}
 .v-desk{position:relative}
+.v-sync{gap:8px!important}.v-sync b{font-size:18px;color:var(--muted);font-weight:700}
+.v-cal.col{flex-direction:column;gap:8px!important}
 .v-desk div{width:84px;height:92px;border-radius:12px;background:var(--card);box-shadow:var(--shadow);display:grid;grid-template-columns:repeat(4,1fr);gap:5px;padding:12px}
 .v-desk div i{border-radius:3px;background:var(--line)}.v-desk div i.a{background:var(--accent)}.v-desk div i.b{background:var(--blue)}
 
@@ -145,6 +147,32 @@ ol.steps{padding:0;margin:0}
 .rel li{margin:2px 0}
 .rels.short .rel:nth-child(n+5){display:none}
 .more{margin:4px 0 0 34px;height:42px;font-size:14.5px}
+
+/* 기능 카드 그림 */
+.card .vis.fx{height:170px;padding:14px;gap:12px}
+.fx .mc{background:var(--card);border:1px solid var(--line);border-radius:12px;box-shadow:var(--shadow);font-size:11px;color:var(--fg2)}
+.fx-month{width:100%;max-width:250px;padding:10px 12px}
+.fx-month .hd{display:flex;justify-content:space-between;font-weight:700;color:var(--fg);margin-bottom:6px}
+.fx-month .gr{display:grid;grid-template-columns:repeat(7,1fr);gap:3px}
+.fx-month .gr span{height:15px;border-radius:4px;background:var(--bg2);position:relative}
+.fx-month .gr span i{position:absolute;left:2px;right:2px;bottom:2px;height:4px;border-radius:2px}
+.fx-month .lg{display:flex;gap:10px;margin-top:8px;font-size:10.5px;font-weight:600}
+.fx-month .lg b{display:inline-block;width:7px;height:7px;border-radius:50%;margin-right:4px;vertical-align:1px}
+.fx-share{width:100%;max-width:250px;padding:10px 12px}
+.fx-share .hd{display:flex;align-items:center;gap:7px;font-weight:700;color:var(--fg);margin-bottom:8px;font-size:12px}
+.fx-share .hd i{width:9px;height:9px;border-radius:50%;background:var(--accent)}
+.fx-share .hd em{margin-left:auto;font-style:normal;font-size:10px;font-weight:600;color:var(--accent);background:var(--accent-soft);border-radius:999px;padding:2px 8px}
+.fx-share .p{display:flex;align-items:center;gap:8px;padding:4px 0;border-top:1px solid var(--line)}
+.fx-share .av{width:20px;height:20px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;font-size:10px}
+.fx-share .p small{margin-left:auto;font-size:10px;color:var(--muted);border:1px solid var(--line);border-radius:999px;padding:1px 7px}
+.fx-sync{width:100%;display:flex;align-items:center;justify-content:center;gap:6px}
+.fx-sync .ev{padding:8px 9px;width:92px}
+.fx-sync .ev b{display:flex;align-items:center;gap:5px;font-size:10px;color:var(--muted);font-weight:600;margin-bottom:5px}
+.fx-sync .ev b i{width:7px;height:7px;border-radius:50%}
+.fx-sync .ev div{border-left:3px solid;border-radius:3px;padding:3px 6px;background:var(--bg2);font-weight:700;color:var(--fg);font-size:10.5px;line-height:1.35}
+.fx-sync .ev div small{display:block;font-weight:500;color:var(--muted);font-size:9.5px}
+.fx-sync .mid{display:flex;flex-direction:column;align-items:center;gap:3px;color:var(--muted);font-weight:700;font-size:13px}
+.fx-sync .mid img{width:30px;height:30px;border-radius:8px;box-shadow:var(--shadow)}
 
 /* FAQ */
 .faq{max-width:780px}
@@ -208,14 +236,14 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 <main id="main">
 <section class="hero"><div class="wrap">
   <div>
-    <span class="eyebrow"><i aria-hidden="true"></i>Windows 데스크톱 위젯</span>
-    <h1>팀 휴가와 내 일정,<br><em>바탕화면 한쪽</em>에.</h1>
-    <p class="lead">누가 쉬는지, 오늘 무슨 일정이 있는지 브라우저를 열지 않아도 보여요. 구글 캘린더와 팀 휴가 캘린더를 작은 위젯 하나에 모았어요.</p>
+    <span class="eyebrow"><i aria-hidden="true"></i>Windows 캘린더 위젯</span>
+    <h1>흩어진 캘린더를,<br><em>하나로 엮어</em> 바탕화면에.</h1>
+    <p class="lead">구글 캘린더, 네이버 캘린더, 친구와 함께 쓰는 캘린더를 위젯 하나에 모았어요. 어디서 고쳐도 양쪽이 같이 바뀌고, 팀 휴가까지 한눈에 보여요.</p>
     <div class="cta">
       <a class="btn primary" href="#download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Plait 받기</a>
       <a class="btn ghost" href="#features">기능 둘러보기</a>
     </div>
-    <p class="cta-note">무료 · Windows 10/11 · 구글 계정으로 로그인</p>
+    <p class="cta-note">무료 · Windows 10/11 · Plait 계정으로 시작</p>
   </div>
   <div class="desk" role="img" aria-label="바탕화면 오른쪽에 떠 있는 Plait 위젯 화면">
     <div class="note" aria-hidden="true"><b>이번 주 할 일</b><span></span><span></span><span></span></div>
@@ -226,26 +254,26 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 
 <section id="features" class="alt"><div class="wrap">
   <p class="sec-k">기능</p>
-  <h2 class="rv">일할 때도, 화면 한쪽에.</h2>
-  <p class="sec-lead rv">창을 바꿔 가며 확인하던 정보를 한곳에서 봐요. 필요한 건 위젯에서 바로 넣고 고쳐요.</p>
+  <h2 class="rv">여러 캘린더를, 한 줄로 엮어요.</h2>
+  <p class="sec-lead rv">회사 일정은 구글에, 개인 일정은 네이버에, 친구와 잡은 약속은 메신저에. 흩어져 있던 일정을 Plait 하나에서 보고 고쳐요.</p>
   <div class="cards">
     <article class="card rv">
-      <div class="vis v-leave" aria-hidden="true"><div>김설계<i style="width:60%"></i></div><div>이구조<i style="width:30%"></i></div><div>나<i class="me" style="width:45%"></i></div></div>
+      <div class="vis fx" aria-hidden="true"><div class="mc fx-month"><div class="hd"><span>11월</span><span style="color:var(--muted);font-weight:600">한 달력에 모두</span></div><div class="gr"><span></span><span></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span></span><span><i style="background:#7b61ff"></i></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span></span><span><i style="background:var(--blue)"></i></span><span><i style="background:#7b61ff"></i></span><span><i style="background:#7b61ff"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span></span><span><i style="background:var(--blue)"></i></span><span></span><span><i style="background:#03c75a"></i></span><span></span><span><i style="background:#7b61ff"></i></span><span></span></div><div class="lg"><span><b style="background:var(--blue)"></b>구글</span><span><b style="background:#03c75a"></b>네이버</span><span><b style="background:#7b61ff"></b>네이버 웍스</span></div></div></div>
       <span class="num">01</span>
-      <h3>팀 휴가가 한눈에</h3>
-      <p>날짜마다 누가 쉬는지 막대로 보여요. 휴가도 위젯에서 바로 등록하고, 내 휴가는 직접 고치거나 지울 수 있어요.</p>
+      <h3>캘린더를 한 화면에</h3>
+      <p>구글은 로그인 한 번, 네이버·네이버 웍스는 앱 비밀번호로 연결해요. 캘린더마다 색깔 그대로 한 달력에 겹쳐 보여요.</p>
     </article>
     <article class="card rv">
-      <div class="vis v-cal" aria-hidden="true"><span><i style="background:var(--accent)"></i>내 캘린더</span><span><i style="background:var(--blue)"></i>프로젝트</span></div>
+      <div class="vis fx" aria-hidden="true"><div class="mc fx-share"><div class="hd"><i></i>주말 등산 모임<em>함께 쓰는 캘린더</em></div><div class="p"><span class="av" style="background:var(--accent)">나</span>나<small>주인</small></div><div class="p"><span class="av" style="background:#2f6fdb">김</span>김설계<small>편집 가능</small></div><div class="p"><span class="av" style="background:#8a8780">이</span>이구조<small>보기만</small></div></div></div>
       <span class="num">02</span>
-      <h3>구글 캘린더 그대로</h3>
-      <p>내 캘린더와 공유받은 팀 캘린더가 색깔 그대로 나와요. 위젯에서 바꾼 일정은 구글 캘린더에도 바로 반영돼요.</p>
+      <h3>친구와 함께 쓰는 캘린더</h3>
+      <p>Plait 아이디로 친구를 추가하고 캘린더를 같이 써요. 사람마다 "편집 가능" 또는 "보기만" 권한을 정할 수 있어요.</p>
     </article>
     <article class="card rv">
-      <div class="vis v-desk" aria-hidden="true"><div><i></i><i class="a"></i><i></i><i></i><i></i><i></i><i class="b"></i><i></i><i></i><i></i><i></i><i class="a"></i></div></div>
+      <div class="vis fx" aria-hidden="true"><div class="fx-sync"><div class="mc ev"><b><i style="background:var(--blue)"></i>내 구글</b><div style="border-color:var(--blue)">팀 회의<small>오후 3:00</small></div></div><div class="mid">⇄<img src="assets/plait_icon.png" alt="">⇄</div><div class="mc ev"><b><i style="background:#03c75a"></i>친구 네이버</b><div style="border-color:#03c75a">팀 회의<small>오후 3:00</small></div></div></div></div>
       <span class="num">03</span>
-      <h3>바탕화면에 늘 그 자리</h3>
-      <p>원하는 곳에 두고 크기·투명도를 맞추면 켤 때마다 그 자리에 떠요. 다른 창 위에 고정해 둘 수도 있어요.</p>
+      <h3>어디서 고쳐도 양쪽으로</h3>
+      <p>함께 쓰는 캘린더를 내 구글·네이버에 연동하면 같은 이름의 캘린더가 생겨요. 휴대폰 캘린더 앱에서 고친 일정도 위젯이 켜져 있으면 Plait과 친구에게 맞춰져요.</p>
     </article>
   </div>
 </div></section>
@@ -271,27 +299,27 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
   <h2 class="rv">작지만 꼼꼼하게.</h2>
   <p class="sec-lead rv">매일 쓰는 위젯이라 손이 덜 가는 쪽으로 다듬었어요.</p>
   <div class="mini">
+    <div class="rv"><b><i>◉</i>칩 하나로 관리</b><p>캘린더 칩을 더블클릭하면 연동, 함께 쓰는 사람과 권한, 색상, 삭제를 한 창에서 다뤄요.</p></div>
+    <div class="rv"><b><i>↺</i>쓰던 캘린더 그대로</b><p>이미 쓰던 구글·네이버 캘린더를 그대로 친구와 함께 쓰는 캘린더로 바꿀 수 있어요.</p></div>
+    <div class="rv"><b><i>휴</i>팀 휴가 한눈에</b><p>팀 휴가 캘린더를 정하면 날짜마다 누가 쉬는지 보여요. 휴가 등록도 위젯에서 바로 해요.</p></div>
+    <div class="rv"><b><i>!</i>변경 알림</b><p>다른 사람이 함께 쓰는 캘린더의 일정을 바꾸면 알려 줘요.</p></div>
     <div class="rv"><b><i>D</i>데드라인 D-day</b><p>캘린더마다 마지막 일정까지 남은 날과 진행 막대를 보여 줘요.</p></div>
-    <div class="rv"><b><i>!</i>변경 알림</b><p>다른 사람이 공유 캘린더의 일정을 바꾸면 알려 줘요.</p></div>
-    <div class="rv"><b><i>⇄</i>캘린더 옮기기</b><p>일정을 고치면서 다른 캘린더로 옮길 수 있어요.</p></div>
-    <div class="rv"><b><i>●</i>캘린더 색상</b><p>칩을 더블클릭해 색을 바꿔요. 내 구글 캘린더에도 같이 적용돼요.</p></div>
-    <div class="rv"><b><i>12</i>12·24시간</b><p>오전/오후로 볼지 24시간으로 볼지 설정에서 골라요.</p></div>
-    <div class="rv"><b><i>↕</i>원하는 크기로</b><p>칸을 접고 달력 높이를 줄여 필요한 것만 남겨요.</p></div>
-    <div class="rv"><b><i>◐</i>어두운 화면</b><p>밝게·어둡게·시스템 따라가기 중에 골라요.</p></div>
-    <div class="rv"><b><i>↻</i>자동 업데이트</b><p>새 버전이 나오면 위젯에서 버튼 한 번으로 바꿔요.</p></div>
-    <div class="rv"><b><i>⌁</i>가볍게</b><p>로그인 정보는 내 PC에만 암호화해 두고, 서버에는 함께 쓰는 캘린더만 올라가요.</p></div>
+    <div class="rv"><b><i>↕</i>원하는 크기로</b><p>칸을 접고 달력 높이·투명도를 맞추고, 다른 창 위에 고정해 둘 수 있어요.</p></div>
+    <div class="rv"><b><i>◐</i>어두운 화면</b><p>밝게·어둡게·시스템 따라가기 중에 골라요. 12·24시간 표시도 골라요.</p></div>
+    <div class="rv"><b><i>↻</i>자동 업데이트</b><p>새 버전이 나오면 위젯에서 버튼 한 번으로 바꿔요. 설정은 그대로 남아요.</p></div>
+    <div class="rv"><b><i>⌁</i>안전하게</b><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해 두고, 서버에는 함께 쓰는 캘린더만 올라가요.</p></div>
   </div>
 </div></section>
 
 <section id="start"><div class="wrap">
   <p class="sec-k">시작하기</p>
-  <h2 class="rv">10분이면 준비 끝.</h2>
+  <h2 class="rv">몇 분이면 준비 끝.</h2>
   <p class="sec-lead rv">처음 한 번만 설정하면 그다음부터는 켜기만 하면 돼요.</p>
   <ol class="steps">
     <li class="rv"><b>설치</b><p>받은 설치 파일을 실행하고 [설치]를 눌러요. 바탕화면과 시작 프로그램에 바로가기가 생겨요.</p></li>
-    <li class="rv"><b>구글 로그인</b><p>[Google 계정으로 로그인]을 누르고 캘린더 권한을 허용해요.</p></li>
-    <li class="rv"><b>팀 휴가 연결</b><p>설정 › 팀 휴가에서 팀 휴가 캘린더와 내 이름을 골라요.</p></li>
-    <li class="rv"><b>자리 잡기</b><p>위젯을 원하는 곳에 끌어 두고 크기와 투명도를 맞춰요.</p></li>
+    <li class="rv"><b>Plait 계정 만들기</b><p>아이디·이름·비밀번호로 가입해요. 이메일은 필요 없고, 가입할 때 받는 복구 코드는 꼭 보관해 두세요.</p></li>
+    <li class="rv"><b>캘린더 연결</b><p>구글은 로그인으로, 네이버는 앱 비밀번호로 연결해요. 나중에 설정 › 연동에서 해도 돼요.</p></li>
+    <li class="rv"><b>친구와 함께 쓰기</b><p>친구를 추가하고 캘린더를 만들어 초대해요. 팀 휴가는 설정 › 팀 휴가에서 골라요.</p></li>
   </ol>
 </div></section>
 
@@ -304,14 +332,14 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
       <div class="os"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.5v7H3zm8 -1.1L21 3v8.5H11zM3 12.5h7v7L3 18.5zm8 0h10V21l-10-1.4z"/></svg>Windows</div>
       <div class="ver" id="verChips"><span>최신 버전</span></div>
       <a class="btn primary" id="dlBtn" href="external/Plait_setup.exe" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Windows용 받기 (.exe)</a>
-      <p class="dlnote">받은 <b>Plait_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 구글 계정으로 로그인하면 돼요.</p>
+      <p class="dlnote">받은 <b>Plait_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 Plait 계정을 만들고 캘린더를 연결하면 돼요.</p>
       <div class="req"><b>필요한 환경</b>
-        <ul><li>Windows 10 또는 11 (64비트)</li><li>Microsoft Edge WebView2 런타임 (대부분 이미 설치되어 있어요)</li><li>구글 계정</li></ul>
+        <ul><li>Windows 10 또는 11 (64비트)</li><li>Microsoft Edge WebView2 런타임 (대부분 이미 설치되어 있어요)</li><li>연결할 구글 또는 네이버 계정 (없어도 Plait 캘린더만으로 쓸 수 있어요)</li></ul>
       </div>
     </div>
     <div class="dlcard side rv">
       <h3>팀 담당자라면</h3>
-      <p>구글 캘린더에 팀 휴가 캘린더를 하나 만들어 팀원에게 "일정 변경" 권한으로 공유하면 준비 끝이에요.</p>
+      <p>팀 휴가를 같이 보려면 구글 캘린더에 팀 휴가 캘린더를 하나 만들어 팀원에게 "일정 변경" 권한으로 공유하면 준비 끝이에요. 팀 일정은 Plait에서 캘린더를 만들어 팀원을 초대하면 돼요.</p>
       <p>받은 zip 폴더에 구글 설정 파일을 넣고 "exe 만들기.cmd"를 실행하면, 팀원은 설정 파일 없이 exe 하나로 설치할 수 있어요.</p>
       <div class="req"><b>최근 업데이트</b><ul id="notes"><li>불러오는 중…</li></ul><p style="margin:8px 0 0"><a href="#updates" style="color:var(--accent);font-weight:600;text-decoration:none">업데이트 노트 전체 보기 →</a></p></div>
     </div>
@@ -342,13 +370,16 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
   <p class="sec-k">자주 묻는 질문</p>
   <h2 class="rv">궁금한 점</h2>
   <div class="faq">
+    <details><summary>예전 TEAM CAL을 쓰고 있었어요.</summary><div class="a"><p>업데이트하면 이름과 아이콘이 Plait으로 바뀌어요. 구글 로그인과 팀 휴가 설정은 그대로예요.</p><p>업데이트 후 처음 켜면 Plait 계정을 만드는 화면이 나와요. 친구와 함께 쓰는 캘린더, 네이버 연결이 이 계정에 묶여요.</p></div></details>
+    <details><summary>Plait 계정이 꼭 있어야 하나요?</summary><div class="a"><p>네. 처음 켤 때 아이디·이름·비밀번호로 만들어요. 이메일은 받지 않아요.</p><p>비밀번호를 잊으면 가입할 때 받은 복구 코드로 새로 만들 수 있어요. 복구 코드는 설정 › 계정에서 다시 발급할 수 있어요.</p></div></details>
+    <details><summary>함께 쓰는 캘린더는 어떻게 동작하나요?</summary><div class="a"><p>원본은 Plait 서버에 있고, 초대받은 사람은 모두 같은 캘린더를 봐요. 권한은 "편집 가능"과 "보기만" 중에서 정해요.</p><p>칩을 더블클릭해 구글이나 네이버 연동을 켜면, 내 구글·네이버에 같은 이름의 캘린더가 생기고 양쪽 일정이 서로 맞춰져요. 휴대폰 캘린더 앱에서도 볼 수 있게 돼요.</p></div></details>
+    <details><summary>네이버 캘린더는 어떻게 연결하나요?</summary><div class="a"><p>설정 › 연동 › 네이버에서 네이버 아이디와 <b>애플리케이션 비밀번호</b>를 넣어요. 네이버 2단계 인증에서 만드는 비밀번호로, 같은 화면의 [앱 비밀번호 만들기 ↗]를 누르면 바로 갈 수 있어요. 네이버 웍스는 보안 메뉴의 <b>외부 앱 비밀번호</b>로 연결해요.</p><p>네이버는 다른 앱이 캘린더를 새로 만드는 걸 막아 두어서, 함께 쓰는 캘린더를 네이버에 처음 연동하면 칩에 빨간 <b>!</b>가 떠요. [네이버 캘린더 열기 ↗]로 같은 이름의 캘린더를 만들고 [만들었어요 · 확인]을 누르면 이어져요.</p></div></details>
     <details><summary>로그인할 때 "Google에서 확인하지 않은 앱"이라고 나와요.</summary><div class="a"><p>Plait이 구글의 앱 검토를 받는 중이라 보이는 안내예요. [고급] › [Plait(으)로 이동]을 누르면 그대로 로그인돼요.</p></div></details>
     <details><summary>내 캘린더 정보는 어디로 가나요?</summary><div class="a"><p>내 구글·네이버 일정은 내 PC의 위젯과 구글·네이버 사이에서만 오가요. Plait 서버에는 계정, 친구, 그리고 친구와 함께 쓰는 캘린더의 일정만 저장돼요.</p><p>구글 로그인 정보와 네이버 비밀번호는 내 PC에만 암호화해서 보관하고 서버로 보내지 않아요. 자세한 내용은 <a href="external/privacy.html">개인정보처리방침</a>에 있어요.</p></div></details>
-    <details><summary>팀 휴가는 어떻게 정해지나요?</summary><div class="a"><p>팀에서 정한 구글 캘린더 하나에 있는 종일 일정 중 제목이 "이름 구분"인 것이 휴가로 보여요. 예: <b>김설계 연차</b>, <b>이구조 오후반차</b>.</p><p>위젯에서 휴가를 등록하면 이 형식으로 자동 저장돼요.</p></div></details>
-    <details><summary>다른 사람 휴가를 고칠 수 있나요?</summary><div class="a"><p>아니요. 위젯에서는 내 이름으로 된 휴가만 고치고 지울 수 있어요.</p></div></details>
+    <details><summary>팀 휴가는 어떻게 정해지나요?</summary><div class="a"><p>팀에서 정한 구글 캘린더 하나에 있는 종일 일정 중 제목이 "이름 구분"인 것이 휴가로 보여요. 예: <b>김설계 연차</b>, <b>이구조 오후반차</b>. 위젯에서 휴가를 등록하면 이 형식으로 자동 저장돼요.</p><p>다른 사람 휴가는 고칠 수 없고, 내 이름으로 된 휴가만 고치고 지울 수 있어요.</p></div></details>
     <details><summary>업데이트는 어떻게 하나요?</summary><div class="a"><p>새 버전이 나오면 위젯 위쪽에 알림이 떠요. [업데이트]를 누르면 알아서 바꾸고 다시 켜져요. 설정 › 알림 › [지금 확인]으로 바로 확인할 수도 있어요.</p></div></details>
     <details><summary>Mac에서도 쓸 수 있나요?</summary><div class="a"><p>지금은 Windows 10/11만 지원해요.</p></div></details>
-    <details><summary>지우고 싶어요.</summary><div class="a"><p>설정 › 정보 › [제거] 또는 Windows 설정 › 앱에서 지울 수 있어요. 내 PC에 있던 설정과 로그인 정보가 함께 지워지고, 구글 캘린더의 일정은 그대로 남아요.</p><p>구글 쪽 권한은 <a href="https://myaccount.google.com/permissions" rel="noopener">구글 계정 › 서드 파티 액세스</a>에서 지울 수 있어요.</p></div></details>
+    <details><summary>지우고 싶어요.</summary><div class="a"><p>설정 › 정보 › [제거] 또는 Windows 설정 › 앱에서 지울 수 있어요. 내 PC에 있던 설정과 로그인 정보가 함께 지워지고, 구글·네이버 캘린더의 일정은 그대로 남아요.</p><p>Plait 계정까지 없애려면 지우기 전에 설정 › 계정 › [계정 삭제]를 눌러 주세요. 구글 쪽 권한은 <a href="https://myaccount.google.com/permissions" rel="noopener">구글 계정 › 서드 파티 액세스</a>에서 지울 수 있어요.</p></div></details>
   </div>
 </div></section>
 </main>
@@ -356,7 +387,7 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 <footer><div class="wrap">
   <div>
     <div class="logo"><img class="mark" src="assets/plait_icon.png" alt="" width="28" height="28">Plait</div>
-    <div>팀 휴가 + 내 일정 Windows 데스크톱 위젯</div>
+    <div>흩어진 캘린더를 하나로 엮는 Windows 캘린더 위젯</div>
     <div style="margin-top:6px">© 2026 Plait</div>
   </div>
   <div class="links">
