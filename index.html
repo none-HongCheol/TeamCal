@@ -3,10 +3,11 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>TeamCal — 팀 휴가와 내 일정을 바탕화면 한쪽에</title>
-<meta name="description" content="TeamCal은 팀 휴가와 내 구글 캘린더 일정을 Windows 바탕화면에서 한눈에 보는 데스크톱 위젯입니다.">
+<title>Plait 플레잇 — 팀 휴가와 내 일정을 바탕화면 한쪽에</title>
+<meta name="description" content="Plait(플레잇)은 팀 휴가와 내 구글 캘린더 일정을 Windows 바탕화면에서 한눈에 보는 데스크톱 위젯입니다.">
 <meta name="theme-color" content="#faf8f5">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='11' fill='%231b1b1d'/%3E%3C/svg%3E">
+<link rel="icon" type="image/png" href="assets/plait_favicon.png">
+<link rel="apple-touch-icon" href="assets/plait_icon.png">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
 :root{--bg:#faf8f5;--bg2:#f3f0ea;--card:#fff;--fg:#1b1b1d;--fg2:#3a3a3f;--muted:#6f6e73;--line:#e8e3da;--accent:#e0592a;--accent-soft:#fbe6dc;--blue:#2f6fdb;--green:#33b679;--shadow:0 1px 2px rgba(20,18,14,.05),0 12px 40px -12px rgba(20,18,14,.18)}
@@ -30,7 +31,7 @@ header{position:sticky;top:0;z-index:20;background:color-mix(in srgb,var(--bg) 8
 header.scrolled{border-bottom-color:var(--line)}
 header .wrap{display:flex;align-items:center;gap:28px;height:64px}
 .logo{display:flex;align-items:center;gap:10px;text-decoration:none;font-weight:800;font-size:19px;letter-spacing:-.02em}
-.dot{width:20px;height:20px;border-radius:50%;background:var(--fg);flex:none}
+.mark{width:28px;height:28px;flex:none;display:block}
 nav{display:flex;gap:22px;margin-left:auto;font-size:14.5px;font-weight:500}
 nav a{text-decoration:none;color:var(--fg2)}nav a:hover{color:var(--fg)}
 .icon-btn{width:36px;height:36px;border-radius:50%;border:1px solid var(--line);background:var(--card);color:var(--fg);display:grid;place-items:center;cursor:pointer}
@@ -176,7 +177,7 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 </div></div>
 
 <header id="top"><div class="wrap">
-  <a class="logo" href="#top" aria-label="TeamCal 처음으로"><span class="dot" aria-hidden="true"></span>TeamCal</a>
+  <a class="logo" href="#top" aria-label="Plait 처음으로"><img class="mark" src="assets/plait_icon.png" alt="" width="28" height="28">Plait</a>
   <nav id="nav" aria-label="주요 메뉴">
     <a href="#features">기능</a>
     <a href="#start">시작하기</a>
@@ -195,12 +196,12 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
     <h1>팀 휴가와 내 일정,<br><em>바탕화면 한쪽</em>에.</h1>
     <p class="lead">누가 쉬는지, 오늘 무슨 일정이 있는지 브라우저를 열지 않아도 보여요. 구글 캘린더와 팀 휴가 캘린더를 작은 위젯 하나에 모았어요.</p>
     <div class="cta">
-      <a class="btn primary" href="#download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>TeamCal 받기</a>
+      <a class="btn primary" href="#download"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Plait 받기</a>
       <a class="btn ghost" href="#features">기능 둘러보기</a>
     </div>
     <p class="cta-note">무료 · Windows 10/11 · 구글 계정으로 로그인</p>
   </div>
-  <div class="desk" role="img" aria-label="바탕화면 오른쪽에 떠 있는 TeamCal 위젯 화면">
+  <div class="desk" role="img" aria-label="바탕화면 오른쪽에 떠 있는 Plait 위젯 화면">
     <div class="note" aria-hidden="true"><b>이번 주 할 일</b><span></span><span></span><span></span></div>
     <div class="w"><img class="only-light" src="assets/widget_light.png" alt="" width="720" height="1918"><img class="only-dark" src="assets/widget_dark.png" alt="" width="720" height="1918"></div>
     <div class="tb" aria-hidden="true"><i></i><i></i><i class="me"></i><i></i></div>
@@ -286,8 +287,8 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
     <div class="dlcard rv">
       <div class="os"><svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M3 5.5 10 4.5v7H3zm8 -1.1L21 3v8.5H11zM3 12.5h7v7L3 18.5zm8 0h10V21l-10-1.4z"/></svg>Windows</div>
       <div class="ver" id="verChips"><span>최신 버전</span></div>
-      <a class="btn primary" id="dlBtn" href="external/TeamCal_setup.exe" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Windows용 받기 (.exe)</a>
-      <p class="dlnote">받은 <b>TeamCal_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 구글 계정으로 로그인하면 돼요.</p>
+      <a class="btn primary" id="dlBtn" href="external/Plait_setup.exe" download><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 4v11m0 0-4.5-4.5M12 15l4.5-4.5M5 20h14"/></svg>Windows용 받기 (.exe)</a>
+      <p class="dlnote">받은 <b>Plait_setup.exe</b>를 실행하고 [설치]를 누르세요. 브라우저가 "흔히 다운로드되지 않는 파일"이라고 하면 [유지]를, "Windows의 PC 보호" 창이 뜨면 [추가 정보] › [실행]을 누르면 돼요. 설치가 끝나면 구글 계정으로 로그인하면 돼요.</p>
       <div class="req"><b>필요한 환경</b>
         <ul><li>Windows 10 또는 11 (64비트)</li><li>Microsoft Edge WebView2 런타임 (대부분 이미 설치되어 있어요)</li><li>구글 계정</li></ul>
       </div>
@@ -305,8 +306,8 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
   <p class="sec-k">자주 묻는 질문</p>
   <h2 class="rv">궁금한 점</h2>
   <div class="faq">
-    <details><summary>로그인할 때 "Google에서 확인하지 않은 앱"이라고 나와요.</summary><div class="a"><p>TeamCal이 구글의 앱 검토를 받는 중이라 보이는 안내예요. [고급] › [TeamCal(으)로 이동]을 누르면 그대로 로그인돼요.</p></div></details>
-    <details><summary>내 캘린더 정보는 어디로 가나요?</summary><div class="a"><p>일정 정보는 내 PC의 위젯과 구글 사이에서만 오가요. TeamCal 제작자가 따로 모으거나 저장하는 서버는 없어요. 로그인 정보도 내 PC에만 암호화해서 보관해요.</p><p>자세한 내용은 <a href="external/privacy.html">개인정보처리방침</a>에 있어요.</p></div></details>
+    <details><summary>로그인할 때 "Google에서 확인하지 않은 앱"이라고 나와요.</summary><div class="a"><p>Plait이 구글의 앱 검토를 받는 중이라 보이는 안내예요. [고급] › [Plait(으)로 이동]을 누르면 그대로 로그인돼요.</p></div></details>
+    <details><summary>내 캘린더 정보는 어디로 가나요?</summary><div class="a"><p>일정 정보는 내 PC의 위젯과 구글 사이에서만 오가요. Plait 제작자가 따로 모으거나 저장하는 서버는 없어요. 로그인 정보도 내 PC에만 암호화해서 보관해요.</p><p>자세한 내용은 <a href="external/privacy.html">개인정보처리방침</a>에 있어요.</p></div></details>
     <details><summary>팀 휴가는 어떻게 정해지나요?</summary><div class="a"><p>팀에서 정한 구글 캘린더 하나에 있는 종일 일정 중 제목이 "이름 구분"인 것이 휴가로 보여요. 예: <b>김설계 연차</b>, <b>이구조 오후반차</b>.</p><p>위젯에서 휴가를 등록하면 이 형식으로 자동 저장돼요.</p></div></details>
     <details><summary>다른 사람 휴가를 고칠 수 있나요?</summary><div class="a"><p>아니요. 위젯에서는 내 이름으로 된 휴가만 고치고 지울 수 있어요.</p></div></details>
     <details><summary>업데이트는 어떻게 하나요?</summary><div class="a"><p>새 버전이 나오면 위젯 위쪽에 알림이 떠요. [업데이트]를 누르면 알아서 바꾸고 다시 켜져요. 설정 › 알림 › [지금 확인]으로 바로 확인할 수도 있어요.</p></div></details>
@@ -318,9 +319,9 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
 
 <footer><div class="wrap">
   <div>
-    <div class="logo"><span class="dot" aria-hidden="true"></span>TeamCal</div>
+    <div class="logo"><img class="mark" src="assets/plait_icon.png" alt="" width="28" height="28">Plait</div>
     <div>팀 휴가 + 내 일정 Windows 데스크톱 위젯</div>
-    <div style="margin-top:6px">© 2026 TeamCal</div>
+    <div style="margin-top:6px">© 2026 Plait</div>
   </div>
   <div class="links">
     <a href="external/privacy.html">개인정보처리방침</a>
@@ -364,7 +365,7 @@ footer a{text-decoration:none;color:var(--fg2)}footer a:hover{color:var(--fg)}
       chips.innerHTML = ok.map(x => `<span>버전 ${x.j.version}</span>`).join("") + "<span>무료</span>";
       notes.innerHTML = ok.map(x => `<li><b>${x.j.version}</b> — ${(x.j.notes || "").replace(/[<>&]/g, "")}</li>`).join("");
       const a = ok[0];
-      notice.innerHTML = `<b>TeamCal ${a.j.version}</b> · ${(a.j.notes || "새 버전").replace(/[<>&]/g, "")}`;
+      notice.innerHTML = `<b>Plait ${a.j.version}</b> · ${(a.j.notes || "새 버전").replace(/[<>&]/g, "")}`;
     });
 })();
 </script>

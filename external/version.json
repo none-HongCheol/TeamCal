@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8",
+  "version": "1.1.0",
   "url": "TeamCalExternal.ps1",
-  "notes": "시간 휠: 11시를 넘기면 오전/오후 자동 전환"
+  "notes": "이름이 Plait(플레잇)으로 바뀌고 새 아이콘이 생겼어요. 설정과 로그인은 그대로예요"
 }
